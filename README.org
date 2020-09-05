@@ -1,2 +1,23 @@
-gk-roam is a light-weight roam replica, built on top emacs orgMode.
+*Gk-roam is a light-weight roam replica, built on top emacs orgMode.*
 
+** My Config
+
+   #+BEGIN_SRC emacs-lisp
+   (use-package gk-roam
+     :load-path "~/iCloud/hack/gk-roam/"
+     :init (setq gk-roam-root-dir "~/gk-roam/org/"
+		 gk-roam-pub-dir "~/gk-roam/site/")
+     :config
+     (global-set-key (kbd "C-c r") 'gk-roam-hydra/body)
+     (defhydra gk-roam-hydra (:color amaranth :hint nil :exit t)
+       "Gk-Roam"
+       ("f" gk-roam-find "find file")
+       ("n" gk-roam-smart-new "smart new")
+       ("i" gk-roam-insert "insert link")
+       ("g" gk-roam-update "update reference")
+       ("G" gk-roam-update-all "update all reference")
+       ("I" gk-roam-index "show index")
+       ("p" gk-roam-preview-site "preview site")
+       ("v" gk-roam-preview-current "preview current file")
+       ("q" nil "cancel")))
+   #+END_SRC
