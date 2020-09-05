@@ -1,0 +1,2 @@
+gk-roam is a light-weight roam replica, built on top emacs orgMode.
+
