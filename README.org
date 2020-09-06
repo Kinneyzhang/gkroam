@@ -1,4 +1,4 @@
-/=Gk-roam is a light-weight roam replica, built on top emacs OrgMode./
+=/Gk-roam is a light-weight roam replica, built on top emacs OrgMode./=
 
 ** Usage
 
