@@ -1,12 +1,59 @@
-*Gk-roam is a light-weight roam replica, built on top emacs orgMode.*
+/=Gk-roam is a light-weight roam replica, built on top emacs OrgMode./
 
-** My Config
+** Usage
+
+   Main functions:
+
+   /=gk-roam-find=/
+
+   Find a gk-roam file and open it. If not exisit, create a new one. Just like /ido-find-file/.
+
+   /=gk-roam-smart-new=/
+
+   Smartly create a new file. If in a region, read the text in region as file title. if a word at point, read the text at point as file title. Otherwise, use =gk-roam-find=. At last, insert a file link at point or in region.
+
+   /=gk-roam-insert=/
+
+   Choose and insert an exisit file link.
+
+   /=gk-roam-index=/
+
+   Show gk-roam index page. Well, it's just a simple site map because I have not get good ideas about it. Feel free to give me an issue or PR.
+
+   /=gk-roam-update=/
+
+   Update current buffer's references. Actually, references are updated automatically.
+
+   /=gk-roam-update-all=/
+   
+   Update all files' references.
+
+   /=gk-roam-publish-current-file=/
+
+   Publish current file to html.
+
+   /=gk-roam-preview-current=/
+   
+   Preview current file in browser.
+
+   /=gk-roam-publish-site=/
+
+   Publish the whole gk-roam site.
+
+   /=gk-roam-preview=/
+
+   Preview gk-roam site's index page.
+
+** Config
+
+   My configuration are as follows. Package [[https://github.com/abo-abo/hydra][hydra]] is used for keybindings, free feel to modify them as you like.
 
    #+BEGIN_SRC emacs-lisp
    (use-package gk-roam
      :load-path "~/iCloud/hack/gk-roam/"
      :init (setq gk-roam-root-dir "~/gk-roam/org/"
-		 gk-roam-pub-dir "~/gk-roam/site/")
+		 gk-roam-pub-dir "~/gk-roam/site/"
+		 gk-roam-pub-css "<link rel=\"stylesheet\" href=\"https://gongzhitaao.org/orgcss/org.css\">")
      :config
      (global-set-key (kbd "C-c r") 'gk-roam-hydra/body)
      (defhydra gk-roam-hydra (:color amaranth :hint nil :exit t)
@@ -17,7 +64,7 @@
        ("g" gk-roam-update "update reference")
        ("G" gk-roam-update-all "update all reference")
        ("I" gk-roam-index "show index")
-       ("p" gk-roam-preview-site "preview site")
+       ("p" gk-roam-preview "preview site")
        ("v" gk-roam-preview-current "preview current file")
        ("q" nil "cancel")))
    #+END_SRC
