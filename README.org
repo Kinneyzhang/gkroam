@@ -1,11 +1,5 @@
 Gk-roam is a light-weight roam replica, built on top emacs OrgMode. It use 'ripgrep' to search file links and insert references at the bottom of org files automatically. References consist of backlinks and related context.
 
-** Glimpse
-   
-   gk-roam preview:
-
-   [[./videos/gk-roam2.mp4]]
-
 ** Install
    
    My configuration are as follows. Package [[https://github.com/abo-abo/hydra][hydra]] and [[https://github.com/jerrypnz/major-mode-hydra.el][pretty-hydra]] are used for keybindings, free feel to modify them as you like. See my pretty-hydra config [[https://github.com/Kinneyzhang/.emacs.d/blob/master/elisp/init-hydra.el][here]].
