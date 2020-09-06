@@ -1,14 +1,14 @@
-=/Gk-roam is a light-weight roam replica, built on top emacs OrgMode./=
+Gk-roam is a light-weight roam replica, built on top emacs OrgMode.
 
 ** Usage
 
    Main functions:
 
-   /=gk-roam-find=/
+   =*gk-roam-find*=
 
    Find a gk-roam file and open it. If not exisit, create a new one. Just like /ido-find-file/.
 
-   /=gk-roam-smart-new=/
+   *=gk-roam-smart-new=*
 
    Smartly create a new file. If in a region, read the text in region as file title. if a word at point, read the text at point as file title. Otherwise, use =gk-roam-find=. At last, insert a file link at point or in region.
 
