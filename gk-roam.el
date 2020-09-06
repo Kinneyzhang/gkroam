@@ -156,6 +156,19 @@
       (replace-match "_"))
     (buffer-string)))
 
+(defun gk-roam-update-index ()
+  "Update gk-roam index page."
+  (let* ((index-org (concat gk-roam-root-dir "index.org"))
+	 (index-buf (or (get-file-buffer index-org)
+			(find-file-noselect index-org))))
+    (with-current-buffer index-buf
+      (erase-buffer)
+      (insert "#+TITLE: gk-roam\n#+OPTIONS: toc:nil H:2 num:0\n\n* Site Map\n\n")
+      (dolist (pair (gk-roam--all-link-pairs))
+	(insert (format " - [[file:%s][%s]]\n" (cdr pair) (car pair))))
+      (save-buffer))
+    index-buf))
+
 (defun gk-roam-update-reference (file)
   "Update gk-roam file reference."
   (unless (executable-find "rg")
@@ -292,22 +305,13 @@
   (cond
    ((region-active-p) (gk-roam-new-from-region))
    ((thing-at-point 'word) (gk-roam-new-at-point))
-   (t (funcall-interactively 'gk-roam-find)))) 
+   (t (funcall-interactively 'gk-roam-find))))
 
 ;;;###autoload
 (defun gk-roam-index ()
   "Show gk-roam index page."
   (interactive)
-  (let* ((index-org (concat gk-roam-root-dir "index.org"))
-	 (index-buf (or (get-file-buffer index-org)
-			(find-file-noselect index-org))))
-    (with-current-buffer index-buf
-      (erase-buffer)
-      (insert "#+TITLE: gk-roam\n#+OPTIONS: toc:nil H:2 num:0\n\n* Site Map\n\n")
-      (dolist (pair (gk-roam--all-link-pairs))
-	(insert (format " - [[file:%s][%s]]\n" (cdr pair) (car pair))))
-      (save-buffer))
-    (switch-to-buffer index-buf)))
+  (switch-to-buffer (gk-roam-update-index)))
 
 ;;;###autoload
 (defun gk-roam-insert (&optional title)
@@ -336,6 +340,7 @@
 (defun gk-roam-update-all ()
   "Update all gk-roam files' reference."
   (interactive)
+  (gk-roam-update-index)
   (let ((files (gk-roam--all-files t)))
     (dolist (file files)
       (gk-roam-update-reference file))))

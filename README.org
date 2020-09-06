@@ -1,4 +1,41 @@
-Gk-roam is a light-weight roam replica, built on top emacs OrgMode.
+Gk-roam is a light-weight roam replica, built on top emacs OrgMode. It use 'ripgrep' to search file links and insert references at the bottom of org files automatically. References consist of backlinks and related context.
+
+** Glimpse
+   
+   gk-roam preview:
+
+   [[./videos/gk-roam2.mp4]]
+
+** Install
+   
+   My configuration are as follows. Package [[https://github.com/abo-abo/hydra][hydra]] and [[https://github.com/jerrypnz/major-mode-hydra.el][pretty-hydra]] are used for keybindings, free feel to modify them as you like. See my pretty-hydra config [[https://github.com/Kinneyzhang/.emacs.d/blob/master/elisp/init-hydra.el][here]].
+
+   #+BEGIN_SRC emacs-lisp
+   (use-package gk-roam
+     :load-path "~/iCloud/hack/gk-roam/"
+     :init (setq gk-roam-root-dir "~/gk-roam/org/"
+		 gk-roam-pub-dir "~/gk-roam/site/"
+		 gk-roam-pub-css "<link rel=\"stylesheet\" href=\"https://gongzhitaao.org/orgcss/org.css\">")
+     :config
+     (global-set-key (kbd "C-c r") 'gk-roam-hydra/body)
+     (pretty-hydra-define gk-roam-hydra
+       (:color amaranth :exit t)
+       "Gk-Roam"
+       ("f" gk-roam-find "find file")
+       ("n" gk-roam-smart-new "smart new")
+       ("i" gk-roam-insert "insert link")
+       ("g" gk-roam-update "update reference")
+       ("G" gk-roam-update-all "update all reference")
+       ("I" gk-roam-index "show index")
+       ("p" gk-roam-preview "preview site")
+       ("v" gk-roam-preview-current "preview current file")
+       ("q" nil "cancel")))
+   #+END_SRC
+
+** Dependency
+
+   * [[https://github.com/skeeto/emacs-web-server][simple-httpd.el]] is used for html preview, install it in emacs.
+   * ripgrep(rg) is used for search reference link, install it through os package manager and ensure that the command =rg= is in /exec-path/ variable.
 
 ** Usage
 
@@ -43,28 +80,3 @@ Gk-roam is a light-weight roam replica, built on top emacs OrgMode.
    *gk-roam-preview*
 
    Preview gk-roam site's index page.
-
-** Config
-
-   My configuration are as follows. Package [[https://github.com/abo-abo/hydra][hydra]] is used for keybindings, free feel to modify them as you like.
-
-   #+BEGIN_SRC emacs-lisp
-   (use-package gk-roam
-     :load-path "~/iCloud/hack/gk-roam/"
-     :init (setq gk-roam-root-dir "~/gk-roam/org/"
-		 gk-roam-pub-dir "~/gk-roam/site/"
-		 gk-roam-pub-css "<link rel=\"stylesheet\" href=\"https://gongzhitaao.org/orgcss/org.css\">")
-     :config
-     (global-set-key (kbd "C-c r") 'gk-roam-hydra/body)
-     (defhydra gk-roam-hydra (:color amaranth :hint nil :exit t)
-       "Gk-Roam"
-       ("f" gk-roam-find "find file")
-       ("n" gk-roam-smart-new "smart new")
-       ("i" gk-roam-insert "insert link")
-       ("g" gk-roam-update "update reference")
-       ("G" gk-roam-update-all "update all reference")
-       ("I" gk-roam-index "show index")
-       ("p" gk-roam-preview "preview site")
-       ("v" gk-roam-preview-current "preview current file")
-       ("q" nil "cancel")))
-   #+END_SRC
