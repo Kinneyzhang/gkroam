@@ -106,7 +106,7 @@
   "Call CALLBACK with a list of files’ name that has a link to FILE."
   (let* ((name (generate-new-buffer-name " *gk-roam-rg*"))
          (process (start-process
-                   name name "rg" "-F"
+                   name name "rg" "-Fn" "--heading"
 		   (gk-roam--format-link file)
 		   (expand-file-name (file-name-directory file)) ;; must be absolute path.
 		   "-g" "!index.org*"))
