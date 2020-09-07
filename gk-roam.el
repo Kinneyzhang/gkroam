@@ -32,10 +32,10 @@
 
 (require 'simple-httpd)
 
-(defvar gk-roam-root-dir "/Users/kinney/gk-roam/org/"
+(defvar gk-roam-root-dir ""
   "Gk-roam's root directory, with org files in it.")
 
-(defvar gk-roam-pub-dir "/Users/kinney/gk-roam/html/"
+(defvar gk-roam-pub-dir ""
   "Gk-roam's publish directory, with html files in it.")
 
 (defvar gk-roam-pub-css "<link rel=\"stylesheet\" href=\"https://gongzhitaao.org/orgcss/org.css\">"
