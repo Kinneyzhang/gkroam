@@ -88,7 +88,7 @@
 
 (defun gk-roam--all-link-pairs ()
   "Get all gk-roam link description pairs, sorted by predicate."
-  (let* ((filenames (gk-roam--all-files nil)) ;; 排除index.org
+  (let* ((filenames (gk-roam--all-files nil))
 	 (titles (gk-roam--all-titles))
 	 pair pairs)
     (dotimes (i (length filenames))
@@ -102,16 +102,15 @@
     (format "[[file:%s][%s]]" file
 	    (gk-roam--slugify-title-reversed (gk-roam--get-title file)))))
 
-(defun gk-roam--search-linked-files (file process callback)
+(defun gk-roam--search-linked-files (file callback)
   "Call CALLBACK with a list of files’ name that has a link to FILE."
-  ;; (gk-roam-delete-reference file)
-  (let* ((name (generate-new-buffer-name (format " *%s*" process)))
+  (let* ((name (generate-new-buffer-name " *gk-roam-rg*"))
          (process (start-process
-                   name name "rg" "-F" ;; 排除临时文件和index.org等
+                   name name "rg" "-F"
 		   (gk-roam--format-link file)
 		   (expand-file-name (file-name-directory file)) ;; must be absolute path.
 		   "-g" "!index.org*"))
-         ;; When the grep process finishes, we parse the result files
+         ;; When the rg process finishes, we parse the result files
          ;; and call CALLBACK with them.
          (sentinal
           (lambda (process event)
@@ -172,9 +171,9 @@
 (defun gk-roam-update-reference (file)
   "Update gk-roam file reference."
   (unless (executable-find "rg")
-    (user-error "Displaying reference needs rg but we cannot find it"))
+    (user-error "Cannot find program rg"))
   (gk-roam--search-linked-files
-   file "gk-roam-rg"
+   file
    (lambda (results)
      (let* ((file-buf (or (get-file-buffer file)
 			  (find-file-noselect file nil nil))))
