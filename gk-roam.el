@@ -107,7 +107,7 @@
   ;; (gk-roam-delete-reference file)
   (let* ((name (generate-new-buffer-name (format " *%s*" process)))
          (process (start-process
-                   name name "rg" "-F" ;; 排除临时文件和index.org等
+                   name name "rg" "-Fn" "--heading"
 		   (gk-roam--format-link file)
 		   (expand-file-name (file-name-directory file)) ;; must be absolute path.
 		   "-g" "!index.org*"))
