@@ -74,3 +74,22 @@ Gk-roam is a light-weight roam replica, built on top emacs OrgMode. It use 'ripg
    *gk-roam-preview*
 
    Preview gk-roam site's index page.
+
+** Known issues
+
+   - When page links are in orgmode headline, references will not be well displayed.
+
+** Todo List
+   
+   Recently, I have been watching [[https://www.youtube.com/playlist?list=PLwXSqDdn_CpE934BjXMgmzHnlwXMy41TC][videos]] about Roam Research. From it, I have got lots of ideas to improve gk-roam. The ideas are as follows:
+
+   * [ ] Change page's filename to only date numbers. Do not use the concept of 'file', use 'page' in function naming instead. Filename is just as an identity. This may changes lots of elisp code and have to reorganize some logic.
+   * [ ] Implement a function name gk-roam-help to show useful keybingings info and tips. Idea comes from Roam Research's help menu.
+
+   More in future!
+
+** Acknowledgements
+
+   Thanks to cool guys in [[https://emacs-china.org][emacs-china.org]] who resolve my questions in some keypoints.
+
+   Thanks to [[https://github.com/casouri][casouri]]'s [[https://github.com/casouri/lunarymacs/blob/master/site-lisp/bklink.el][bklink.el]] which is my ideas of using 'rg' to search links in org files comes from.
