@@ -179,16 +179,12 @@
 			  (find-file-noselect file nil nil))))
        (with-current-buffer file-buf
 	 (save-excursion
-	   (goto-char (point-min))
-	   (unless (re-search-forward "-----\n" nil t)
-	     (goto-char (point-max))
-	     (insert "\n-----\n"))
+	   (goto-char (point-max))
+	   (re-search-backward "-----\n" nil t)
 	   (delete-region (point) (point-max))
 	   (let ((num 0))
-	     (if (null results)
-		 (progn
-		   (insert "/*No Linked Reference*/")
-		   (save-buffer))
+	     (when results
+	       (insert "\n-----\n")
 	       (dolist (res results)
 		 (let* ((res-list (split-string res "\n" t "[ \n]+"))
 			(res-file (car res-list))
@@ -212,7 +208,7 @@
 		     (insert "\n"))))
 	       (goto-char (point-min))
 	       (re-search-forward "-----\n" nil t)
-	       (insert (format "/*%d Linked Reference:*/\n" num))
+	       (insert (format "/*%d Linked Reference to \"%s\":*/\n" num (gk-roam--get-title (file-name-nondirectory file))))
 	       (save-buffer))))))))
   (message "%s reference updated" (file-name-nondirectory file)))
 
