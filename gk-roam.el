@@ -227,9 +227,6 @@
     (with-current-buffer file-buf
       (insert
        (format "#+TITLE: %s\n#+DATE: %s\n#+OPTIONS: toc:nil H:2 num:0\n#+TAGS: %s\n» [[file:index.org][ /Gk-Roam/ ]]\n\n" title (format-time-string "%Y-%m-%d") tags))
-      (setq beg (point))
-      (insert "\n\n-----\n/*No Linked Reference*/")
-      (goto-char beg)
       (save-buffer))
     file))
 
