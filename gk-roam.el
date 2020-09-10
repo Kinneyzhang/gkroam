@@ -48,14 +48,16 @@
 (defvar gk-roam-pub-css "<link rel=\"stylesheet\" href=\"https://gongzhitaao.org/orgcss/org.css\">"
   "Gk-roam publish css link.")
 
-(setq org-link-frame-setup
-      '((vm . vm-visit-folder-other-frame)
-        (vm-imap . vm-visit-imap-folder-other-frame)
-        (gnus . org-gnus-no-new-news)
-        (file . find-file)
-        (wl . wl-other-frame)))
-
 ;;;; Functions
+(defun gk-roam-link-frame-setup ()
+  "Alter `org-link-frame-setup' for gk-roam."
+  (setq org-link-frame-setup
+        '((vm . vm-visit-folder-other-frame)
+          (vm-imap . vm-visit-imap-folder-other-frame)
+          (gnus . org-gnus-no-new-news)
+          (file . find-file)
+          (wl . wl-other-frame))))
+
 (defun gk-roam--get-date (file)
   "Return FILE's gk-roam date number."
   (substring (file-name-base file) 0 14))
@@ -266,7 +268,7 @@ If TAGS is nil, prompt user."
       (let* ((title (thing-at-point 'word))
              (file-exist-p (gk-roam--get-file title))
              (_file (or file-exist-p
-                       (gk-roam--gen-file title))))
+                        (gk-roam--gen-file title))))
         (if file-exist-p
             (progn
               (backward-word)
