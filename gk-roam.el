@@ -422,9 +422,20 @@
 (defun gk-roam-company-hashtag-p ()
   "Judge if need to company hashtag link."
   (save-excursion
-    (backward-word 1)
-    (backward-char 1)
-    (string= (thing-at-point 'char t) "#")))
+    (skip-chars-backward "^#" (line-beginning-position))
+    (and (not (= (line-beginning-position) (point)))
+	 (thing-at-point 'word t))))
+
+(defun gk-roam--complete-hashtag (arg)
+  "Complete hashtag with brackets."
+  (when (gk-roam-company-hashtag-p)
+    (save-excursion
+      (let (end len)
+	(setq end (point))
+	(setq len (abs (skip-chars-backward "^#")))
+	(insert "{[")
+	(forward-char len)
+	(insert "]}")))))
 
 (defun gk-roam-completion-at-point ()
   "This is the function to be used for the hook `completion-at-point-functions'."
@@ -434,11 +445,12 @@
          (end (cdr bds)))
     (when (or (gk-roam-company-bracket-p)
 	      (gk-roam-company-hashtag-p))
-	(list start end gk-roam-pages . nil))))
+      (list start end gk-roam-pages . nil))))
 
 (define-derived-mode gk-roam-mode org-mode "gk-roam"
   "Major mode for gk-roam."
   (add-hook 'completion-at-point-functions 'gk-roam-completion-at-point nil 'local)
+  (add-hook 'company-after-completion-hook 'gk-roam--complete-hashtag)
   (use-local-map gk-roam-mode-map))
 
 (provide 'gk-roam)
