@@ -96,8 +96,12 @@
     titles))
 
 (defun gk-roam--gen-file ()
-  "Generate new gk-roam page"
+  "Generate new gk-roam file."
   (concat gk-roam-root-dir (format "%s.org" (format-time-string "%Y%m%d%H%M%S"))))
+
+(defun gk-roam--gen-page ()
+  "Generate new gk-roam page."
+  (format "%s.org" (format-time-string "%Y%m%d%H%M%S")))
 
 (defsubst gk-roam--format-link (page)
   "Format PAGE into a gk-roam page link.."
@@ -171,7 +175,7 @@
 (defun gk-roam-update-reference (page)
   "Update gk-roam file reference."
   (unless (executable-find "rg")
-	  (user-error "Cannot find program rg"))
+    (user-error "Cannot find program rg"))
   (gk-roam--search-linked-pages
    page
    (lambda (results)
@@ -226,7 +230,7 @@
       (save-buffer))
     file))
 
-;; ;;;###autoload
+;;;###autoload
 (defun gk-roam-find (&optional title)
   "Create a new gk-roam file or open an exist one."
   (interactive)
@@ -237,6 +241,17 @@
     (if page-exist-p
 	(find-file (gk-roam--get-file page-exist-p))
       (find-file (gk-roam-new title)))))
+
+;;;###autoload
+(defun gk-roam-daily ()
+  "Create or open gk-roam daily notes."
+  (interactive)
+  (let* ((title (format-time-string "%b %d, %Y"))
+	 (page (gk-roam--get-page title))
+	 (file (if page
+		   (gk-roam--get-file page)
+		 (gk-roam-new title))))
+    (find-file file)))
 
 ;;;###autoload
 (defun gk-roam-new-at-point ()
