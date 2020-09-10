@@ -51,10 +51,6 @@
 	(file . find-file)
 	(wl . wl-other-frame)))
 
-;; (defun gk-roam--get-date (file)
-;;   "Get gk-roam date number in filename."
-;;   (substring (file-name-base file) 0 14))
-
 (defun gk-roam--slugify-title (title)
   "Slugify gk-roam file title."
   (string-join (split-string title "[ ]+") "-"))
@@ -67,9 +63,9 @@
 (defun gk-roam--get-title (page)
   "Get page title."
   (with-temp-buffer
-    (insert-file-contents (gk-roam--get-file page))
+    (insert-file-contents (gk-roam--get-file page) nil 0 2000 t)
     (goto-char (point-min))
-    (re-search-forward (concat ".*#\\+title:") nil t)
+    (re-search-forward (concat "^ *#\\+TITLE:") nil t)
     (plist-get (cadr (org-element-at-point)) :value)))
 
 (defun gk-roam--get-page (title)
@@ -83,54 +79,6 @@
 	  (goto-char (point-min))
 	  (when (re-search-forward (format "^ *#\\+TITLE: *%s *$" title) nil t)
 	    (throw 'break page)))))))
-
-;;;-------------------------------------------------------
-;; (defun gk-roam--search-title (dir regexp callback)
-;;   (let* ((name (generate-new-buffer-name " *gk-roam-rg*"))
-;;          (process (start-process
-;;                    name name "rg" "-l"
-;; 		   regexp
-;; 		   (expand-file-name dir)
-;; 		   "-g" "!index.org*"))
-;;          (sentinel
-;;           (lambda (process event)
-;;             (if (string-match-p (rx (or "finished" "exited"))
-;;                                 event)
-;;                 (if-let ((buf (process-buffer process)))
-;;                     (with-current-buffer buf
-;;                       (let ((results (split-string (buffer-string) "\n\n")))
-;;                         (funcall callback (remove "" results))))
-;;                   (error "Gk-roam’s rg process’ buffer is killed"))
-;;               (error "Gk-roam’s rg process failed with signal: %s"
-;;                      event)))))
-;;     (set-process-sentinel process sentinel)))
-
-;; (defun gk-roam--process-page (title)
-;;   "Get page accroding to title."
-;;   (unless (executable-find "rg")
-;;     (user-error "Cannot find program rg"))
-;;   (gk-roam--search-title
-;;    gk-roam-root-dir
-;;    (format "^ *#\\+TITLE: *%s *$" title)
-;;    (lambda (file)
-;;      (let* ((page (file-name-nondirectory (car file)))
-;; 	    (temp-file gk-roam-temp-file)
-;; 	    (file-buf (or (get-file-buffer temp-file)
-;; 			  (find-file-noselect temp-file nil nil))))
-;;        (with-current-buffer file-buf
-;; 	 (erase-buffer)
-;; 	 (insert page)
-;; 	 (save-buffer))))))
-;;;-----------------------------------------------------------
-;; (defun gk-roam--get-page ()
-;;   (with-current-buffer (get-file-buffer gk-roam-temp-file)
-;;     (string-trim (buffer-string) nil "\n")))
-
-;; (defun gk-roam--get-page (title)
-;;   (gk-roam--search-result title)
-;;   (with-temp-buffer
-;;     (insert-file-contents gk-roam-temp-file)
-;;     (string-trim (buffer-string) nil "\n")))
 
 (defun gk-roam--get-file (page)
   "Get gk-roam file accroding to PAGE."
@@ -151,40 +99,18 @@
   "Generate new gk-roam page"
   (concat gk-roam-root-dir (format "%s.org" (format-time-string "%Y%m%d%H%M%S"))))
 
-;; (defun gk-roam--get-file (title)
-;;   "Get an exist gk-roam file string from TITLE, none return nil."
-;;   (let ((pair (assoc title (gk-roam--all-link-pairs))))
-;;     (when pair
-;;       (concat gk-roam-root-dir (cdr pair)))))
+(defsubst gk-roam--format-link (page)
+  "Format PAGE into a gk-roam page link.."
+  (format "[[file:%s][%s]]" page (gk-roam--get-title page)))
 
-;; (defun gk-roam--all-files (full)
-;;   "Get all gk-roam files path."
-;;   (directory-files gk-roam-root-dir full (rx bol (+ (in num)) "-" (+ anychar) ".org" eol)))
-
-;; (defun gk-roam--all-link-pairs ()
-;;   "Get all gk-roam link description pairs, sorted by predicate."
-;;   (let* ((filenames (gk-roam--all-files nil))
-;; 	 (titles (gk-roam--all-titles))
-;; 	 pair pairs)
-;;     (dotimes (i (length filenames))
-;;       (setq pair (cons (nth i titles) (nth i filenames)))
-;;       (setq pairs (push pair pairs)))
-;;     pairs))
-
-(defsubst gk-roam--format-link (file)
-  "Format FILE into a gk-roam file link.."
-  (let ((file (file-name-nondirectory file)))
-    (format "[[file:%s][%s]]" file
-	    (gk-roam--slugify-title-reversed (gk-roam--get-title file)))))
-
-(defun gk-roam--search-linked-files (file callback)
-  "Call CALLBACK with a list of files’ name that has a link to FILE."
+(defun gk-roam--search-linked-pages (page callback)
+  "Call CALLBACK with a list of files’ name that has a link to PAGE."
   (let* ((name (generate-new-buffer-name " *gk-roam-rg*"))
          (process (start-process
                    name name "rg" "-Fn" "--heading"
-		   (gk-roam--format-link file)
-		   (expand-file-name (file-name-directory file)) ;; must be absolute path.
-		   "-g" "!index.org*"))
+		   (gk-roam--format-link page)
+		   (expand-file-name gk-roam-root-dir) ;; must be absolute path.
+		   "-g" "!index.org*" "-j" "10"))
          ;; When the rg process finishes, we parse the result files
          ;; and call CALLBACK with them.
          (sentinal
@@ -200,29 +126,28 @@
                      event)))))
     (set-process-sentinel process sentinal)))
 
-(defun gk-roam-heading-of-line (line file)
+(defun gk-roam-heading-of-line (line page)
   "Get the org heading of specific LINE in FILE."
   (let ((line (if (stringp line) (string-to-number line) line))
-	headline)
+	heading)
     (with-temp-buffer
       (goto-char (point-min))
-      (insert-file-contents file)
+      (insert-file-contents (gk-roam--get-file page))
       (goto-line line)
       (org-mode)
-      (setq headline (org-get-heading t t t t)))
-    headline))
+      (setq heading (org-get-heading t t t t)))
+    heading))
 
-(defun gk-roam--format-backlink (line file)
-  "Format gk-roam backlink of specific LINE in FILE."
-  (let* ((filename (file-name-nondirectory file))
-	 (heading (gk-roam-heading-of-line line file))
-	 (text (gk-roam--get-title filename)))
+(defun gk-roam--format-backlink (line page)
+  "Format gk-roam backlink of specific LINE in PAGE."
+  (let* ((heading (gk-roam-heading-of-line line page))
+	 (title (gk-roam--get-title page)))
     (if (null heading)
-	(format "[[file:%s][%s/top]]" filename text)
-      (format "[[file:%s::*%s][%s/%s]]" filename heading text heading))))
+	(format "[[file:%s][%s/top]]" page title)
+      (format "[[file:%s::*%s][%s/%s]]" page heading title heading))))
 
-(defun gk-roam--process-reference (text file)
-  "Remove the link of current file in reference's text."
+(defun gk-roam--process-reference (text)
+  "Remove links in reference's text."
   (with-temp-buffer
     (insert (string-trim text "\\** +" nil))
     (goto-char (point-min))
@@ -238,24 +163,25 @@
     (with-current-buffer index-buf
       (erase-buffer)
       (insert "#+TITLE: gk-roam\n#+OPTIONS: toc:nil H:2 num:0\n\n* Site Map\n\n")
-      (dolist (pair (gk-roam--all-link-pairs))
-	(insert (format " - [[file:%s][%s]]\n" (cdr pair) (car pair))))
+      (dolist (page (gk-roam--all-pages))
+	(insert (format " - [[file:%s][%s]]\n" page (gk-roam--get-title page))))
       (save-buffer))
     index-buf))
 
-(defun gk-roam-update-reference (file)
+(defun gk-roam-update-reference (page)
   "Update gk-roam file reference."
-  (unless (executable-find "rg")a
+  (unless (executable-find "rg")
 	  (user-error "Cannot find program rg"))
-  (gk-roam--search-linked-files
-   file
+  (gk-roam--search-linked-pages
+   page
    (lambda (results)
-     (let* ((file-buf (or (get-file-buffer file)
+     (let* ((file (gk-roam--get-file page))
+	    (file-buf (or (get-file-buffer file)
 			  (find-file-noselect file nil nil))))
        (with-current-buffer file-buf
 	 (save-excursion
 	   (goto-char (point-max))
-	   (re-search-backward "-----\n" nil t)
+	   (re-search-backward "\n-----\n" nil t)
 	   (delete-region (point) (point-max))
 	   (let ((num 0))
 	     (when results
@@ -274,46 +200,43 @@
 			    (string-trim item
 					 (when (string-match "[0-9]+: *" item)
 					   (match-string 0 item))
-					 nil)
-			    file))
+					 nil)))
 		     (insert
 		      (concat "\n» "
-			      (gk-roam--format-backlink line res-file)
+			      (gk-roam--format-backlink line
+							(file-name-nondirectory res-file))
 			      "\\\\\n" text))
 		     (insert "\n"))))
 	       (goto-char (point-min))
 	       (re-search-forward "-----\n" nil t)
-	       (insert (format "/*%d Linked Reference to \"%s\":*/\n" num (gk-roam--get-title (file-name-nondirectory file))))
+	       (insert (format "/*%d Linked References to \"%s\"*/\n" num (gk-roam--get-title page)))
 	       (save-buffer))))))))
-  (message "%s reference updated" (file-name-nondirectory file)))
+  (message "%s reference updated" page))
 
 ;; -----------------------------------------------------
 ;;;###autoload
-(defun gk-roam-new (title &optional tags)
+(defun gk-roam-new (title)
   "Just create a new gk-roam file."
-  (let* ((tags (if tags tags (completing-read "New tags: " nil nil nil)))
-	 (file (gk-roam--gen-file))
+  (let* ((file (gk-roam--gen-file))
 	 (file-buf (find-file-noselect file))
 	 beg)
     (with-current-buffer file-buf
       (insert
-       (format "#+TITLE: %s\n#+DATE: %s\n#+OPTIONS: toc:nil H:2 num:0\n#+TAGS: %s\n» [[file:index.org][ /Gk-Roam/ ]]\n\n" title (format-time-string "%Y-%m-%d") tags))
+       (format "#+TITLE: %s\n#+DATE: %s\n#+OPTIONS: toc:nil H:2 num:0\n» [[file:index.org][ /Gk-Roam/ ]]\n\n" title (format-time-string "%Y-%m-%d")))
       (save-buffer))
     file))
 
 ;; ;;;###autoload
-(defun gk-roam-find (&optional title tags)
+(defun gk-roam-find (&optional title)
   "Create a new gk-roam file or open an exist one."
   (interactive)
   (let* ((title (if title title
 		  (completing-read "New title or open an exist one: "
 				   (gk-roam--all-titles) nil nil)))
-	 (page-exist-p (gk-roam--get-page title))
-	 tags)
+	 (page-exist-p (gk-roam--get-page title)))
     (if page-exist-p
 	(find-file (gk-roam--get-file page-exist-p))
-      (setq tags (completing-read "New tags: " nil nil nil))
-      (find-file (gk-roam-new title tags)))))
+      (find-file (gk-roam-new title)))))
 
 ;;;###autoload
 (defun gk-roam-new-at-point ()
@@ -322,11 +245,8 @@
   (if (string= (file-name-directory (buffer-file-name))
 	       (expand-file-name gk-roam-root-dir))
       (let* ((title (thing-at-point 'word))
-	     (file-exist-p (gk-roam--get-file title))
-	     (file (or file-exist-p
-		       (gk-roam--gen-file)))
-	     date)
-	(if file-exist-p
+	     (page-exist-p (gk-roam--get-page title)))
+	(if page-exist-p
 	    (progn
 	      (backward-word)
 	      (kill-word 1)
@@ -337,8 +257,8 @@
 	  (kill-word 1)
 	  (gk-roam-insert title)
 	  (save-buffer)
-	  (gk-roam-find title))	
-	(gk-roam-update-reference (gk-roam--get-file title)))
+	  (gk-roam-find title))
+	(gk-roam-update-reference page-exist-p))
     (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
@@ -351,8 +271,8 @@
 	     (end (region-end))
 	     (title (when (region-active-p)
 		      (buffer-substring-no-properties beg end)))
-	     (file-exist-p (gk-roam--get-file title)))
-	(if file-exist-p
+	     (page-exist-p (gk-roam--get-page title)))
+	(if page-exist-p
 	    (progn
 	      (delete-region beg end)
 	      (gk-roam-insert title)
@@ -362,7 +282,7 @@
 	  (gk-roam-insert title)
 	  (save-buffer)
 	  (gk-roam-find title))
-	(gk-roam-update-reference (gk-roam--get-file title)))
+	(gk-roam-update-reference page-exist-p))
     (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
@@ -386,12 +306,11 @@
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
 	       (expand-file-name gk-roam-root-dir))
-      (let* ((filenames (gk-roam--all-files nil))
-	     (title (if title title (completing-read "Choose a file: " (mapcar #'gk-roam--get-title filenames) nil t)))
-	     (file (gk-roam--get-file title)))
-	(insert (gk-roam--format-link file))
+      (let* ((title (if title title (completing-read "Choose a file: " (gk-roam--all-titles) nil t)))
+	     (page (gk-roam--get-page title)))
+	(insert (gk-roam--format-link page))
 	(save-buffer)
-	(gk-roam-update-reference file))
+	(gk-roam-update-reference page))
     (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
@@ -400,17 +319,16 @@
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
 	       (expand-file-name gk-roam-root-dir))
-      (gk-roam-update-reference (buffer-file-name))
+      (gk-roam-update-reference (file-name-nondirectory (buffer-file-name)))
     (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
-(defun gk-roam-update-all ()
+(defun gk-roam-update-all () ;; have problem!
   "Update all gk-roam files' reference."
   (interactive)
   (gk-roam-update-index)
-  (let ((files (gk-roam--all-files t)))
-    (dolist (file files)
-      (gk-roam-update-reference file))))
+  (let ((pages (gk-roam--all-pages)))
+    (mapcar #'gk-roam-update-reference pages)))
 
 ;;;###autoload
 (defun gk-roam-publish-current-file ()
