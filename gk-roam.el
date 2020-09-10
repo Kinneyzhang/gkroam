@@ -51,6 +51,8 @@
 	(file . find-file)
 	(wl . wl-other-frame)))
 
+(setq org-hide-emphasis-markers t)
+
 (defun gk-roam--slugify-title (title)
   "Slugify gk-roam file title."
   (string-join (split-string title "[ ]+") "-"))
@@ -157,7 +159,7 @@
     (goto-char (point-min))
     (while (re-search-forward "\\(\\[\\[file:.+?\\]\\[\\|\\]\\]\\)+?" nil t)
       (replace-match "_"))
-    (buffer-string)))
+    (concat " * " (buffer-string))))
 
 (defun gk-roam-update-index ()
   "Update gk-roam index page."
@@ -166,6 +168,7 @@
 			(find-file-noselect index-org))))
     (with-current-buffer index-buf
       (erase-buffer)
+      (gk-roam-mode)
       (insert "#+TITLE: gk-roam\n#+OPTIONS: toc:nil H:2 num:0\n\n* Site Map\n\n")
       (dolist (page (gk-roam--all-pages))
 	(insert (format " - [[file:%s][%s]]\n" page (gk-roam--get-title page))))
@@ -206,14 +209,14 @@
 					   (match-string 0 item))
 					 nil)))
 		     (insert
-		      (concat "\n» "
+		      (concat "\n"
 			      (gk-roam--format-backlink line
 							(file-name-nondirectory res-file))
-			      "\\\\\n" text))
+			      "\n" text))
 		     (insert "\n"))))
 	       (goto-char (point-min))
 	       (re-search-forward "-----\n" nil t)
-	       (insert (format "/*%d Linked References to \"%s\"*/\n" num (gk-roam--get-title page)))
+	       (insert (format "~%d Linked References to \"%s\"~\n" num (gk-roam--get-title page)))
 	       (save-buffer))))))))
   (message "%s reference updated" page))
 
@@ -225,9 +228,11 @@
 	 (file-buf (find-file-noselect file))
 	 beg)
     (with-current-buffer file-buf
+      (gk-roam-mode)
       (insert
        (format "#+TITLE: %s\n#+DATE: %s\n#+OPTIONS: toc:nil H:2 num:0\n» [[file:index.org][ /Gk-Roam/ ]]\n\n" title (format-time-string "%Y-%m-%d")))
       (save-buffer))
+    (setq gk-roam-pages (gk-roam--all-titles))
     file))
 
 ;;;###autoload
@@ -239,19 +244,18 @@
 				   (gk-roam--all-titles) nil nil)))
 	 (page-exist-p (gk-roam--get-page title)))
     (if page-exist-p
-	(find-file (gk-roam--get-file page-exist-p))
-      (find-file (gk-roam-new title)))))
+	(progn
+	  (find-file (gk-roam--get-file page-exist-p))
+	  (gk-roam-mode))
+      (find-file (gk-roam-new title))
+      (gk-roam-mode))))
 
 ;;;###autoload
 (defun gk-roam-daily ()
   "Create or open gk-roam daily notes."
   (interactive)
-  (let* ((title (format-time-string "%b %d, %Y"))
-	 (page (gk-roam--get-page title))
-	 (file (if page
-		   (gk-roam--get-file page)
-		 (gk-roam-new title))))
-    (find-file file)))
+  (let* ((title (format-time-string "%b %d, %Y")))
+    (gk-roam-find title)))
 
 ;;;###autoload
 (defun gk-roam-new-at-point ()
@@ -383,7 +387,7 @@
      :publishing-directory ,gk-roam-pub-dir
      :publishing-function org-html-publish-to-html
      :html-head ,gk-roam-pub-css))
-  (gk-roam-update-all)
+  ;; (gk-roam-update-all)
   (org-publish-project "gk-roam"))
 
 ;;;###autoload
@@ -394,6 +398,48 @@
   (unless (httpd-running-p) (httpd-start))
   (gk-roam-publish-site)
   (browse-url (format "http://%s:%d" "127.0.0.1" 8080)))
+
+;; ----------------------------------------
+(defvar gk-roam-pages (gk-roam--all-titles)
+  "Page candidates for completion.")
+
+(defvar gk-roam-mode-map nil
+  "Keymap for `gk-roam-mode'")
+
+(progn
+  (setq gk-roam-mode-map (make-sparse-keymap)))
+
+(defun gk-roam-company-bracket-p ()
+  "Judge if need to company bracket link."
+  (save-excursion
+    (let (word)
+      (setq word (thing-at-point 'word t))
+      (backward-word 1)
+      (backward-char 2)
+      (string= (thing-at-point 'sexp t)
+	       (format "{[%s]}" word)))))
+
+(defun gk-roam-company-hashtag-p ()
+  "Judge if need to company hashtag link."
+  (save-excursion
+    (backward-word 1)
+    (backward-char 1)
+    (string= (thing-at-point 'char t) "#")))
+
+(defun gk-roam-completion-at-point ()
+  "This is the function to be used for the hook `completion-at-point-functions'."
+  (interactive)
+  (let* ((bds (bounds-of-thing-at-point 'symbol))
+         (start (car bds))
+         (end (cdr bds)))
+    (when (or (gk-roam-company-bracket-p)
+	      (gk-roam-company-hashtag-p))
+	(list start end gk-roam-pages . nil))))
+
+(define-derived-mode gk-roam-mode org-mode "gk-roam"
+  "Major mode for gk-roam."
+  (add-hook 'completion-at-point-functions 'gk-roam-completion-at-point nil 'local)
+  (use-local-map gk-roam-mode-map))
 
 (provide 'gk-roam)
 ;;; gk-roam.el ends here
