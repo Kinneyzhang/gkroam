@@ -16,6 +16,8 @@ Gk-roam is a light-weight roam replica, built on top emacs OrgMode. It use 'ripg
        (:color amaranth :exit t)
        "Gk-Roam"
        ("f" gk-roam-find "find file")
+       ("d" gk-roam-daily "daily notes")
+       ("t" gk-roam-toggle-brackets "toggle brackets")
        ("n" gk-roam-smart-new "smart new")
        ("i" gk-roam-insert "insert link")
        ("g" gk-roam-update "update reference")
@@ -38,6 +40,14 @@ Gk-roam is a light-weight roam replica, built on top emacs OrgMode. It use 'ripg
    *gk-roam-find*
 
    Find a gk-roam file and open it. If not exisit, create a new one. Just like /ido-find-file/.
+
+   *gk-roam-daily*
+
+   Create or open 'daily notes' page.
+
+   *gk-roam-toggle-brackets*
+
+   Hide and show brackets of link and hashtag.
 
    *gk-roam-smart-new*
 
@@ -75,21 +85,27 @@ Gk-roam is a light-weight roam replica, built on top emacs OrgMode. It use 'ripg
 
    Preview gk-roam site's index page.
 
-** Known issues
+** FIX ME
 
-   - When page links are in orgmode headline, references will not be well displayed.
+   - Link in headine is not supported now.
+   - In emacs 26.3, library 'rx' don't have keyword "anychar".
 
 ** Todo List
    
    Recently, I have been watching [[https://www.youtube.com/playlist?list=PLwXSqDdn_CpE934BjXMgmzHnlwXMy41TC][videos]] about Roam Research. From it, I have got lots of ideas to improve gk-roam. The ideas are as follows:
 
-   * [ ] Change page's filename to only date numbers. Do not use the concept of 'file', use 'page' in function naming instead. Filename is just as an identity. This may changes lots of elisp code and have to reorganize some logic.
-   * [ ] Implement a function name gk-roam-help to show useful keybingings info and tips. Idea comes from Roam Research's help menu.
+   * [X] Change page's filename to only date numbers. Do not use the concept of 'file', use 'page' in function naming instead.
+   * [X] Add "gk-roam-daily" function to handly open a 'daily notes' page.
+   * [X] Implement "gk-roam-mode" major mode.
+   * [X] Implement "gk-roam-link-minor-mode" minor mode.
+   * [X] Change gk-roam link to the format of "{[page-title]}"
+   * [X] Add hashtag, with the format of "#{[page-title]}"
+   * [X] Do auto completion when input brackets and hashtag.
+   * [ ] Convert gk-roam link to org file link when publish.
+   * [ ] Hide brackets and auto show brackets when move to a line including gk-roam link.
 
    More in future!
 
 ** Acknowledgements
 
-   Thanks to cool guys in [[https://emacs-china.org][emacs-china.org]] who resolve my questions in some keypoints.
-
-   Thanks to [[https://github.com/casouri][casouri]]'s [[https://github.com/casouri/lunarymacs/blob/master/site-lisp/bklink.el][bklink.el]] which is my ideas of using 'rg' to search links in org files comes from.
+   Thanks to cool guys in [[https://emacs-china.org][emacs-china.org]] who resolve my questions in some keypoints. Thanks to [[https://github.com/casouri][casouri]]'s [[https://github.com/casouri/lunarymacs/blob/master/site-lisp/bklink.el][bklink.el]] which gives me lots of ideas.
