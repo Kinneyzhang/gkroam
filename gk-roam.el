@@ -51,7 +51,7 @@
 	(file . find-file)
 	(wl . wl-other-frame)))
 
-(setq org-hide-emphasis-markers t)
+;; (setq org-hide-emphasis-markers nil)
 
 (defun gk-roam--slugify-title (title)
   "Slugify gk-roam file title."
@@ -184,7 +184,7 @@
       (gk-roam-mode)
       (insert "#+TITLE: gk-roam\n#+OPTIONS: toc:nil H:2 num:0\n\n* Site Map\n\n")
       (dolist (page (gk-roam--all-pages))
-	(insert (format " - {[%s]}\n" (gk-roam--get-title page))))
+	(insert (format " - [[file:%s][%s]]\n" page (gk-roam--get-title page))))
       (save-buffer))
     index-buf))
 
@@ -330,18 +330,18 @@
   (interactive)
   (switch-to-buffer (gk-roam-update-index)))
 
-;; ;;;###autoload
-;; (defun gk-roam-insert (&optional title)
-;;   "Insert a gk-roam file at point"
-;;   (interactive)
-;;   (if (string= (file-name-directory (buffer-file-name))
-;; 	       (expand-file-name gk-roam-root-dir))
-;;       (let* ((title (if title title (completing-read "Choose a file: " (gk-roam--all-titles) nil t)))
-;; 	     (page (gk-roam--get-page title)))
-;; 	(insert (gk-roam--format-link page))
-;; 	(save-buffer)
-;; 	(gk-roam-update-reference page))
-;;     (message "Not in the gk-roam directory!")))
+;;;###autoload
+(defun gk-roam-insert (&optional title)
+  "Insert a gk-roam file at point"
+  (interactive)
+  (if (string= (file-name-directory (buffer-file-name))
+	       (expand-file-name gk-roam-root-dir))
+      (let* ((title (if title title (completing-read "Choose a file: " (gk-roam--all-titles) nil t)))
+	     (page (gk-roam--get-page title)))
+	(insert (gk-roam--format-link page))
+	(save-buffer)
+	(gk-roam-update-reference page))
+    (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
 (defun gk-roam-update ()
@@ -431,15 +431,23 @@
       (gk-roam-mode)
       (gk-roam-update))))
 
+(defvar-local gk-roam-link-overlay nil)
+
+(defun gk-roam-make-overlay (beg end)
+  (let ((ol (make-overlay beg end)))
+    (overlay-put ol 'display "")
+    ol))
+
 (defun gk-roam-link-fontify (beg end)
   "Highlight gk-roam link between BEG and END."
   (goto-char beg)
   (while (re-search-forward gk-roam-link-regexp end t)
-    ;; (with-silent-modifications
-    ;;   (put-text-property (match-beginning 1) (match-beginning 2)
-    ;;                      'display "")
-    ;;   (put-text-property (match-beginning 3) (match-end 0)
-    ;;                      'display ""))
+    (with-silent-modifications
+      ;; (put-text-property (match-beginning 1) (match-beginning 2)
+      ;;                    'display "")
+      ;; (put-text-property (match-beginning 3) (match-end 0)
+      ;;                    'display "")
+      )
     (make-text-button (match-beginning 0)
                       (match-end 0)
                       :type 'gk-roam-link
@@ -461,16 +469,28 @@
 		      'face '(shadow)
                       'title (match-string-no-properties 2))))
 
+;; -------------------------------------------------
 ;; used to show brackets when cursor is on link.
-(defun gk-roam-link-at-point-p ()
-  "Judge if gk-roam link is at point."
-  (save-excursion
-    (catch 'found
-      (let ((pos (point)))
-	(beginning-of-line)
-	(while (re-search-forward gk-roam-link-regexp (line-end-position) t)
-	  (if (<= (match-beginning 0) pos (match-end 0))
-	      (throw 'found `(,(match-beginning 0) . ,(match-end 0)))))))))
+;; (defun gk-roam-link-at-point-p ()
+;;   "Judge if gk-roam link is at point."
+;;   (save-excursion
+;;     (catch 'found
+;;       (let ((pos (point)))
+;; 	(beginning-of-line)
+;; 	(while (re-search-forward gk-roam-link-regexp (line-end-position) t)
+;; 	  (if (<= (match-beginning 0) pos (match-end 0))
+;; 	      (throw 'found `(,(1- (match-beginning 0)) . ,(match-end 0)))))))))
+
+;; (defun gk-roam-link-unfontify ()
+;;   (when (and (gk-roam-link-at-point-p)
+;; 	     (gk-roam-link-overlay))
+;;     (let ((beg (car (gk-roam-link-at-point-p)))
+;; 	  (end (cdr (gk-roam-link-at-point-p))))
+;;       (mapcar #'delete-overlay gk-roam-link-overlay))))
+
+;; (add-hook 'post-command-hook 'gk-roam-link-unfontify)
+
+;; ---------------------------------------------------
 
 (define-minor-mode gk-roam-link-minor-mode
   "Recognize gk-roam link."
