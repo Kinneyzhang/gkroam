@@ -119,8 +119,8 @@
   "Regular expression that matches a gk-roam hashtag.")
 
 (defsubst gk-roam--format-link (page)
-  "Format PAGE into a gk-roam page link.."
-  (format "[[file:%s][%s]]" page (gk-roam--get-title page)))
+  "Format PAGE into a gk-roam page link or hashtag."
+  (format "{[%s]}" (gk-roam--get-title page)))
 
 (defun gk-roam--search-linked-pages (page callback)
   "Call CALLBACK with a list of files’ name that has a link to PAGE."
@@ -129,7 +129,7 @@
                    name name "rg" "-Fn" "--heading"
 		   (gk-roam--format-link page)
 		   (expand-file-name gk-roam-root-dir) ;; must be absolute path.
-		   "-g" "!index.org*" "-j" "10"))
+		   "-g" "!index.org*"))
          ;; When the rg process finishes, we parse the result files
          ;; and call CALLBACK with them.
          (sentinal
@@ -162,16 +162,16 @@
   (let* ((heading (gk-roam-heading-of-line line page))
 	 (title (gk-roam--get-title page)))
     (if (null heading)
-	(format "[[file:%s][%s/top]]" page title)
-      (format "[[file:%s::*%s][%s/%s]]" page heading title heading))))
+	(format "[[file:%s][%s]]" page title)
+      (format "[[file:%s][%s]]" page title))))
 
 (defun gk-roam--process-reference (text)
   "Remove links in reference's text."
   (with-temp-buffer
     (insert (string-trim text "\\** +" nil))
     (goto-char (point-min))
-    (while (re-search-forward "\\(\\[\\[file:.+?\\]\\[\\|\\]\\]\\)+?" nil t)
-      (replace-match "_"))
+    (while (re-search-forward "\\({\\[\\|\\]}\\)+?" nil t)
+      (replace-match ""))
     (concat " * " (buffer-string))))
 
 (defun gk-roam-update-index ()
@@ -184,7 +184,7 @@
       (gk-roam-mode)
       (insert "#+TITLE: gk-roam\n#+OPTIONS: toc:nil H:2 num:0\n\n* Site Map\n\n")
       (dolist (page (gk-roam--all-pages))
-	(insert (format " - [[file:%s][%s]]\n" page (gk-roam--get-title page))))
+	(insert (format " - {[%s]}\n" (gk-roam--get-title page))))
       (save-buffer))
     index-buf))
 
@@ -257,11 +257,9 @@
 				   (gk-roam--all-titles) nil nil)))
 	 (page-exist-p (gk-roam--get-page title)))
     (if page-exist-p
-	(progn
-	  (find-file (gk-roam--get-file page-exist-p))
-	  (gk-roam-mode))
-      (find-file (gk-roam-new title))
-      (gk-roam-mode))))
+	(find-file (gk-roam--get-file page-exist-p))
+      (find-file (gk-roam-new title)))
+    (gk-roam-mode)))
 
 ;;;###autoload
 (defun gk-roam-daily ()
@@ -332,18 +330,18 @@
   (interactive)
   (switch-to-buffer (gk-roam-update-index)))
 
-;;;###autoload
-(defun gk-roam-insert (&optional title)
-  "Insert a gk-roam file at point"
-  (interactive)
-  (if (string= (file-name-directory (buffer-file-name))
-	       (expand-file-name gk-roam-root-dir))
-      (let* ((title (if title title (completing-read "Choose a file: " (gk-roam--all-titles) nil t)))
-	     (page (gk-roam--get-page title)))
-	(insert (gk-roam--format-link page))
-	(save-buffer)
-	(gk-roam-update-reference page))
-    (message "Not in the gk-roam directory!")))
+;; ;;;###autoload
+;; (defun gk-roam-insert (&optional title)
+;;   "Insert a gk-roam file at point"
+;;   (interactive)
+;;   (if (string= (file-name-directory (buffer-file-name))
+;; 	       (expand-file-name gk-roam-root-dir))
+;;       (let* ((title (if title title (completing-read "Choose a file: " (gk-roam--all-titles) nil t)))
+;; 	     (page (gk-roam--get-page title)))
+;; 	(insert (gk-roam--format-link page))
+;; 	(save-buffer)
+;; 	(gk-roam-update-reference page))
+;;     (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
 (defun gk-roam-update ()
@@ -417,7 +415,7 @@
 (define-button-type 'gk-roam-link
   'action #'gk-roam-follow-link
   'face nil
-  'page nil
+  'title nil
   'follow-link t
   'use-window nil
   'help-echo "Jump to page")
@@ -425,41 +423,45 @@
 (defun gk-roam-follow-link (button)
   "Jump to the page that BUTTON represents."
   (with-demoted-errors "Error when following the link: %s"
-    (let ((file (button-get button 'page)))
-      (find-file file))))
+    (let* ((title (button-get button 'title))
+	   (page (gk-roam--get-page title)))
+      (if page
+	  (find-file (gk-roam--get-file page))
+	(find-file (gk-roam-new title)))
+      (gk-roam-mode)
+      (gk-roam-update))))
 
 (defun gk-roam-link-fontify (beg end)
   "Highlight gk-roam link between BEG and END."
   (goto-char beg)
   (while (re-search-forward gk-roam-link-regexp end t)
-    (with-silent-modifications
-      (put-text-property (match-beginning 1) (match-beginning 2)
-                         'display "")
-      (put-text-property (match-beginning 3) (match-end 0)
-                         'display ""))
+    ;; (with-silent-modifications
+    ;;   (put-text-property (match-beginning 1) (match-beginning 2)
+    ;;                      'display "")
+    ;;   (put-text-property (match-beginning 3) (match-end 0)
+    ;;                      'display ""))
     (make-text-button (match-beginning 0)
                       (match-end 0)
                       :type 'gk-roam-link
 		      'face '(org-link)
-                      'page (gk-roam--get-page
-			     (match-string-no-properties 2)))))
+                      'title (match-string-no-properties 2))))
 
 (defun gk-roam-hashtag-fontify (beg end)
   "Highlight gk-roam link between BEG and END."
   (goto-char beg)
   (while (re-search-forward gk-roam-hashtag-regexp end t)
-    (with-silent-modifications
-      (put-text-property (1+ (match-beginning 1)) (match-beginning 2)
-                         'display "")
-      (put-text-property (match-beginning 3) (match-end 0)
-                         'display ""))
+    ;; (with-silent-modifications
+    ;;   (put-text-property (1+ (match-beginning 1)) (match-beginning 2)
+    ;;                      'display "")
+    ;;   (put-text-property (match-beginning 3) (match-end 0)
+    ;;                      'display ""))
     (make-text-button (match-beginning 0)
                       (match-end 0)
                       :type 'gk-roam-link
 		      'face '(shadow)
-                      'page (gk-roam--get-page
-			     (match-string-no-properties 2)))))
+                      'title (match-string-no-properties 2))))
 
+;; used to show brackets when cursor is on link.
 (defun gk-roam-link-at-point-p ()
   "Judge if gk-roam link is at point."
   (save-excursion
@@ -519,7 +521,7 @@
     (and (not (= (line-beginning-position) (point)))
 	 (thing-at-point 'word t))))
 
-(defun gk-roam--complete-hashtag (arg)
+(defun gk-roam--complete-hashtag ()
   "Complete hashtag with brackets."
   (when (gk-roam-company-hashtag-p)
     (save-excursion
@@ -540,10 +542,19 @@
 	      (gk-roam-company-hashtag-p))
       (list start end gk-roam-pages . nil))))
 
+(defun gk-roam-after-link-completion (title)
+  "Function bind to `company-after-completion-hook'."
+  (when (or (gk-roam-company-bracket-p)
+	    (gk-roam-company-hashtag-p))
+    (when (gk-roam-company-hashtag-p)
+      (gk-roam--complete-hashtag))
+    (message "title: %s" title)
+    (gk-roam-update-reference (gk-roam--get-page title))))
+
 (define-derived-mode gk-roam-mode org-mode "gk-roam"
   "Major mode for gk-roam."
   (add-hook 'completion-at-point-functions 'gk-roam-completion-at-point nil 'local)
-  (add-hook 'company-after-completioen-hook 'gk-roam--complete-hashtag nil 'local)
+  (add-hook 'company-after-completion-hook 'gk-roam-after-link-completion nil 'local)
   (gk-roam-link-minor-mode)
   (use-local-map gk-roam-mode-map))
 
