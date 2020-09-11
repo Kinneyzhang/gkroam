@@ -1,12 +1,12 @@
-;;; gk-roam.el --- A light-weight roam replica. -*- lexical-binding: t; -*-
+;;; gk-roam.el --- A light-weight org-mode roam replica  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2020 Kinney Zhang
 ;;
 ;; Version: 1.0
-;; Keywords: roam org
+;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: http://github.com/Kinneyzhang/gk-roam
-;; Package-Requires: ((emacs "27.1"))
+;; Package-Requires: ((emacs "27.1") (simple-httpd "1.5.1"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -24,14 +24,21 @@
 ;; along with this program; if not, write to the Free Software
 ;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-;;; Commentary: 
+;;; Commentary:
 
-;; Gk-roam is a light-weight roam repica, built on top of emacs OrgMode.
+;; Gk-roam is a light-weight roam repica, built on top of Org-mode.
 
 ;;; Code:
 
 (require 'simple-httpd)
 
+;;;; Declarations
+(declare-function org-get-heading "org")
+(declare-function org-publish-project "ox-publish")
+(defvar org-link-frame-setup)
+(defvar org-publish-project-alist)
+
+;;;; Variables
 (defvar gk-roam-root-dir ""
   "Gk-roam's root directory, with org files in it.")
 
@@ -44,22 +51,15 @@
 (defvar gk-roam-temp-file (concat user-emacs-directory "gk-roam/temp")
   "Gk-roam temporary file.")
 
-(setq org-link-frame-setup
-      '((vm . vm-visit-folder-other-frame)
-	(vm-imap . vm-visit-imap-folder-other-frame)
-	(gnus . org-gnus-no-new-news)
-	(file . find-file)
-	(wl . wl-other-frame)))
-
-;; (setq org-hide-emphasis-markers nil)
-
-(defun gk-roam--slugify-title (title)
-  "Slugify gk-roam file title."
-  (string-join (split-string title "[ ]+") "-"))
-
-(defun gk-roam--slugify-title-reversed (slug)
-  "Slugify gk-roam file title in reverse."
-  (string-join (split-string slug "-") " "))
+;;;; Functions
+(defun gk-roam-link-frame-setup ()
+  "Alter `org-link-frame-setup' for gk-roam."
+  (setq org-link-frame-setup
+        '((vm . vm-visit-folder-other-frame)
+          (vm-imap . vm-visit-imap-folder-other-frame)
+          (gnus . org-gnus-no-new-news)
+          (file . find-file)
+          (wl . wl-other-frame))))
 
 ;; -------------------------------
 (defun gk-roam--get-title (page)
@@ -177,8 +177,8 @@
 (defun gk-roam-update-index ()
   "Update gk-roam index page."
   (let* ((index-org (concat gk-roam-root-dir "index.org"))
-	 (index-buf (or (get-file-buffer index-org)
-			(find-file-noselect index-org))))
+         (index-buf (or (get-file-buffer index-org)
+                        (find-file-noselect index-org))))
     (with-current-buffer index-buf
       (erase-buffer)
       (gk-roam-mode)
@@ -233,7 +233,7 @@
 	       (save-buffer))))))))
   (message "%s reference updated" page))
 
-;; -----------------------------------------------------
+;;;; Commands
 ;;;###autoload
 (defun gk-roam-new (title)
   "Just create a new gk-roam file."
@@ -273,7 +273,7 @@
   "Insert a file link and create a new file according to text at point."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
-	       (expand-file-name gk-roam-root-dir))
+               (expand-file-name gk-roam-root-dir))
       (let* ((title (thing-at-point 'word))
 	     (page-exist-p (gk-roam--get-page title)))
 	(if page-exist-p
@@ -293,10 +293,10 @@
 
 ;;;###autoload
 (defun gk-roam-new-from-region ()
-  "Insert a file link and create a new file according to a selected region"
+  "Insert a file link and create a new file according to a selected region."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
-	       (expand-file-name gk-roam-root-dir))
+               (expand-file-name gk-roam-root-dir))
       (let* ((beg (region-beginning))
 	     (end (region-end))
 	     (title (when (region-active-p)
@@ -332,11 +332,12 @@
 
 ;;;###autoload
 (defun gk-roam-insert (&optional title)
-  "Insert a gk-roam file at point"
+  "Insert a gk-roam file with TITLE at point.
+If TITLE is non-nil, prompt user."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
 	       (expand-file-name gk-roam-root-dir))
-      (let* ((title (if title title (completing-read "Choose a file: " (gk-roam--all-titles) nil t)))
+      (let* ((title (or title (completing-read "Choose a file: " (gk-roam--all-titles) nil t)))
 	     (page (gk-roam--get-page title)))
 	(insert (gk-roam--format-link page))
 	(save-buffer)
@@ -365,10 +366,10 @@
   "Publish current file."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
-	       (expand-file-name gk-roam-root-dir))
+               (expand-file-name gk-roam-root-dir))
       (progn
-	(gk-roam-update)
-	(org-publish-file (buffer-file-name)))
+        (gk-roam-update)
+        (org-publish-file (buffer-file-name)))
     (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
@@ -376,19 +377,18 @@
   "Preview current file."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
-	       (expand-file-name gk-roam-root-dir))
+               (expand-file-name gk-roam-root-dir))
       (let ((current-file (concat (file-name-base (buffer-file-name)) ".html")))
-	(httpd-serve-directory gk-roam-pub-dir)
-	(unless (httpd-running-p) (httpd-start))
-	(gk-roam-publish-current-file)
-	(browse-url (format "http://%s:%d/%s" "127.0.0.1" 8080 current-file)))
+        (httpd-serve-directory gk-roam-pub-dir)
+        (unless (httpd-running-p) (httpd-start))
+        (gk-roam-publish-current-file)
+        (browse-url (format "http://%s:%d/%s" "127.0.0.1" 8080 current-file)))
     (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
 (defun gk-roam-publish-site ()
   "Publish gk-roam project to html page."
   (interactive)
-  (defvar org-publish-project-alist nil)
   (add-to-list
    'org-publish-project-alist
    `("gk-roam"
@@ -575,6 +575,7 @@
   "Major mode for gk-roam."
   (add-hook 'completion-at-point-functions 'gk-roam-completion-at-point nil 'local)
   (add-hook 'company-after-completion-hook 'gk-roam-after-link-completion nil 'local)
+  (add-hook 'gk-roam-mode-hook 'gk-roam-link-frame-setup)
   (gk-roam-link-minor-mode)
   (use-local-map gk-roam-mode-map))
 
