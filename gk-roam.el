@@ -65,6 +65,7 @@
 (defun gk-roam--get-title (page)
   "Get page title."
   (with-temp-buffer
+    (org-mode)
     (insert-file-contents (gk-roam--get-file page) nil 0 2000 t)
     (goto-char (point-min))
     (re-search-forward (concat "^ *#\\+TITLE:") nil t)
@@ -104,6 +105,18 @@
 (defun gk-roam--gen-page ()
   "Generate new gk-roam page."
   (format "%s.org" (format-time-string "%Y%m%d%H%M%S")))
+
+(defvar gk-roam-link-regexp
+  (rx (seq (group "{[")
+           (group (+? (not (any "/\n"))))
+           (group "]}")))
+  "Regular expression that matches a gk-roam link.")
+
+(defvar gk-roam-hashtag-regexp
+  (rx (seq (group "#{[")
+           (group (+? (not (any "/\n"))))
+           (group "]}")))
+  "Regular expression that matches a gk-roam hashtag.")
 
 (defsubst gk-roam--format-link (page)
   "Format PAGE into a gk-roam page link.."
@@ -399,6 +412,86 @@
   (gk-roam-publish-site)
   (browse-url (format "http://%s:%d" "127.0.0.1" 8080)))
 
+;; --------------------------------------------
+;; minor mode
+(define-button-type 'gk-roam-link
+  'action #'gk-roam-follow-link
+  'face nil
+  'page nil
+  'follow-link t
+  'use-window nil
+  'help-echo "Jump to page")
+
+(defun gk-roam-follow-link (button)
+  "Jump to the page that BUTTON represents."
+  (with-demoted-errors "Error when following the link: %s"
+    (let ((file (button-get button 'page)))
+      (find-file file))))
+
+(defun gk-roam-link-fontify (beg end)
+  "Highlight gk-roam link between BEG and END."
+  (goto-char beg)
+  (while (re-search-forward gk-roam-link-regexp end t)
+    (with-silent-modifications
+      (put-text-property (match-beginning 1) (match-beginning 2)
+                         'display "")
+      (put-text-property (match-beginning 3) (match-end 0)
+                         'display ""))
+    (make-text-button (match-beginning 0)
+                      (match-end 0)
+                      :type 'gk-roam-link
+		      'face '(org-link)
+                      'page (gk-roam--get-page
+			     (match-string-no-properties 2)))))
+
+(defun gk-roam-hashtag-fontify (beg end)
+  "Highlight gk-roam link between BEG and END."
+  (goto-char beg)
+  (while (re-search-forward gk-roam-hashtag-regexp end t)
+    (with-silent-modifications
+      (put-text-property (1+ (match-beginning 1)) (match-beginning 2)
+                         'display "")
+      (put-text-property (match-beginning 3) (match-end 0)
+                         'display ""))
+    (make-text-button (match-beginning 0)
+                      (match-end 0)
+                      :type 'gk-roam-link
+		      'face '(shadow)
+                      'page (gk-roam--get-page
+			     (match-string-no-properties 2)))))
+
+(defun gk-roam-link-at-point-p ()
+  "Judge if gk-roam link is at point."
+  (save-excursion
+    (catch 'found
+      (let ((pos (point)))
+	(beginning-of-line)
+	(while (re-search-forward gk-roam-link-regexp (line-end-position) t)
+	  (if (<= (match-beginning 0) pos (match-end 0))
+	      (throw 'found `(,(match-beginning 0) . ,(match-end 0)))))))))
+
+(define-minor-mode gk-roam-link-minor-mode
+  "Recognize gk-roam link."
+  :lighter ""
+  :keymap (make-sparse-keymap)
+  (if gk-roam-link-minor-mode
+      (progn
+	(jit-lock-register #'gk-roam-hashtag-fontify)
+	(jit-lock-register #'gk-roam-link-fontify))
+    (jit-lock-unregister #'gk-roam-hashtag-fontify)
+    (jit-lock-unregister #'gk-roam-link-fontify)
+    (with-silent-modifications
+      (put-text-property (point-min) (point-max) 'display nil)))
+  (jit-lock-refontify))
+
+;;;###autoload
+(defun gk-roam-toggle-brackets ()
+  "Hide and show gk-roam brackets."
+  (interactive)
+  (if gk-roam-link-minor-mode
+      (gk-roam-link-minor-mode -1)
+    (gk-roam-mode)))
+
 ;; ----------------------------------------
 (defvar gk-roam-pages (gk-roam--all-titles)
   "Page candidates for completion.")
@@ -450,8 +543,10 @@
 (define-derived-mode gk-roam-mode org-mode "gk-roam"
   "Major mode for gk-roam."
   (add-hook 'completion-at-point-functions 'gk-roam-completion-at-point nil 'local)
-  (add-hook 'company-after-completion-hook 'gk-roam--complete-hashtag)
+  (add-hook 'company-after-completioen-hook 'gk-roam--complete-hashtag nil 'local)
+  (gk-roam-link-minor-mode)
   (use-local-map gk-roam-mode-map))
 
+;; ---------------------------------
 (provide 'gk-roam)
 ;;; gk-roam.el ends here
