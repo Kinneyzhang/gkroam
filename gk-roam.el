@@ -158,7 +158,8 @@
     heading))
 
 (defun gk-roam--format-backlink (line page)
-  "Format gk-roam backlink of specific LINE in PAGE."
+  "Format gk-roam backlink of specific LINE in PAGE.
+Need to fix!"
   (let* ((heading (gk-roam-heading-of-line line page))
 	 (title (gk-roam--get-title page)))
     (if (null heading)
@@ -361,6 +362,37 @@ If TITLE is non-nil, prompt user."
   (let ((pages (gk-roam--all-pages)))
     (mapcar #'gk-roam-update-reference pages)))
 
+;; (defun gk-roam--resolve-publish-link (file) ;; FIX ME
+;;   "Convert gk-roam link and hashtag to org link when publish.
+;; {[title]} to [[file:page][title]] and #{[title]} to [[file:page][#title]]."
+;;   (let (export-buf html-str)
+;;     (with-temp-buffer
+;;       (org-mode)
+;;       (insert-file-contents file)
+;;       (goto-char (point-min))
+;;       (let (title org-link org-link2 beg end
+;; 		  (pos (point-min)))
+;; 	(while pos
+;; 	  (setq pos (re-search-forward gk-roam-link-regexp nil t))
+;; 	  (setq beg (match-beginning 0))
+;; 	  (setq end (match-end 0))
+;; 	  (setq title (match-string-no-properties 2))
+;; 	  (setq org-link (format "[[file:%s][%s]]" (gk-roam--get-page title) title))
+;; 	  (setq org-link2 (format "[[file:%s][#%s]]" (gk-roam--get-page title) title))
+;; 	  (goto-char (1- beg))
+;; 	  (if (string= (thing-at-point 'char) "#")
+;; 	      (progn
+;; 		(delete-region beg end)
+;; 		(insert org-link2))
+;; 	    (delete-region beg end)
+;; 	    (insert org-link))))
+;;       (setq export-buf (org-html-export-as-html nil nil nil t)))
+;;     (with-temp-buffer
+;;       (set-buffer export-buf)
+;;       (setq html-str (buffer-string)))
+;;     (with-temp-file (concat gk-roam-pub-dir (file-name-base file) ".html")
+;;       (insert html-str))))
+
 ;;;###autoload
 (defun gk-roam-publish-current-file ()
   "Publish current file."
@@ -442,12 +474,11 @@ If TITLE is non-nil, prompt user."
   "Highlight gk-roam link between BEG and END."
   (goto-char beg)
   (while (re-search-forward gk-roam-link-regexp end t)
-    (with-silent-modifications
-      ;; (put-text-property (match-beginning 1) (match-beginning 2)
-      ;;                    'display "")
-      ;; (put-text-property (match-beginning 3) (match-end 0)
-      ;;                    'display "")
-      )
+    ;; (with-silent-modifications
+    ;;   (put-text-property (match-beginning 1) (match-beginning 2)
+    ;;                      'display "")
+    ;;   (put-text-property (match-beginning 3) (match-end 0)
+    ;;                      'display ""))
     (make-text-button (match-beginning 0)
                       (match-end 0)
                       :type 'gk-roam-link
