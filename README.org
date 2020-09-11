@@ -2,7 +2,7 @@ Gk-roam is a light-weight roam replica, built on top emacs OrgMode. It use 'ripg
 
 ** Demos
 
-   [[./demos/completion.mp4]]
+   [[./demos/completion.gif]]
 
 ** Install
    
