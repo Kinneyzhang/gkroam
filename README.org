@@ -84,6 +84,7 @@ Gk-roam is a light-weight roam replica, built on top emacs OrgMode. It use 'ripg
 ** FIX ME
 
    - Link in headine is not supported yet.
+   - post-command-hook is suck for overlay display.
 
 ** Todo List
    
@@ -97,9 +98,9 @@ Gk-roam is a light-weight roam replica, built on top emacs OrgMode. It use 'ripg
    * [X] Add hashtag, with the format of "#{[page-title]}"
    * [X] Do auto completion when input brackets and hashtag.
    * [X] Use ido-completing-read to insert a page link and delete 'gk-roam-insert'.
-   * [ ] Links in the same page should be shown under one page title in references.
+   * [X] Links in the same page should be shown under one page title in references.
+   * [X] Hide brackets and auto show brackets when move to a line including gk-roam link.
    * [ ] Convert gk-roam link to org file link when publish.
-   * [ ] Hide brackets and auto show brackets when move to a line including gk-roam link.
 
    More in future!
 

@@ -51,6 +51,27 @@
 (defvar gk-roam-temp-file (concat user-emacs-directory "gk-roam/temp")
   "Gk-roam temporary file.")
 
+(defvar gk-roam-toggle-brackets-p t
+  "Determine whether to show brackets in page link.")
+
+(defvar gk-roam-pages (gk-roam--all-titles)
+  "Page candidates for completion.")
+
+(defvar gk-roam-mode-map nil
+  "Keymap for `gk-roam-mode'")
+
+(defvar gk-roam-link-regexp
+  (rx (seq (group "{[")
+           (group (+? (not (any "/\n"))))
+           (group "]}")))
+  "Regular expression that matches a gk-roam link.")
+
+(defvar gk-roam-hashtag-regexp
+  (rx (seq (group "#{[")
+           (group (+? (not (any "/\n"))))
+           (group "]}")))
+  "Regular expression that matches a gk-roam hashtag.")
+
 ;;;; Functions
 (defun gk-roam-link-frame-setup ()
   "Alter `org-link-frame-setup' for gk-roam."
@@ -105,18 +126,6 @@
 (defun gk-roam--gen-page ()
   "Generate new gk-roam page."
   (format "%s.org" (format-time-string "%Y%m%d%H%M%S")))
-
-(defvar gk-roam-link-regexp
-  (rx (seq (group "{[")
-           (group (+? (not (any "/\n"))))
-           (group "]}")))
-  "Regular expression that matches a gk-roam link.")
-
-(defvar gk-roam-hashtag-regexp
-  (rx (seq (group "#{[")
-           (group (+? (not (any "/\n"))))
-           (group "]}")))
-  "Regular expression that matches a gk-roam hashtag.")
 
 (defsubst gk-roam--format-link (page)
   "Format PAGE into a gk-roam page link or hashtag."
@@ -188,6 +197,16 @@ Need to fix!"
 	(insert (format " - [[file:%s][%s]]\n" page (gk-roam--get-title page))))
       (save-buffer))
     index-buf))
+
+(defun gk-roam-insert (title)
+  "Insert a gk-roam page"
+  (if (string= (file-name-directory (buffer-file-name))
+	       (expand-file-name gk-roam-root-dir))
+      (let* ((page (gk-roam--get-page title)))
+	(insert (gk-roam--format-link page))
+	(save-buffer)
+	(gk-roam-update-reference page))
+    (message "Not in the gk-roam directory!")))
 
 (defun gk-roam-update-reference (page)
   "Update gk-roam file reference."
@@ -440,63 +459,100 @@ Need to fix!"
   (with-demoted-errors "Error when following the link: %s"
     (gk-roam-find (button-get button 'title))))
 
-;; (defvar-local gk-roam-link-overlay nil)
-
-;; (defun gk-roam-make-overlay (beg end)
-;;   (let ((ol (make-overlay beg end)))
-;;     (overlay-put ol 'display "")
-;;     ol))
-
 (defun gk-roam-link-fontify (beg end)
   "Highlight gk-roam link between BEG and END."
   (goto-char beg)
   (while (re-search-forward gk-roam-link-regexp end t)
-    ;; (with-silent-modifications
-    ;;   (put-text-property (match-beginning 1) (match-beginning 2)
-    ;;                      'display "")
-    ;;   (put-text-property (match-beginning 3) (match-end 0)
-    ;;                      'display ""))
     (make-text-button (match-beginning 0)
                       (match-end 0)
                       :type 'gk-roam-link
-		      'face '(org-link)
                       'title (match-string-no-properties 2))))
 
 (defun gk-roam-hashtag-fontify (beg end)
   "Highlight gk-roam link between BEG and END."
   (goto-char beg)
   (while (re-search-forward gk-roam-hashtag-regexp end t)
-    ;; (with-silent-modifications
-    ;;   (put-text-property (1+ (match-beginning 1)) (match-beginning 2)
-    ;;                      'display "")
-    ;;   (put-text-property (match-beginning 3) (match-end 0)
-    ;;                      'display ""))
     (make-text-button (match-beginning 0)
                       (match-end 0)
                       :type 'gk-roam-link
-		      'face '(shadow)
                       'title (match-string-no-properties 2))))
 
 ;; -------------------------------------------------
-;; used to show brackets when cursor is on link.
-;; (defun gk-roam-link-at-point-p ()
-;;   "Judge if gk-roam link is at point."
-;;   (save-excursion
-;;     (catch 'found
-;;       (let ((pos (point)))
-;; 	(beginning-of-line)
-;; 	(while (re-search-forward gk-roam-link-regexp (line-end-position) t)
-;; 	  (if (<= (match-beginning 0) pos (match-end 0))
-;; 	      (throw 'found `(,(1- (match-beginning 0)) . ,(match-end 0)))))))))
+;; gk-roam overlays
 
-;; (defun gk-roam-link-unfontify ()
-;;   (when (and (gk-roam-link-at-point-p)
-;; 	     (gk-roam-link-overlay))
-;;     (let ((beg (car (gk-roam-link-at-point-p)))
-;; 	  (end (cdr (gk-roam-link-at-point-p))))
-;;       (mapcar #'delete-overlay gk-roam-link-overlay))))
+(defun gk-roam-overlay-region (beg end prop value)
+  "Use overlays in region with property."
+  (overlay-put (make-overlay beg end) prop value))
 
-;; (add-hook 'post-command-hook 'gk-roam-link-unfontify)
+(defun gk-roam-overlay-hashtag ()
+  "Overlay gk-roam hashtag."
+  (with-silent-modifications
+    (gk-roam-overlay-region (match-beginning 1) (match-beginning 2) 'display "")
+    (gk-roam-overlay-region (match-beginning 3) (match-end 0) 'display "")
+    (gk-roam-overlay-region (1- (match-beginning 0)) (match-end 0) 'face '(shadow (:underline nil)))))
+
+(defun gk-roam-overlay-shadow-brackets ()
+  "Set overlays to shadow brackets."
+  (with-silent-modifications
+    (remove-overlays (match-beginning 1) (match-beginning 2) 'display "")
+    (remove-overlays (match-beginning 3) (match-end 0) 'display "")
+    (gk-roam-overlay-region (match-beginning 1) (match-beginning 2) 'face 'shadow)
+    (gk-roam-overlay-region (match-beginning 3) (match-end 0) 'face 'shadow)
+    (gk-roam-overlay-region (match-beginning 0) (match-end 0) 'face '(warning (:underline nil)))))
+
+(defun gk-roam-overlay-hide-brackets ()
+  "Set overlays to hide gk-roam brackets."
+  (with-silent-modifications
+    (gk-roam-overlay-region (match-beginning 1) (match-beginning 2) 'display "")
+    (gk-roam-overlay-region (match-beginning 3) (match-end 0) 'display "")
+    (gk-roam-overlay-region (match-beginning 0) (match-end 0) 'face '(warning (:underline nil)))))
+
+(defun gk-roam-put-overlays (beg &optional bound)
+  "Put overlays between BEG and BOUND."
+  (when (string= major-mode "gk-roam-mode")
+    (let ((bound (or bound (point-max)))
+	  pos)
+      (save-excursion
+	(goto-char beg)
+	(while (re-search-forward gk-roam-link-regexp bound t)
+	  (setq pos (point))
+	  (goto-char (1- (match-beginning 0)))
+	  (if (string= (thing-at-point 'char t) "#")
+	      (gk-roam-overlay-hashtag)
+	    (if gk-roam-toggle-brackets-p
+		(gk-roam-overlay-shadow-brackets)
+	      (gk-roam-overlay-hide-brackets)))
+	  (goto-char pos))))))
+
+(defun gk-roam-remove-overlays ()
+  "Remove overlays in current line."
+  (when (string= major-mode "gk-roam-mode")
+    (save-excursion
+      (goto-char (line-beginning-position))
+      (when (re-search-forward gk-roam-link-regexp (line-end-position) t)
+	(with-silent-modifications
+	  (remove-overlays (line-beginning-position) (line-end-position)))))))
+
+(defun gk-roam-overlay-buffer ()
+  "Put overlay in currnt gk-roam buffer."
+  (progn
+    (gk-roam-put-overlays (line-end-position) (point-max))
+    (gk-roam-put-overlays (point-min) (line-beginning-position))))
+
+(defun gk-roam-overlay ()
+  "Put and remove overlays in gk-roam buffer accordingly"
+  (gk-roam-remove-overlays)
+  (gk-roam-overlay-buffer))
+
+;;;###autoload
+(defun gk-roam-toggle-brackets ()
+  (interactive)
+  "Determine whether to show brackets in page link."
+  (if gk-roam-toggle-brackets-p
+      (setq gk-roam-toggle-brackets-p nil)
+    (setq gk-roam-toggle-brackets-p t)))
+
+(add-hook 'post-command-hook 'gk-roam-overlay)
 
 ;; ---------------------------------------------------
 
@@ -509,26 +565,10 @@ Need to fix!"
 	(jit-lock-register #'gk-roam-hashtag-fontify)
 	(jit-lock-register #'gk-roam-link-fontify))
     (jit-lock-unregister #'gk-roam-hashtag-fontify)
-    (jit-lock-unregister #'gk-roam-link-fontify)
-    (with-silent-modifications
-      (put-text-property (point-min) (point-max) 'display nil)))
+    (jit-lock-unregister #'gk-roam-link-fontify))
   (jit-lock-refontify))
 
-;;;###autoload
-(defun gk-roam-toggle-brackets ()
-  "Hide and show gk-roam brackets."
-  (interactive)
-  (if gk-roam-link-minor-mode
-      (gk-roam-link-minor-mode -1)
-    (gk-roam-mode)))
-
 ;; ----------------------------------------
-(defvar gk-roam-pages (gk-roam--all-titles)
-  "Page candidates for completion.")
-
-(defvar gk-roam-mode-map nil
-  "Keymap for `gk-roam-mode'")
-
 (defun gk-roam-company-bracket-p ()
   "Judge if need to company bracket link."
   (save-excursion
