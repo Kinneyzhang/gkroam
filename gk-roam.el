@@ -253,14 +253,14 @@ Need to fix!"
 (defun gk-roam-find (&optional title)
   "Create a new gk-roam file or open an exist one."
   (interactive)
-  (let* ((title (if title title
-		  (completing-read "New title or open an exist one: "
-				   (gk-roam--all-titles) nil nil)))
-	 (page-exist-p (gk-roam--get-page title)))
-    (if page-exist-p
-	(find-file (gk-roam--get-file page-exist-p))
+  (let* ((title (or title (completing-read "New title or open an exist one: "
+					   (gk-roam--all-titles) nil nil)))
+	 (page (gk-roam--get-page title)))
+    (if page
+	(find-file (gk-roam--get-file page))
       (find-file (gk-roam-new title)))
-    (gk-roam-mode)))
+    (gk-roam-mode)
+    (gk-roam-update)))
 
 ;;;###autoload
 (defun gk-roam-daily ()
@@ -446,7 +446,6 @@ If TITLE is non-nil, prompt user."
 ;; minor mode
 (define-button-type 'gk-roam-link
   'action #'gk-roam-follow-link
-  'face nil
   'title nil
   'follow-link t
   'use-window nil
@@ -455,20 +454,14 @@ If TITLE is non-nil, prompt user."
 (defun gk-roam-follow-link (button)
   "Jump to the page that BUTTON represents."
   (with-demoted-errors "Error when following the link: %s"
-    (let* ((title (button-get button 'title))
-	   (page (gk-roam--get-page title)))
-      (if page
-	  (find-file (gk-roam--get-file page))
-	(find-file (gk-roam-new title)))
-      (gk-roam-mode)
-      (gk-roam-update))))
+    (gk-roam-find (button-get button 'title))))
 
-(defvar-local gk-roam-link-overlay nil)
+;; (defvar-local gk-roam-link-overlay nil)
 
-(defun gk-roam-make-overlay (beg end)
-  (let ((ol (make-overlay beg end)))
-    (overlay-put ol 'display "")
-    ol))
+;; (defun gk-roam-make-overlay (beg end)
+;;   (let ((ol (make-overlay beg end)))
+;;     (overlay-put ol 'display "")
+;;     ol))
 
 (defun gk-roam-link-fontify (beg end)
   "Highlight gk-roam link between BEG and END."
@@ -584,18 +577,30 @@ If TITLE is non-nil, prompt user."
 	(insert "]}")))))
 
 (defun gk-roam-completion-at-point ()
-  "This is the function to be used for the hook `completion-at-point-functions'."
+  "Function binded to `completion-at-point-functions'."
   (interactive)
-  (let* ((bds (bounds-of-thing-at-point 'symbol))
-         (start (car bds))
-         (end (cdr bds)))
-    (when (or (gk-roam-company-bracket-p)
-	      (gk-roam-company-hashtag-p))
+  (when (or (gk-roam-company-bracket-p)
+	    (gk-roam-company-hashtag-p))
+    (let (bds start end)
+      (if (gk-roam-company-bracket-p)
+	  (progn
+	    (setq bds (bounds-of-thing-at-point 'list))
+            (setq start (1+ (car bds)))
+	    (setq end (1- (cdr bds))))
+	(setq bds (bounds-of-thing-at-point 'symbol))
+	(setq start (car bds))
+	(setq end (cdr bds)))
       (list start end gk-roam-pages . nil))))
+
+(defun gk-roam-completion-finish (title)
+  "Function binded to `company-completion-finish-hook'."
+  (when (gk-roam-company-hashtag-p)
+    (gk-roam--complete-hashtag)))
 
 (define-derived-mode gk-roam-mode org-mode "gk-roam"
   "Major mode for gk-roam."
   (add-hook 'completion-at-point-functions 'gk-roam-completion-at-point nil 'local)
+  (add-hook 'company-completion-finished-hook 'gk-roam-completion-finish nil 'local)
   (add-hook 'gk-roam-mode-hook 'gk-roam-link-frame-setup)
   (gk-roam-link-minor-mode)
   (use-local-map gk-roam-mode-map))
