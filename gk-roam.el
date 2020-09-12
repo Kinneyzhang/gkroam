@@ -230,7 +230,7 @@ Need to fix!"
 		     (insert "\n"))))
 	       (goto-char (point-min))
 	       (re-search-forward "-----\n" nil t)
-	       (insert (format "~%d Linked References to \"%s\"~\n" num (gk-roam--get-title page)))
+	       (insert (format "%d Linked References to \"%s\"\n" num (gk-roam--get-title page)))
 	       (save-buffer))))))))
   (message "%s reference updated" page))
 
