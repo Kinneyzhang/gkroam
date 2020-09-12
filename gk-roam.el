@@ -150,9 +150,9 @@
   (let ((line (if (stringp line) (string-to-number line) line))
 	heading)
     (with-temp-buffer
-      (goto-char (point-min))
       (insert-file-contents (gk-roam--get-file page))
-      (goto-line line)
+      (goto-char (point-min))
+      (forward-line line)
       (org-mode)
       (setq heading (org-get-heading t t t t)))
     heading))
@@ -173,7 +173,7 @@ Need to fix!"
     (goto-char (point-min))
     (while (re-search-forward "\\({\\[\\|\\]}\\)+?" nil t)
       (replace-match ""))
-    (concat " * " (buffer-string))))
+    (concat "- " (buffer-string))))
 
 (defun gk-roam-update-index ()
   "Update gk-roam index page."
@@ -210,27 +210,25 @@ Need to fix!"
 	       (dolist (res results)
 		 (let* ((res-list (split-string res "\n" t "[ \n]+"))
 			(res-file (car res-list))
-			line text)
+			line caption text texts)
 		   (pop res-list) ;; return first elem!
 		   (setq num (+ num (length res-list)))
 		   (dolist (item res-list)
 		     (setq line (when (string-match "[0-9]+" item)
 				  (match-string 0 item)))
+		     (setq caption (gk-roam--format-backlink
+				    line (file-name-nondirectory res-file)))
 		     (setq text
 			   (gk-roam--process-reference
 			    (string-trim item
 					 (when (string-match "[0-9]+: *" item)
 					   (match-string 0 item))
 					 nil)))
-		     (insert
-		      (concat "\n"
-			      (gk-roam--format-backlink line
-							(file-name-nondirectory res-file))
-			      "\n" text))
-		     (insert "\n"))))
+		     (setq texts (concat texts (concat "\n" text))))
+		   (insert (concat caption texts "\n\n"))))
 	       (goto-char (point-min))
 	       (re-search-forward "-----\n" nil t)
-	       (insert (format "%d Linked References to \"%s\"\n" num (gk-roam--get-title page)))
+	       (insert (format "%d Linked References to \"%s\"\n\n" num (gk-roam--get-title page)))
 	       (save-buffer))))))))
   (message "%s reference updated" page))
 
