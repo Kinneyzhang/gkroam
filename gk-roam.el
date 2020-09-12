@@ -466,6 +466,7 @@ Need to fix!"
     (make-text-button (match-beginning 0)
                       (match-end 0)
                       :type 'gk-roam-link
+		      'face '(:underline nil)
                       'title (match-string-no-properties 2))))
 
 (defun gk-roam-hashtag-fontify (beg end)
@@ -475,6 +476,7 @@ Need to fix!"
     (make-text-button (match-beginning 0)
                       (match-end 0)
                       :type 'gk-roam-link
+		      'face '(:underline nil)
                       'title (match-string-no-properties 2))))
 
 ;; -------------------------------------------------
