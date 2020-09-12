@@ -89,13 +89,15 @@ Gk-roam is a light-weight roam replica, built on top emacs OrgMode. It use 'ripg
    
    Recently, I have been watching [[https://www.youtube.com/playlist?list=PLwXSqDdn_CpE934BjXMgmzHnlwXMy41TC][videos]] about Roam Research. From it, I have got lots of ideas to improve gk-roam. The ideas are as follows:
 
-   * [X] Change page's filename to only date numbers. Do not use the concept of 'file', use 'page' in function naming instead.
+   * [X] Change page's filename to only date numbers.
    * [X] Add "gk-roam-daily" function to handly open a 'daily notes' page.
    * [X] Implement "gk-roam-mode" major mode.
    * [X] Implement "gk-roam-link-minor-mode" minor mode.
    * [X] Change gk-roam link to the format of "{[page-title]}"
    * [X] Add hashtag, with the format of "#{[page-title]}"
    * [X] Do auto completion when input brackets and hashtag.
+   * [X] Use ido-completing-read to insert a page link and delete 'gk-roam-insert'.
+   * [ ] Links in the same page should be shown under one page title in references.
    * [ ] Convert gk-roam link to org file link when publish.
    * [ ] Hide brackets and auto show brackets when move to a line including gk-roam link.
 
