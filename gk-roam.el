@@ -332,20 +332,6 @@ Need to fix!"
   (switch-to-buffer (gk-roam-update-index)))
 
 ;;;###autoload
-(defun gk-roam-insert (&optional title)
-  "Insert a gk-roam file with TITLE at point.
-If TITLE is non-nil, prompt user."
-  (interactive)
-  (if (string= (file-name-directory (buffer-file-name))
-	       (expand-file-name gk-roam-root-dir))
-      (let* ((title (or title (completing-read "Choose a file: " (gk-roam--all-titles) nil t)))
-	     (page (gk-roam--get-page title)))
-	(insert (gk-roam--format-link page))
-	(save-buffer)
-	(gk-roam-update-reference page))
-    (message "Not in the gk-roam directory!")))
-
-;;;###autoload
 (defun gk-roam-update ()
   "Update current gk-roam buffer's reference."
   (interactive)
@@ -545,9 +531,6 @@ If TITLE is non-nil, prompt user."
 (defvar gk-roam-mode-map nil
   "Keymap for `gk-roam-mode'")
 
-(progn
-  (setq gk-roam-mode-map (make-sparse-keymap)))
-
 (defun gk-roam-company-bracket-p ()
   "Judge if need to company bracket link."
   (save-excursion
@@ -576,6 +559,12 @@ If TITLE is non-nil, prompt user."
 	(forward-char len)
 	(insert "]}")))))
 
+(defun gk-roam-completion-finish (title)
+  "Function binded to `company-completion-finish-hook'."
+  (when (gk-roam-company-hashtag-p)
+    (gk-roam--complete-hashtag)
+    (save-buffer)))
+
 (defun gk-roam-completion-at-point ()
   "Function binded to `completion-at-point-functions'."
   (interactive)
@@ -592,10 +581,27 @@ If TITLE is non-nil, prompt user."
 	(setq end (cdr bds)))
       (list start end gk-roam-pages . nil))))
 
-(defun gk-roam-completion-finish (title)
-  "Function binded to `company-completion-finish-hook'."
-  (when (gk-roam-company-hashtag-p)
-    (gk-roam--complete-hashtag)))
+(defun gk-roam-ido-completion ()
+  "Perform keyword completion on current symbol.
+This uses `ido-mode' user interface for completion."
+  (interactive)
+  (let* ((bds (bounds-of-thing-at-point 'symbol))
+         (p1 (car bds))
+         (p2 (cdr bds))
+         (current-sym
+          (if  (or (null p1) (null p2) (equal p1 p2))
+              ""
+            (buffer-substring-no-properties p1 p2)))
+         result-sym)
+    (when (not current-sym) (setq current-sym ""))
+    (setq result-sym
+          (ido-completing-read "" gk-roam-pages nil nil current-sym))
+    (ignore-errors (delete-region p1 p2))
+    (insert (format "{[%s]}" result-sym))))
+
+(progn
+  (setq gk-roam-mode-map (make-sparse-keymap))
+  (define-key gk-roam-mode-map (kbd "C-.") 'gk-roam-ido-completion))
 
 (define-derived-mode gk-roam-mode org-mode "gk-roam"
   "Major mode for gk-roam."
