@@ -54,7 +54,7 @@
 (defvar gk-roam-toggle-brackets-p t
   "Determine whether to show brackets in page link.")
 
-(defvar gk-roam-pages (gk-roam--all-titles)
+(defvar gk-roam-pages nil
   "Page candidates for completion.")
 
 (defvar gk-roam-mode-map nil
@@ -459,6 +459,16 @@ Need to fix!"
   (with-demoted-errors "Error when following the link: %s"
     (gk-roam-find (button-get button 'title))))
 
+(defun gk-roam-link-at-point-p ()
+   "Judge if gk-roam link is at point."
+   (save-excursion
+     (catch 'found
+       (let ((pos (point)))
+ 	(beginning-of-line)
+ 	(while (re-search-forward gk-roam-link-regexp (line-end-position) t)
+ 	  (if (<= (match-beginning 0) pos (1- (match-end 0)))
+ 	      (throw 'found `(,(match-beginning 0) . ,(match-end 0)))))))))
+
 (defun gk-roam-link-fontify (beg end)
   "Highlight gk-roam link between BEG and END."
   (goto-char beg)
@@ -537,14 +547,25 @@ Need to fix!"
 
 (defun gk-roam-overlay-buffer ()
   "Put overlay in currnt gk-roam buffer."
-  (progn
-    (gk-roam-put-overlays (line-end-position) (point-max))
-    (gk-roam-put-overlays (point-min) (line-beginning-position))))
+  (gk-roam-put-overlays (line-end-position) (point-max))
+  (gk-roam-put-overlays (point-min) (line-beginning-position)))
 
-(defun gk-roam-overlay ()
+(defun gk-roam-overlay1 (orig-fun &rest args)
   "Put and remove overlays in gk-roam buffer accordingly"
-  (gk-roam-remove-overlays)
-  (gk-roam-overlay-buffer))
+  (gk-roam-put-overlays (line-beginning-position) (line-end-position))
+  (funcall-interactively orig-fun)
+  (gk-roam-remove-overlays))
+
+(defun gk-roam-overlay2 (orig-fun arg)
+  "Put and remove overlays in gk-roam buffer accordingly"
+  (gk-roam-put-overlays (line-beginning-position) (line-end-position))
+  (funcall-interactively orig-fun arg)
+  (unless (gk-roam-link-at-point-p)
+    (gk-roam-remove-overlays)))
+
+(advice-add 'next-line :around #'gk-roam-overlay1)
+(advice-add 'previous-line :around #'gk-roam-overlay1)
+(advice-add 'mouse-drag-region :around #'gk-roam-overlay2)
 
 ;;;###autoload
 (defun gk-roam-toggle-brackets ()
@@ -552,9 +573,8 @@ Need to fix!"
   "Determine whether to show brackets in page link."
   (if gk-roam-toggle-brackets-p
       (setq gk-roam-toggle-brackets-p nil)
-    (setq gk-roam-toggle-brackets-p t)))
-
-(add-hook 'post-command-hook 'gk-roam-overlay)
+    (setq gk-roam-toggle-brackets-p t))
+  (gk-roam-overlay-buffer))
 
 ;; ---------------------------------------------------
 
@@ -649,6 +669,8 @@ This uses `ido-mode' user interface for completion."
   (add-hook 'company-completion-finished-hook 'gk-roam-completion-finish nil 'local)
   (add-hook 'gk-roam-mode-hook 'gk-roam-link-frame-setup)
   (gk-roam-link-minor-mode)
+  (add-hook 'gk-roam-mode-hook 'gk-roam-overlay-buffer)
+  (setq gk-roam-pages (gk-roam--all-titles))
   (use-local-map gk-roam-mode-map))
 
 ;; ---------------------------------
