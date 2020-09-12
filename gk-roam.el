@@ -593,19 +593,9 @@ If TITLE is non-nil, prompt user."
 	      (gk-roam-company-hashtag-p))
       (list start end gk-roam-pages . nil))))
 
-(defun gk-roam-after-link-completion (title)
-  "Function bind to `company-after-completion-hook'."
-  (when (or (gk-roam-company-bracket-p)
-	    (gk-roam-company-hashtag-p))
-    (when (gk-roam-company-hashtag-p)
-      (gk-roam--complete-hashtag))
-    (message "title: %s" title)
-    (gk-roam-update-reference (gk-roam--get-page title))))
-
 (define-derived-mode gk-roam-mode org-mode "gk-roam"
   "Major mode for gk-roam."
   (add-hook 'completion-at-point-functions 'gk-roam-completion-at-point nil 'local)
-  (add-hook 'company-after-completion-hook 'gk-roam-after-link-completion nil 'local)
   (add-hook 'gk-roam-mode-hook 'gk-roam-link-frame-setup)
   (gk-roam-link-minor-mode)
   (use-local-map gk-roam-mode-map))
