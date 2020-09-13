@@ -579,11 +579,16 @@ Need to fix!"
   (gk-roam-put-overlays (line-end-position) (point-max))
   (gk-roam-put-overlays (point-min) (line-beginning-position)))
 
-(defun gk-roam-overlay (orig-fun &rest args)
+(defun gk-roam-overlay1 (orig-fun &rest args)
   "Advice function `next-line' and `previous-line'"
   (gk-roam-put-overlays (line-beginning-position) (line-end-position))
   (apply orig-fun args)
   (gk-roam-remove-overlays))
+
+(defun gk-roam-overlay2 (orig-fun &rest args)
+  "Advice function `next-line' and `previous-line'"
+  (gk-roam-put-overlays (line-beginning-position) (line-end-position))
+  (apply orig-fun args))
 
 ;;;###autoload
 (defun gk-roam-toggle-brackets ()
@@ -680,14 +685,14 @@ This uses `ido-mode' user interface for completion."
   
   ;; It's ugly to use 'advice-add', though things seem to go well.
   ;; But I haven't found a better way to auto hide and show brackets.
-  (advice-add 'next-line :around #'gk-roam-overlay)
-  (advice-add 'previous-line :around #'gk-roam-overlay)
-  (advice-add 'newline :around #'gk-roam-overlay)
-  (advice-add 'org-delete-backward-char :around #'gk-roam-overlay)
-  (advice-add 'mouse-drag-region :around #'gk-roam-overlay)
+  (advice-add 'next-line :around #'gk-roam-overlay1)
+  (advice-add 'previous-line :around #'gk-roam-overlay1)
+  (advice-add 'newline :around #'gk-roam-overlay1)
+  (advice-add 'org-delete-backward-char :around #'gk-roam-overlay1)
+  (advice-add 'mouse-drag-region :around #'gk-roam-overlay2)
   (if hungry-delete-mode
-      (advice-add 'hungry-delete-backward :around #'gk-roam-overlay)
-    (advice-remove 'hungry-delete-backward #'gk-roam-overlay))
+      (advice-add 'hungry-delete-backward :around #'gk-roam-overlay1)
+    (advice-remove 'hungry-delete-backward #'gk-roam-overlay1))
   
   (gk-roam-link-minor-mode)
   (add-hook 'gk-roam-mode-hook 'gk-roam-overlay-buffer)
