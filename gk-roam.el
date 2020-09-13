@@ -580,15 +580,17 @@ Need to fix!"
   (gk-roam-put-overlays (point-min) (line-beginning-position)))
 
 (defun gk-roam-overlay1 (orig-fun &rest args)
-  "Advice function `next-line' and `previous-line'"
+  "Advice function for automatically hide and show brackets when cursor moves."
   (gk-roam-put-overlays (line-beginning-position) (line-end-position))
   (apply orig-fun args)
   (gk-roam-remove-overlays))
 
 (defun gk-roam-overlay2 (orig-fun &rest args)
-  "Advice function `next-line' and `previous-line'"
+  "Advice function for automatically hide and show brackets when cursor moves."
   (gk-roam-put-overlays (line-beginning-position) (line-end-position))
-  (apply orig-fun args))
+  (apply orig-fun args)
+  (unless (gk-roam-link-at-point-p)
+    (gk-roam-remove-overlays)))
 
 ;;;###autoload
 (defun gk-roam-toggle-brackets ()
