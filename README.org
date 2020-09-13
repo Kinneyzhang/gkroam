@@ -20,16 +20,16 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
      (pretty-hydra-define gk-roam-hydra
        (:color amaranth :exit t)
        ("Gk-Roam"
-	(("f" gk-roam-find "find file")
-	 ("d" gk-roam-daily "daily notes")
-	 ("t" gk-roam-toggle-brackets "toggle brackets")
-	 ("n" gk-roam-smart-new "smart new")
-	 ("g" gk-roam-update "update reference")
-	 ("G" gk-roam-update-all "update all reference")
-	 ("I" gk-roam-index "show index")
-	 ("p" gk-roam-preview "preview site")
-	 ("v" gk-roam-preview-current "preview current file")
-	 ("q" nil "cancel")))))
+	(("r f" gk-roam-find "find file")
+	 ("r d" gk-roam-daily "daily notes")
+	 ("r t" gk-roam-toggle-brackets "toggle brackets")
+	 ("r n" gk-roam-smart-new "smart new")
+	 ("r g" gk-roam-update "update reference")
+	 ("r G" gk-roam-update-all "update all reference")
+	 ("r I" gk-roam-index "show index")
+	 ("r p" gk-roam-preview "preview site")
+	 ("r v" gk-roam-preview-current "preview current file")
+	 ("r q" nil "cancel")))))
    #+END_SRC
 
 ** Dependency
