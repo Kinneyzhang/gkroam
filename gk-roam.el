@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Kinney Zhang
 ;;
-;; Version: 1.0
+;; Version: 2.0.1
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: http://github.com/Kinneyzhang/gk-roam
@@ -27,6 +27,12 @@
 ;;; Commentary:
 
 ;; Gk-roam is a light-weight roam repica, built on top of Org-mode.
+
+;;; ChangeLog:
+
+;; v1.0 - Auto update link references at the buttom of page buffer.
+;; v2.0 - Use overlay to hide and show gk-roam brackets accordingly and fix some bugs.
+;; v2.0.1 - Fix 'hide and show brackets' problems in some main occasion. Such as newline, etc.
 
 ;;; Code:
 
@@ -531,13 +537,20 @@ Need to fix!"
   (gk-roam-put-overlays (point-min) (line-beginning-position)))
 
 (defun gk-roam-overlay1 (orig-fun &rest args)
-  "Put and remove overlays in gk-roam buffer accordingly"
+  "Advice function `next-line' and `previous-line'"
   (gk-roam-put-overlays (line-beginning-position) (line-end-position))
   (funcall-interactively orig-fun)
   (gk-roam-remove-overlays))
 
 (defun gk-roam-overlay2 (orig-fun arg)
-  "Put and remove overlays in gk-roam buffer accordingly"
+  "Advice function `mouse-drag-region'"
+  (gk-roam-put-overlays (line-beginning-position) (line-end-position))
+  (funcall-interactively orig-fun arg)
+  (unless (gk-roam-link-at-point-p)
+    (gk-roam-remove-overlays)))
+
+(defun gk-roam-overlay3 (orig-fun arg &rest args)
+  "Advice function `mouse-drag-region'"
   (gk-roam-put-overlays (line-beginning-position) (line-end-position))
   (funcall-interactively orig-fun arg)
   (unless (gk-roam-link-at-point-p)
@@ -634,9 +647,14 @@ This uses `ido-mode' user interface for completion."
   (add-hook 'company-completion-finished-hook 'gk-roam-completion-finish nil 'local)
   (add-hook 'gk-roam-mode-hook 'gk-roam-link-frame-setup)
   
+  ;; It's ugly to use 'advice-add', though things seem to go well.
+  ;; But I haven't found a better way to auto hide and show brackets.
   (advice-add 'next-line :around #'gk-roam-overlay1)
   (advice-add 'previous-line :around #'gk-roam-overlay1)
+  (advice-add 'newline :around #'gk-roam-overlay1)
+  (advice-add 'org-delete-backward-char :around #'gk-roam-overlay2)
   (advice-add 'mouse-drag-region :around #'gk-roam-overlay2)
+  (advice-add 'hungry-delete-backward :around #'gk-roam-overlay3)
   
   (gk-roam-link-minor-mode)
   (add-hook 'gk-roam-mode-hook 'gk-roam-overlay-buffer)
