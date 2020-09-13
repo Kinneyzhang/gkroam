@@ -14,23 +14,22 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
    (use-package gk-roam
      :load-path "~/iCloud/hack/gk-roam/"
      :init (setq gk-roam-root-dir "~/gk-roam/org/"
-		 gk-roam-pub-dir "~/gk-roam/site/"
-		 gk-roam-pub-css "<link rel=\"stylesheet\" href=\"https://gongzhitaao.org/orgcss/org.css\">")
+		 gk-roam-pub-dir "~/gk-roam/site/")
+     :bind (("<f2>" . gk-roam-hydra/body))
      :config
-     (global-set-key (kbd "C-c r") 'gk-roam-hydra/body)
      (pretty-hydra-define gk-roam-hydra
        (:color amaranth :exit t)
-       "Gk-Roam"
-       ("f" gk-roam-find "find file")
-       ("d" gk-roam-daily "daily notes")
-       ("t" gk-roam-toggle-brackets "toggle brackets")
-       ("n" gk-roam-smart-new "smart new")
-       ("g" gk-roam-update "update reference")
-       ("G" gk-roam-update-all "update all reference")
-       ("I" gk-roam-index "show index")
-       ("p" gk-roam-preview "preview site")
-       ("v" gk-roam-preview-current "preview current file")
-       ("q" nil "cancel")))
+       ("Gk-Roam"
+	(("f" gk-roam-find "find file")
+	 ("d" gk-roam-daily "daily notes")
+	 ("t" gk-roam-toggle-brackets "toggle brackets")
+	 ("n" gk-roam-smart-new "smart new")
+	 ("g" gk-roam-update "update reference")
+	 ("G" gk-roam-update-all "update all reference")
+	 ("I" gk-roam-index "show index")
+	 ("p" gk-roam-preview "preview site")
+	 ("v" gk-roam-preview-current "preview current file")
+	 ("q" nil "cancel")))))
    #+END_SRC
 
 ** Dependency
