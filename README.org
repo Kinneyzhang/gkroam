@@ -44,7 +44,6 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
 
    | shortcut | function                      |
    |----------+-------------------------------|
-   | =C-.=    | ido completion to insert page |
    | ={[]}=   | complete page link at point   |
    | =#=      | complete hashtag at point     |
    
@@ -58,6 +57,9 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
 
    =gk-roam-toggle-brackets=\\
    Hide and show brackets of link and hashtag.
+
+   =gk-roam-insert=\\
+   Insert a page bracket link at point.
 
    =gk-roam-smart-new=\\
    Smartly create a new file. If in a region, read the text in region as file title. if a word at point, read the text at point as file title. Otherwise, use =gk-roam-find=. At last, insert a file link at point or in region.
@@ -100,7 +102,6 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
    * [X] Change gk-roam link to the format of "{[page-title]}"
    * [X] Add hashtag, with the format of "#{[page-title]}"
    * [X] Do auto completion when input brackets and hashtag.
-   * [X] Use ido-completing-read to insert a page link and delete 'gk-roam-insert'.
    * [X] Links in the same page should be shown under one page title in references.
    * [X] Hide brackets and auto show brackets when move to a line including gk-roam link.
    * [X] Replace 'post-command-hook' with 'advice-add' for brackets hide and show.
