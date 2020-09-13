@@ -22,6 +22,7 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
        ("Gk-Roam"
 	(("r f" gk-roam-find "find file")
 	 ("r d" gk-roam-daily "daily notes")
+	 ("r i" gk-roam-insert "insert links")
 	 ("r t" gk-roam-toggle-brackets "toggle brackets")
 	 ("r n" gk-roam-smart-new "smart new")
 	 ("r g" gk-roam-update "update reference")
