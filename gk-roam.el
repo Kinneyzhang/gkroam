@@ -404,7 +404,7 @@ Need to fix!"
 	    (insert (format "[[file:%s][%s]]" (gk-roam--get-page title) title)))))
       (save-buffer)
       (apply orig-func file args)
-      (undo-tree-undo))))
+      (ignore-errors (undo-tree-undo)))))
 
 ;;;###autoload
 (defun gk-roam-publish-current-file ()
