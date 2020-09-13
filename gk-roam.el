@@ -31,9 +31,15 @@
 ;;; ChangeLog:
 
 ;; v1.0 - Auto update link references at the buttom of page buffer.
+
 ;; v2.0 - Use overlay to hide and show gk-roam brackets accordingly and fix some bugs.
-;; v2.0.1 - Fix 'hide and show brackets' problems in some main occasion. Such as newline, etc.
-;; v2.0.2 - Fix gk-roam-publish-current-file, automatically convert gk-roam link to org link and convert it back after published (use 'undo', not reliable) . But it has problem with publishing the whole project.
+
+;; v2.0.1 - Fix 'hide and show brackets' problems in some main occasion.
+;; Such as newline, etc.
+
+;; v2.0.2 - Fix gk-roam-publish-current-file, automatically convert gk-roam link
+;; to org link and convert it back after published (use 'undo', not reliable).
+;; But it has problem with publishing the whole project.
 
 ;;; Code:
 
