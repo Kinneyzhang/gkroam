@@ -6,7 +6,7 @@
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: http://github.com/Kinneyzhang/gk-roam
-;; Package-Requires: ((emacs "27.1") (simple-httpd "1.5.1"))
+;; Package-Requires: ((emacs "27.1") (simple-httpd "1.5.1") (undo-tree "0.7.5"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -50,6 +50,7 @@
 ;;; Code:
 
 (require 'simple-httpd)
+(require 'undo-tree)
 
 ;;;; Declarations
 (declare-function org-get-heading "org")
@@ -432,52 +433,43 @@ Need to fix!"
 (defun gk-roam-publish-current-file ()
   "Publish current file."
   (interactive)
-  (if (require 'undo-tree nil t)
-      (if (string= (file-name-directory (buffer-file-name))
-		   (expand-file-name gk-roam-root-dir))
-	  (progn
-	    (gk-roam-update)
-	    (org-publish-file (buffer-file-name)))
-	(message "Not in the gk-roam directory!"))
-    (message "Please install 'undo-tree' package first!")))
+  (if (string= (file-name-directory (buffer-file-name))
+	       (expand-file-name gk-roam-root-dir))
+      (progn
+	(gk-roam-update)
+	(org-publish-file (buffer-file-name)))
+    (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
 (defun gk-roam-preview-current ()
   "Preview current file."
   (interactive)
-  (if (require 'undo-tree nil t)
-      (if (string= (file-name-directory (buffer-file-name))
-		   (expand-file-name gk-roam-root-dir))
-	  (let ((current-file (concat (file-name-base (buffer-file-name)) ".html")))
-            (httpd-serve-directory gk-roam-pub-dir)
-            (unless (httpd-running-p) (httpd-start))
-            (gk-roam-publish-current-file)
-            (browse-url (format "http://%s:%d/%s" "127.0.0.1" 8080 current-file)))
-	(message "Not in the gk-roam directory!"))
-    (message "Please install 'undo-tree' package first!")))
+  (if (string= (file-name-directory (buffer-file-name))
+	       (expand-file-name gk-roam-root-dir))
+      (let ((current-file (concat (file-name-base (buffer-file-name)) ".html")))
+        (httpd-serve-directory gk-roam-pub-dir)
+        (unless (httpd-running-p) (httpd-start))
+        (gk-roam-publish-current-file)
+        (browse-url (format "http://%s:%d/%s" "127.0.0.1" 8080 current-file)))
+    (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
 (defun gk-roam-publish-site (&optional FORCE ASYNC)
   "Publish gk-roam project to html page."
   (interactive)
-  (if (require 'undo-tree nil t)
-      (progn
-	(gk-roam-update-index)
-	(gk-roam-update-all)
-	(org-publish-project "gk-roam" FORCE ASYNC))
-    (message "Please install 'undo-tree' package first!")))
+  (gk-roam-update-index)
+  ;; (gk-roam-update-all)
+  (org-publish-project "gk-roam" FORCE ASYNC))
 
 ;;;###autoload
 (defun gk-roam-preview ()
   "Preview gk-roam site."
   (interactive)
-  (if (require 'undo-tree nil t)
-      (progn
-	(httpd-serve-directory gk-roam-pub-dir)
-	(unless (httpd-running-p) (httpd-start))
-	(gk-roam-publish-site t nil)
-	(browse-url (format "http://%s:%d" "127.0.0.1" 8080)))
-    (message "Please install 'undo-tree' package first!")))
+  (progn
+    (httpd-serve-directory gk-roam-pub-dir)
+    (unless (httpd-running-p) (httpd-start))
+    (gk-roam-publish-site t nil)
+    (browse-url (format "http://%s:%d" "127.0.0.1" 8080))))
 
 ;; --------------------------------------------
 ;; minor mode
