@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Kinney Zhang
 ;;
-;; Version: 2.0.1
+;; Version: 2.0.2
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: http://github.com/Kinneyzhang/gk-roam
@@ -370,8 +370,8 @@ Need to fix!"
   (let ((pages (gk-roam--all-pages)))
     (mapcar #'gk-roam-update-reference pages)))
 
-(defvar gk-roam-link-num 0
-  "Number of link or hashtag in gk-roam buffer.")
+;; (defvar gk-roam-link-num 0
+;;   "Number of link or hashtag in gk-roam buffer.")
 
 (defun gk-roam-resolve-link (orig-func file &rest args)
   "Convert gk-roam link to org link."
@@ -379,7 +379,7 @@ Need to fix!"
 		      (find-file-noselect file))))
     (with-current-buffer file-buf
       (goto-char (point-min))
-      (setq gk-roam-link-num 0)
+      ;; (setq gk-roam-link-num 0)
       (while (re-search-forward gk-roam-link-regexp nil t)
 	(setq gk-roam-link-num (1+ gk-roam-link-num))
 	(let (beg end title hashtag-p)
