@@ -1,4 +1,4 @@
-Gk-roam is a light-weight roam replica, built on top emacs OrgMode. It use 'ripgrep' to search file links and insert references at the bottom of org files automatically. References consist of backlinks and related context.
+Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use 'ripgrep' to search file links and insert references at the bottom of org files automatically. References consist of backlinks and related context.
 
 ** Demos
 
@@ -38,7 +38,7 @@ Gk-roam is a light-weight roam replica, built on top emacs OrgMode. It use 'ripg
 
 ** Usage
 
-   Shortcut keys:
+   *Shortcut keys:*
 
    | shortcut | function                      |
    |----------+-------------------------------|
@@ -46,7 +46,7 @@ Gk-roam is a light-weight roam replica, built on top emacs OrgMode. It use 'ripg
    | ={[]}=   | complete page link at point   |
    | =#=      | complete hashtag at point     |
    
-   Main functions:
+   *Main functions:*
 
    =gk-roam-find=\\
    Find a gk-roam file and open it. If not exisit, create a new one. Just like /ido-find-file/.
@@ -83,8 +83,7 @@ Gk-roam is a light-weight roam replica, built on top emacs OrgMode. It use 'ripg
 
 ** FIX ME
 
-   - Link in headine is not supported yet.
-   - post-command-hook is suck for overlay display.
+   - Links in headine are not supported yet.
 
 ** Todo List
    
@@ -100,10 +99,11 @@ Gk-roam is a light-weight roam replica, built on top emacs OrgMode. It use 'ripg
    * [X] Use ido-completing-read to insert a page link and delete 'gk-roam-insert'.
    * [X] Links in the same page should be shown under one page title in references.
    * [X] Hide brackets and auto show brackets when move to a line including gk-roam link.
+   * [X] Replace 'post-command-hook' with 'advice-add' for brackets hide and show.
    * [ ] Convert gk-roam link to org file link when publish.
 
    More in future!
 
 ** Acknowledgements
 
-   Thanks to cool guys in [[https://emacs-china.org][emacs-china.org]] who resolve my questions in some keypoints. Thanks to [[https://github.com/casouri][casouri]]'s [[https://github.com/casouri/lunarymacs/blob/master/site-lisp/bklink.el][bklink.el]] which gives me lots of ideas.
+   Thanks to cool guys in [[https://emacs-china.org][emacs-china.org]] who answered some key questions. Thanks to [[https://github.com/casouri][casouri]]'s [[https://github.com/casouri/lunarymacs/blob/master/site-lisp/bklink.el][bklink.el]] which gives me lots of ideas.
