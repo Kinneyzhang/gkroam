@@ -435,19 +435,23 @@ Need to fix!"
         (browse-url (format "http://%s:%d/%s" "127.0.0.1" 8080 current-file)))
     (message "Not in the gk-roam directory!")))
 
-;;;###autoload
-(defun gk-roam-publish-site (&optional FORCE ASYNC)
-  "Publish gk-roam project to html page."
-  (interactive)
+(defun gk-roam-set-project-alist ()
+  "Add gk-roam project to 'org-publish-project-alist'"
   (add-to-list
    'org-publish-project-alist
    `("gk-roam"
      :base-extension "org"
      :recursive nil
-     :base-directory ,gk-roam-root-dir
-     :publishing-directory ,gk-roam-pub-dir
+     :base-directory ,(expand-file-name gk-roam-root-dir)
+     :publishing-directory ,(expand-file-name gk-roam-pub-dir)
      :publishing-function org-html-publish-to-html
-     :html-head ,gk-roam-pub-css))
+     :html-head ,gk-roam-pub-css)))
+
+;;;###autoload
+(defun gk-roam-publish-site (&optional FORCE ASYNC)
+  "Publish gk-roam project to html page."
+  (interactive)
+  
   ;; (gk-roam-update-all)
   (org-publish-project "gk-roam" FORCE ASYNC))
 
@@ -682,6 +686,7 @@ This uses `ido-mode' user interface for completion."
   (add-hook 'completion-at-point-functions 'gk-roam-completion-at-point nil 'local)
   (add-hook 'company-completion-finished-hook 'gk-roam-completion-finish nil 'local)
   (add-hook 'gk-roam-mode-hook 'gk-roam-link-frame-setup)
+  (add-hook 'gk-roam-mode-hook 'gk-roam-set-project-alist)
 
   (advice-add 'org-publish-file :around #'gk-roam-resolve-link)
   
