@@ -369,6 +369,36 @@ Need to fix!"
   (let ((pages (gk-roam--all-pages)))
     (mapcar #'gk-roam-update-reference pages)))
 
+(defvar gk-roam-link-num 0
+  "Number of link or hashtag in gk-roam buffer.")
+
+(defun gk-roam-resolve-link (orig-func file &rest args)
+  "Convert gk-roam link to org link."
+  (let ((file-buf (or (get-file-buffer file)
+		      (find-file-noselect file))))
+    (with-current-buffer file-buf
+      (goto-char (point-min))
+      (setq gk-roam-link-num 0)
+      (while (re-search-forward gk-roam-link-regexp nil t)
+	(setq gk-roam-link-num (1+ gk-roam-link-num))
+	(let (beg end title hashtag-p)
+	  (setq beg (match-beginning 0))
+	  (setq end (match-end 0))
+	  (setq title (match-string-no-properties 2))
+	  (save-excursion
+	    (goto-char (1- beg))
+	    (when (string= (thing-at-point 'char t) "#")
+	      (setq hashtag-p t)))
+	  (if hashtag-p
+	      (progn
+		(delete-region (1- beg) end)
+		(insert (format "[[file:%s][#%s]]" (gk-roam--get-page title) title)))
+	    (delete-region beg end)
+	    (insert (format "[[file:%s][%s]]" (gk-roam--get-page title) title)))))
+      (save-buffer)
+      (apply orig-func file args)
+      (undo-tree-undo))))
+
 ;;;###autoload
 (defun gk-roam-publish-current-file ()
   "Publish current file."
@@ -377,7 +407,7 @@ Need to fix!"
                (expand-file-name gk-roam-root-dir))
       (progn
         (gk-roam-update)
-        (org-publish-file (buffer-file-name)))
+        (org-publish-file (expand-file-name (buffer-file-name))))
     (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
@@ -394,7 +424,7 @@ Need to fix!"
     (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
-(defun gk-roam-publish-site ()
+(defun gk-roam-publish-site (&optional FORCE ASYNC)
   "Publish gk-roam project to html page."
   (interactive)
   (add-to-list
@@ -407,7 +437,7 @@ Need to fix!"
      :publishing-function org-html-publish-to-html
      :html-head ,gk-roam-pub-css))
   ;; (gk-roam-update-all)
-  (org-publish-project "gk-roam"))
+  (org-publish-project "gk-roam" FORCE ASYNC))
 
 ;;;###autoload
 (defun gk-roam-preview ()
@@ -415,7 +445,7 @@ Need to fix!"
   (interactive)
   (httpd-serve-directory gk-roam-pub-dir)
   (unless (httpd-running-p) (httpd-start))
-  (gk-roam-publish-site)
+  (gk-roam-publish-site t nil)
   (browse-url (format "http://%s:%d" "127.0.0.1" 8080)))
 
 ;; --------------------------------------------
@@ -451,6 +481,7 @@ Need to fix!"
 		      (match-end 0)
 		      :type 'gk-roam-link
 		      'face '(:underline nil)
+		      ;; 'mouse-face '(:underline nil)
 		      'title (match-string-no-properties 2))))
 
 (defun gk-roam-hashtag-fontify(beg end)
@@ -536,25 +567,11 @@ Need to fix!"
   (gk-roam-put-overlays (line-end-position) (point-max))
   (gk-roam-put-overlays (point-min) (line-beginning-position)))
 
-(defun gk-roam-overlay1 (orig-fun &rest args)
+(defun gk-roam-overlay (orig-fun &rest args)
   "Advice function `next-line' and `previous-line'"
   (gk-roam-put-overlays (line-beginning-position) (line-end-position))
-  (funcall-interactively orig-fun)
+  (apply orig-fun args)
   (gk-roam-remove-overlays))
-
-(defun gk-roam-overlay2 (orig-fun arg)
-  "Advice function `mouse-drag-region'"
-  (gk-roam-put-overlays (line-beginning-position) (line-end-position))
-  (funcall-interactively orig-fun arg)
-  (unless (gk-roam-link-at-point-p)
-    (gk-roam-remove-overlays)))
-
-(defun gk-roam-overlay3 (orig-fun arg &rest args)
-  "Advice function `mouse-drag-region'"
-  (gk-roam-put-overlays (line-beginning-position) (line-end-position))
-  (funcall-interactively orig-fun arg)
-  (unless (gk-roam-link-at-point-p)
-    (gk-roam-remove-overlays)))
 
 ;;;###autoload
 (defun gk-roam-toggle-brackets ()
@@ -646,15 +663,19 @@ This uses `ido-mode' user interface for completion."
   (add-hook 'completion-at-point-functions 'gk-roam-completion-at-point nil 'local)
   (add-hook 'company-completion-finished-hook 'gk-roam-completion-finish nil 'local)
   (add-hook 'gk-roam-mode-hook 'gk-roam-link-frame-setup)
+
+  (advice-add 'org-publish-file :around #'gk-roam-resolve-link)
   
   ;; It's ugly to use 'advice-add', though things seem to go well.
   ;; But I haven't found a better way to auto hide and show brackets.
-  (advice-add 'next-line :around #'gk-roam-overlay1)
-  (advice-add 'previous-line :around #'gk-roam-overlay1)
-  (advice-add 'newline-and-indent :around #'gk-roam-overlay1)
-  (advice-add 'org-delete-backward-char :around #'gk-roam-overlay2)
-  (advice-add 'mouse-drag-region :around #'gk-roam-overlay2)
-  (advice-add 'hungry-delete-backward :around #'gk-roam-overlay3)
+  (advice-add 'next-line :around #'gk-roam-overlay)
+  (advice-add 'previous-line :around #'gk-roam-overlay)
+  (advice-add 'newline :around #'gk-roam-overlay)
+  (advice-add 'org-delete-backward-char :around #'gk-roam-overlay)
+  (advice-add 'mouse-drag-region :around #'gk-roam-overlay)
+  (if hungry-delete-mode
+      (advice-add 'hungry-delete-backward :around #'gk-roam-overlay)
+    (advice-remove 'hungry-delete-backward #'gk-roam-overlay))
   
   (gk-roam-link-minor-mode)
   (add-hook 'gk-roam-mode-hook 'gk-roam-overlay-buffer)
