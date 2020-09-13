@@ -651,7 +651,7 @@ This uses `ido-mode' user interface for completion."
   ;; But I haven't found a better way to auto hide and show brackets.
   (advice-add 'next-line :around #'gk-roam-overlay1)
   (advice-add 'previous-line :around #'gk-roam-overlay1)
-  (advice-add 'newline :around #'gk-roam-overlay1)
+  (advice-add 'newline-and-indent :around #'gk-roam-overlay1)
   (advice-add 'org-delete-backward-char :around #'gk-roam-overlay2)
   (advice-add 'mouse-drag-region :around #'gk-roam-overlay2)
   (advice-add 'hungry-delete-backward :around #'gk-roam-overlay3)
