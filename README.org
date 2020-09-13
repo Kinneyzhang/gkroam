@@ -35,6 +35,7 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
 ** Dependency
 
    * [[https://github.com/skeeto/emacs-web-server][simple-httpd.el]] is used for html preview, install it in emacs.
+   * [[https://github.com/tarsiiformes/undo-tree][undo-tree.el]] is used to restore gk-roam formatted link after publishing.
    * ripgrep(rg) is used for search reference link, install it through os package manager and ensure that the command =rg= is in /exec-path/ variable.
 
 ** Usage
@@ -88,6 +89,7 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
    - =v2.0.1=: Fix 'hide and show brackets' problems in some main occasion. Such as newline, etc.
    - =v2.0.2=: Fix =gk-roam-publish-current-file=, automatically convert gk-roam link to org link and convert it back after published (use 'undo', not reliable) . But it has problem with publishing the whole project.
    - =v2.0.3=: Fix =gk-roam-publish-site= and =gk-roam-preview=. Now you can publish and preview the whole roam site.
+   - =v2.0.4=: Many bugs fixed and code improvement.
 
 ** Todo List
    
