@@ -690,9 +690,8 @@ This uses `ido-mode' user interface for completion."
   (advice-add 'newline :around #'gk-roam-overlay1)
   (advice-add 'org-delete-backward-char :around #'gk-roam-overlay1)
   (advice-add 'mouse-drag-region :around #'gk-roam-overlay2)
-  (if hungry-delete-mode
-      (advice-add 'hungry-delete-backward :around #'gk-roam-overlay1)
-    (advice-remove 'hungry-delete-backward #'gk-roam-overlay1))
+  (if (require 'hungry-delete nil t)
+      (advice-add 'hungry-delete-backward :around #'gk-roam-overlay1))
   
   (gk-roam-link-minor-mode)
   (add-hook 'gk-roam-mode-hook 'gk-roam-overlay-buffer)
