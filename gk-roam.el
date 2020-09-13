@@ -387,7 +387,7 @@ Need to fix!"
       (goto-char (point-min))
       ;; (setq gk-roam-link-num 0)
       (while (re-search-forward gk-roam-link-regexp nil t)
-	(setq gk-roam-link-num (1+ gk-roam-link-num))
+	;; (setq gk-roam-link-num (1+ gk-roam-link-num))
 	(let (beg end title hashtag-p)
 	  (setq beg (match-beginning 0))
 	  (setq end (match-end 0))
@@ -414,7 +414,7 @@ Need to fix!"
                (expand-file-name gk-roam-root-dir))
       (progn
         (gk-roam-update)
-        (org-publish-file (expand-file-name (buffer-file-name))))
+        (org-publish-file (buffer-file-name)))
     (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
