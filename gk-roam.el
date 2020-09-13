@@ -146,9 +146,9 @@
   "Generate new gk-roam page."
   (format "%s.org" (format-time-string "%Y%m%d%H%M%S")))
 
-(defsubst gk-roam--format-link (page)
-  "Format PAGE into a gk-roam page link or hashtag."
-  (format "{[%s]}" (gk-roam--get-title page)))
+(defsubst gk-roam--format-link (title)
+  "Format TITLE into a gk-roam page link."
+  (format "{[%s]}" title))
 
 (defun gk-roam-heading-of-line (line page)
   "Get the org heading of specific LINE in FILE."
@@ -185,7 +185,7 @@ Need to fix!"
   (let* ((name (generate-new-buffer-name " *gk-roam-rg*"))
          (process (start-process
                    name name "rg" "-Fn" "--heading"
-		   (gk-roam--format-link page)
+		   (gk-roam--format-link (gk-roam--get-title page))
 		   (expand-file-name gk-roam-root-dir) ;; must be absolute path.
 		   "-g" "!index.org*"))
          ;; When the rg process finishes, we parse the result files
@@ -273,23 +273,13 @@ Need to fix!"
       (save-buffer))
     index-buf))
 
-(defun gk-roam-insert (title)
-  "Insert a gk-roam page"
-  (if (string= (file-name-directory (buffer-file-name))
-	       (expand-file-name gk-roam-root-dir))
-      (let* ((page (gk-roam--get-page title)))
-	(insert (gk-roam--format-link page))
-	(save-buffer)
-	(gk-roam-update-reference page))
-    (message "Not in the gk-roam directory!")))
-
 ;;;; Commands
 ;;;###autoload
 (defun gk-roam-find (&optional title)
   "Create a new gk-roam file or open an exist one."
   (interactive)
-  (let* ((title (or title (completing-read "New title or open an exist one: "
-					   (gk-roam--all-titles) nil nil)))
+  (let* ((title (or title (ido-completing-read "New title or open an exist one: "
+					       (gk-roam--all-titles) nil nil)))
 	 (page (gk-roam--get-page title)))
     (if page
 	(find-file (gk-roam--get-file page))
@@ -305,12 +295,28 @@ Need to fix!"
     (gk-roam-find title)))
 
 ;;;###autoload
+(defun gk-roam-insert (&optional title)
+  "Insert a gk-roam page"
+  (interactive)
+  (if (string= (file-name-directory (buffer-file-name))
+	       (expand-file-name gk-roam-root-dir))
+      (let* ((title (or title (ido-completing-read
+			       "Choose a page or create a new: "
+			       (gk-roam--all-titles) nil nil
+			       (thing-at-point 'word t))))
+	     (page (gk-roam--get-page title)))
+	(insert (gk-roam--format-link title))
+	(save-buffer)
+	(gk-roam-update-reference page))
+    (message "Not in the gk-roam directory!")))
+
+;;;###autoload
 (defun gk-roam-new-at-point ()
   "Insert a file link and create a new file according to text at point."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
-               (expand-file-name gk-roam-root-dir))
-      (let* ((title (thing-at-point 'word))
+	       (expand-file-name gk-roam-root-dir))
+      (let* ((title (thing-at-point 'word t))
 	     (page-exist-p (gk-roam--get-page title)))
 	(if page-exist-p
 	    (progn
@@ -322,9 +328,7 @@ Need to fix!"
 	  (backward-word)
 	  (kill-word 1)
 	  (gk-roam-insert title)
-	  (save-buffer)
-	  (gk-roam-find title))
-	(gk-roam-update-reference page-exist-p))
+	  (gk-roam-find title)))
     (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
@@ -332,7 +336,7 @@ Need to fix!"
   "Insert a file link and create a new file according to a selected region."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
-               (expand-file-name gk-roam-root-dir))
+	       (expand-file-name gk-roam-root-dir))
       (let* ((beg (region-beginning))
 	     (end (region-end))
 	     (title (when (region-active-p)
@@ -346,9 +350,7 @@ Need to fix!"
 	  (gk-roam-new title)
 	  (delete-region beg end)
 	  (gk-roam-insert title)
-	  (save-buffer)
-	  (gk-roam-find title))
-	(gk-roam-update-reference page-exist-p))
+	  (gk-roam-find title)))
     (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
@@ -416,7 +418,7 @@ Need to fix!"
   "Publish current file."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
-               (expand-file-name gk-roam-root-dir))
+	       (expand-file-name gk-roam-root-dir))
       (progn
         (gk-roam-update)
         (org-publish-file (buffer-file-name)))
@@ -427,7 +429,7 @@ Need to fix!"
   "Preview current file."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
-               (expand-file-name gk-roam-root-dir))
+	       (expand-file-name gk-roam-root-dir))
       (let ((current-file (concat (file-name-base (buffer-file-name)) ".html")))
         (httpd-serve-directory gk-roam-pub-dir)
         (unless (httpd-running-p) (httpd-start))
@@ -659,27 +661,8 @@ Need to fix!"
 	(setq end (cdr bds)))
       (list start end gk-roam-pages . nil))))
 
-(defun gk-roam-ido-completion ()
-  "Perform keyword completion on current symbol.
-This uses `ido-mode' user interface for completion."
-  (interactive)
-  (let* ((bds (bounds-of-thing-at-point 'symbol))
-         (p1 (car bds))
-         (p2 (cdr bds))
-         (current-sym
-          (if  (or (null p1) (null p2) (equal p1 p2))
-              ""
-            (buffer-substring-no-properties p1 p2)))
-         result-sym)
-    (when (not current-sym) (setq current-sym ""))
-    (setq result-sym
-          (ido-completing-read "" gk-roam-pages nil nil current-sym))
-    (ignore-errors (delete-region p1 p2))
-    (insert (format "{[%s]}" result-sym))))
-
 (progn
-  (setq gk-roam-mode-map (make-sparse-keymap))
-  (define-key gk-roam-mode-map (kbd "C-.") 'gk-roam-ido-completion))
+  (setq gk-roam-mode-map (make-sparse-keymap)))
 
 (define-derived-mode gk-roam-mode org-mode "gk-roam"
   "Major mode for gk-roam."
