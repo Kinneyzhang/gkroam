@@ -73,6 +73,9 @@
 (defvar gk-roam-mode-map nil
   "Keymap for `gk-roam-mode'")
 
+(defvar gk-roam-has-link-p nil
+  "Judge if has link or hashtag in gk-roam buffer.")
+
 (defvar gk-roam-link-regexp
   (rx (seq (group "{[")
            (group (+? (not (any "/\n"))))
@@ -376,18 +379,15 @@ Need to fix!"
   (let ((pages (gk-roam--all-pages)))
     (mapcar #'gk-roam-update-reference pages)))
 
-;; (defvar gk-roam-link-num 0
-;;   "Number of link or hashtag in gk-roam buffer.")
-
 (defun gk-roam-resolve-link (orig-func file &rest args)
   "Convert gk-roam link to org link."
   (let ((file-buf (or (get-file-buffer file)
 		      (find-file-noselect file))))
     (with-current-buffer file-buf
       (goto-char (point-min))
-      ;; (setq gk-roam-link-num 0)
+      (setq gk-roam-has-link-p nil)
       (while (re-search-forward gk-roam-link-regexp nil t)
-	;; (setq gk-roam-link-num (1+ gk-roam-link-num))
+	(setq gk-roam-has-link-p t)
 	(let (beg end title hashtag-p)
 	  (setq beg (match-beginning 0))
 	  (setq end (match-end 0))
@@ -404,7 +404,8 @@ Need to fix!"
 	    (insert (format "[[file:%s][%s]]" (gk-roam--get-page title) title)))))
       (save-buffer)
       (apply orig-func file args)
-      (ignore-errors (undo-tree-undo)))))
+      (when gk-roam-has-link-p
+	(ignore-errors (undo-tree-undo))))))
 
 ;;;###autoload
 (defun gk-roam-publish-current-file ()
@@ -688,6 +689,7 @@ This uses `ido-mode' user interface for completion."
   (add-hook 'gk-roam-mode-hook 'gk-roam-overlay-buffer)
   
   (setq gk-roam-pages (gk-roam--all-titles))
+  (setq-local gk-roam-has-link-p nil)
   
   (use-local-map gk-roam-mode-map))
 
