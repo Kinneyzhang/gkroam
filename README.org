@@ -4,6 +4,8 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
 
    [[./demos/completion.gif]]
 
+   [[./demos/brackets.gif]]
+
 ** Install
    
    My configuration are as follows. Package [[https://github.com/abo-abo/hydra][hydra]] and [[https://github.com/jerrypnz/major-mode-hydra.el][pretty-hydra]] are used for keybindings, free feel to modify them as you like. See my pretty-hydra config [[https://github.com/Kinneyzhang/.emacs.d/blob/master/elisp/init-hydra.el][here]].
@@ -81,9 +83,11 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
    =gk-roam-preview=\\
    Preview gk-roam site's index page.
 
-** FIX ME
-
-   - Links in headine are not supported yet.
+** ChangeLog
+   - v1.0 - Auto update link references at the buttom of page buffer.
+   - v2.0 - Use overlay to hide and show gk-roam brackets accordingly and fix some bugs.
+   - v2.0.1 - Fix 'hide and show brackets' problems in some main occasion. Such as newline, etc.
+   - v2.0.2 - Fix gk-roam-publish-current-file, automatically convert gk-roam link to org link and convert it back after published (use 'undo', not reliable) . But it has problem with publishing the whole project.
 
 ** Todo List
    
@@ -100,10 +104,10 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
    * [X] Links in the same page should be shown under one page title in references.
    * [X] Hide brackets and auto show brackets when move to a line including gk-roam link.
    * [X] Replace 'post-command-hook' with 'advice-add' for brackets hide and show.
-   * [ ] Convert gk-roam link to org file link when publish.
+   * [ ] Convert gk-roam link to org file link when publish project.
 
    More in future!
 
 ** Acknowledgements
 
-   Thanks to cool guys in [[https://emacs-china.org][emacs-china.org]] who answered some key questions. Thanks to [[https://github.com/casouri][casouri]]'s [[https://github.com/casouri/lunarymacs/blob/master/site-lisp/bklink.el][bklink.el]] which gives me lots of ideas.
+   Thanks to cool guys in [[https://emacs-china.org][emacs-china.org]] who answered some key questions. Specially thanks to [[https://github.com/casouri][casouri]], his [[https://github.com/casouri/lunarymacs/blob/master/site-lisp/bklink.el][bklink.el]] which gives me lots of ideas.
