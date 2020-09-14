@@ -98,7 +98,7 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
    
    Recently, I have been watching [[https://www.youtube.com/playlist?list=PLwXSqDdn_CpE934BjXMgmzHnlwXMy41TC][videos]] about Roam Research. From it, I have got lots of ideas to improve gk-roam. The ideas are as follows:
 
-   * [X] Change page's filename to only date numbers.
+   * [X] Insert linked references at the bottom of page.
    * [X] Add "gk-roam-daily" function to handly open a 'daily notes' page.
    * [X] Change gk-roam link to the format of "{[page-title]}"
    * [X] Add hashtag, with the format of "#{[page-title]}"
@@ -106,7 +106,8 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
    * [X] Links in the same page should be shown under one page title in references.
    * [X] Hide brackets and auto show brackets when move to a line including gk-roam link.
    * [X] Replace 'post-command-hook' with 'advice-add' for brackets hide and show.
-   * [X] Convert gk-roam link to org file link when publish project.
+   * [X] Convert gk-roam link to org file link when publish project and convert back when published.
+   * [ ] Implement 'block reference' and 'block embeds'.
 
    More in future!
 
