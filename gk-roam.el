@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Kinney Zhang
 ;;
-;; Version: 2.0.2
+;; Version: 2.0.4
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: http://github.com/Kinneyzhang/gk-roam
@@ -279,7 +279,7 @@ Need to fix!"
 ;;;; Commands
 ;;;###autoload
 (defun gk-roam-find (&optional title)
-  "Create a new gk-roam file or open an exist one."
+  "Create a new gk-roam file or open an exist one in current window."
   (interactive)
   (let* ((title (or title (ido-completing-read "New title or open an exist one: "
 					       (gk-roam--all-titles) nil nil)))
@@ -478,23 +478,12 @@ Need to fix!"
   'action #'gk-roam-follow-link
   'title nil
   'follow-link t
-  'use-window nil
   'help-echo "Jump to page")
 
 (defun gk-roam-follow-link (button)
   "Jump to the page that BUTTON represents."
   (with-demoted-errors "Error when following the link: %s"
     (gk-roam-find (button-get button 'title))))
-
-(defun gk-roam-link-at-point-p ()
-  "Judge if gk-roam link is at point."
-  (save-excursion
-    (catch 'found
-      (let ((pos (point)))
- 	(beginning-of-line)
- 	(while (re-search-forward gk-roam-link-regexp (line-end-position) t)
- 	  (if (<= (match-beginning 0) pos (1- (match-end 0)))
- 	      (throw 'found `(,(match-beginning 0) . ,(match-end 0)))))))))
 
 (defun gk-roam-link-fontify (beg end)
   "Put gk-roam link between BEG and END."
@@ -600,7 +589,7 @@ Need to fix!"
   "Advice function for automatically hide and show brackets when cursor moves."
   (gk-roam-put-overlays (line-beginning-position) (line-end-position))
   (apply orig-fun args)
-  (unless (gk-roam-link-at-point-p)
+  (unless (ignore-errors (mouse-on-link-p (point)))
     (gk-roam-remove-overlays)))
 
 ;;;###autoload
