@@ -181,7 +181,7 @@ Need to fix!"
     (goto-char (point-min))
     (while (re-search-forward "\\({\\[\\|\\]}\\)+?" nil t)
       (replace-match ""))
-    (concat "- " (buffer-string))))
+    (buffer-string)))
 
 (defun gk-roam--search-linked-pages (page callback)
   "Call CALLBACK with a list of files’ name that has a link to PAGE."

@@ -6,7 +6,7 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
 
    [[./demos/brackets.gif]]
 
-** Install
+** Installation
    
    My configuration are as follows. Package [[https://github.com/abo-abo/hydra][hydra]] and [[https://github.com/jerrypnz/major-mode-hydra.el][pretty-hydra]] are used for keybindings, free feel to modify them as you like. See my pretty-hydra config [[https://github.com/Kinneyzhang/.emacs.d/blob/master/elisp/init-hydra.el][here]].
 
@@ -98,15 +98,13 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
    
    Recently, I have been watching [[https://www.youtube.com/playlist?list=PLwXSqDdn_CpE934BjXMgmzHnlwXMy41TC][videos]] about Roam Research. From it, I have got lots of ideas to improve gk-roam. The ideas are as follows:
 
-   * [X] Insert linked references at the bottom of page.
-   * [X] Add "gk-roam-daily" function to handly open a 'daily notes' page.
-   * [X] Change gk-roam link to the format of "{[page-title]}"
-   * [X] Add hashtag, with the format of "#{[page-title]}"
-   * [X] Do auto completion when input brackets and hashtag.
-   * [X] Links in the same page should be shown under one page title in references.
-   * [X] Hide brackets and auto show brackets when move to a line including gk-roam link.
-   * [X] Replace 'post-command-hook' with 'advice-add' for brackets hide and show.
-   * [X] Convert gk-roam link to org file link when publish project and convert back when published.
+   * [X] Simply insert linked references at the bottom of page.
+   * [X] Add "gk-roam-daily" function to open a 'daily notes' page.
+   * [X] Custom link notation: "{[page-title]}" for page link, "#{[page-title]}" for hashtag.
+   * [X] Do auto completion after input brackets and hash symbol.
+   * [X] Automatically hide and show brackets when move to a line including gk-roam links.
+   * [X] Convert gk-roam link to org file link before publish and convert back when published.
+   * [ ] A more reasonable linked references form.
    * [ ] Implement 'block reference' and 'block embeds'.
 
    More in future!
