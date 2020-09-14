@@ -1,4 +1,15 @@
-Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use 'ripgrep' to search file links and insert references at the bottom of org files automatically. References consist of backlinks and related context.
+* Table of Contents :TOC_3:
+  - [[#introduction][Introduction]]
+  - [[#demos][Demos]]
+  - [[#installation][Installation]]
+  - [[#dependency][Dependency]]
+  - [[#usage][Usage]]
+  - [[#changelog][ChangeLog]]
+  - [[#todo][Todo]]
+  - [[#acknowledgements][Acknowledgements]]
+
+** Introduction
+   Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It uses 'ripgrep' to search pages' links and insert references at the bottom of org pages automatically. Almostly, gk-roam imitates roam research in many aspects. More useful functionality will be implemented in future.
 
 ** Demos
 
@@ -94,7 +105,7 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
    - =v2.0.3=: Fix =gk-roam-publish-site= and =gk-roam-preview=. Now you can publish and preview the whole roam site.
    - =v2.0.4=: Many bugs fixed and code improvement.
 
-** Todo List
+** Todo
    
    Recently, I have been watching [[https://www.youtube.com/playlist?list=PLwXSqDdn_CpE934BjXMgmzHnlwXMy41TC][videos]] about Roam Research. From it, I have got lots of ideas to improve gk-roam. The ideas are as follows:
 
@@ -111,4 +122,4 @@ Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It use '
 
 ** Acknowledgements
 
-   Thanks to cool guys in [[https://emacs-china.org][emacs-china.org]] who answered some key questions. Specially thanks to [[https://github.com/casouri][casouri]], his [[https://github.com/casouri/lunarymacs/blob/master/site-lisp/bklink.el][bklink.el]] which gives me lots of ideas.
+   Thanks to cool guys in [[https://emacs-china.org][emacs-china.org]] who answered some key questions. Specially thanks to [[https://github.com/casouri][casouri]], his [[https://github.com/casouri/lunarymacs/blob/master/site-lisp/bklink.el][bklink.el]] gives me lots of ideas.
