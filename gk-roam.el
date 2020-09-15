@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Kinney Zhang
 ;;
-;; Version: 2.0.4
+;; Version: 2.1.0
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: http://github.com/Kinneyzhang/gk-roam
@@ -46,6 +46,8 @@
 ;; preview the whole roam site.
 
 ;; v2.0.4 - Many bugs fixed and code improvement.
+
+;; v2.1.0 - A more powerful linked references system.
 
 ;;; Code:
 

@@ -19,29 +19,25 @@
 
 ** Installation
    
-   My configuration are as follows. Package [[https://github.com/abo-abo/hydra][hydra]] and [[https://github.com/jerrypnz/major-mode-hydra.el][pretty-hydra]] are used for keybindings, free feel to modify them as you like. See my pretty-hydra config [[https://github.com/Kinneyzhang/.emacs.d/blob/master/elisp/init-hydra.el][here]].
+   Clone this repo and add gk-roam to your emacs load-path. My configurations are as follows. Free feel to modify them as you like.
 
    #+BEGIN_SRC emacs-lisp
    (use-package gk-roam
      :load-path "~/iCloud/hack/gk-roam/"
-     :init (setq gk-roam-root-dir "~/gk-roam/org/"
-		 gk-roam-pub-dir "~/gk-roam/site/")
-     :bind (("<f2>" . gk-roam-hydra/body))
-     :config
-     (pretty-hydra-define gk-roam-hydra
-       (:color amaranth :exit t)
-       ("Gk-Roam"
-	(("r f" gk-roam-find "find file")
-	 ("r d" gk-roam-daily "daily notes")
-	 ("r i" gk-roam-insert "insert links")
-	 ("r t" gk-roam-toggle-brackets "toggle brackets")
-	 ("r n" gk-roam-smart-new "smart new")
-	 ("r g" gk-roam-update "update reference")
-	 ("r G" gk-roam-update-all "update all reference")
-	 ("r I" gk-roam-index "show index")
-	 ("r p" gk-roam-preview "preview site")
-	 ("r v" gk-roam-preview-current "preview current file")
-	 ("r q" nil "cancel")))))
+     :init
+     (setq gk-roam-root-dir "~/gk-roam/org/"
+	   gk-roam-pub-dir "~/gk-roam/site/")
+     :bind
+     (("C-c r G" . gk-roam-update-all)
+      ("C-c r g" . gk-roam-update)
+      ("C-c r d" . gk-roam-daily)
+      ("C-c r f" . gk-roam-find)
+      ("C-c r n" . gk-roam-smart-new)
+      ("C-c r i" . gk-roam-insert)
+      ("C-c r I" . gk-roam-index)
+      ("C-c r p" . gk-roam-preview)
+      ("C-c r v" . gk-roam-preview-current)
+      ("C-c r t" . gk-roam-toggle-brackets)))
    #+END_SRC
 
 ** Dependency
@@ -104,6 +100,7 @@
    - =v2.0.2=: Fix =gk-roam-publish-current-file=, automatically convert gk-roam link to org link and convert it back after published (use 'undo', not reliable) . But it has problem with publishing the whole project.
    - =v2.0.3=: Fix =gk-roam-publish-site= and =gk-roam-preview=. Now you can publish and preview the whole roam site.
    - =v2.0.4=: Many bugs fixed and code improvement.
+   - =v2.1.0=: A more powerful linked references system.
 
 ** Todo
    
@@ -115,7 +112,7 @@
    * [X] Do auto completion after input brackets and hash symbol.
    * [X] Automatically hide and show brackets when move to a line including gk-roam links.
    * [X] Convert gk-roam link to org file link before publish and convert back when published.
-   * [ ] A more reasonable linked references form.
+   * [X] A more reasonable linked references form.
    * [ ] Implement 'block reference' and 'block embeds'.
 
    More in future!
