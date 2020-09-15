@@ -171,18 +171,17 @@
     (format "[[file:%s][%s]]" page title)))
 
 ;; ----------------------------------------
-(defvar gk-roam-link-re-format
+(setq gk-roam-link-re-format
       "\\(\\(-\\|+\\|*\\|[0-9]+\\.\\|[0-9]+)\\) .*?{\\[%s\\]}.*\\(\n+ +.*\\)*
-\\|\\(.*{\\[%s\\]}.*\\\\\n\\|.+\\\\\n\\)+\\(.+\\|.*{\\[%s\\]}.*\\)*
-\\|.*#\\+begin_verse.*\n\\(.+\n\\|.*{\\[%s\\]}.*\n\\)*.*{\\[%s\\]}.*\n\\(\\)+\\(.+\n\\|.*{\\[%s\\]}.*\n\\)*.*#\\+end_verse.*
-\\|.*{\\[%s\\]}.*
-\\)")
+\\|\\(.*{\\[%s\\]}.*\\\\\n\\(.+\\\\\n\\)*.+\\|\\(.+\\\\\n\\)+.*{\\[%s\\]}.*\\\\\n\\(.+\\\\\n\\)*.+\\|\\(.+\\\\\n\\)+.*{\\[%s\\]}.*\\)
+\\|.*#\\+begin_verse.*\n+\\(.+\n+\\|.*{\\[%s\\]}.*\n+\\)*.*{\\[%s\\]}.*\n+\\(\\)+\\(.+\n+\\|.*{\\[%s\\]}.*\n+\\)*.*#\\+end_verse.*
+\\|.*{\\[%s\\]}.*\n\\)")
 
 (defun gk-roam--search-process (page linum)
   "Search gk-roam links or hashtags in org-mode in list,
 and output NUM*2 lines before and after the link line."
   (let ((title (gk-roam--get-title page))
-	(name (generate-new-buffer-name "*gk-roam-rg*")))
+	(name (generate-new-buffer-name " *gk-roam-rg*")))
     (start-process
      name name "rg" "-C" (number-to-string linum)
      "-FN" "--heading"
@@ -193,10 +192,14 @@ and output NUM*2 lines before and after the link line."
 (defun gk-roam--process-link-in-references (str)
   "Remove links in reference's text."
   (with-temp-buffer
-    (insert (string-trim str "\n+" "[\n ]+"))
+    (string-trim str "\n+" "\n+")
+    (insert str)
     (goto-char (point-min))
-    (while (re-search-forward "\\({\\[\\|\\]}\\)+?" nil t)
-      (replace-match "/"))
+    (while (re-search-forward "#{\\[" nil t)
+      (replace-match "*#"))
+    (goto-char (point-min))
+    (while (re-search-forward "\\({\\[\\|\\]}\\)" nil t)
+      (replace-match "*"))
     (buffer-string)))
 
 (defun gk-roam-process-searched-string (string title linum)
@@ -214,14 +217,15 @@ and output NUM*2 lines before and after the link line."
 	  (forward-line)
 	  (catch 'break
 	    (while (re-search-forward
-		    (replace-regexp-in-string "%s" title gk-roam-link-re-format )
+		    (replace-regexp-in-string "%s" title gk-roam-link-re-format)
 		    nil t)
 	      (setq num (1+ num))
-	      (setq content (match-string-no-properties 0))
-	      (setq context (concat context content "\n"))
+	      (setq content (concat (match-string-no-properties 0) "\n"))
+	      ;; (setq content (gk-roam-process-references-style content))
+	      (setq context (concat context content))
 	      (save-excursion
 		(when (re-search-forward
-		       (replace-regexp-in-string "%s" title gk-roam-link-re-format )
+		       (replace-regexp-in-string "%s" title gk-roam-link-re-format)
 		       nil t)
 		  (re-search-backward gk-roam-file-re nil t)
 		  (unless (string= path (match-string-no-properties 0))
@@ -229,7 +233,7 @@ and output NUM*2 lines before and after the link line."
 	  (setq context (gk-roam--process-link-in-references context))
 	  (setq references
 		(concat references
-			(format "* %s\n%s\n\n" (gk-roam--format-backlink page) context)))))
+			(format "* %s\n%s" (gk-roam--format-backlink page) context)))))
       (cons num references))))
 
 (defun gk-roam--search-linked-pages (process callback)
@@ -312,8 +316,8 @@ and output NUM*2 lines before and after the link line."
 (defun gk-roam-find (&optional title)
   "Create a new gk-roam file or open an exist one in current window."
   (interactive)
-  (let* ((title (or title (ido-completing-read "New title or open an exist one: "
-					       (gk-roam--all-titles) nil nil)))
+  (let* ((title (or title (completing-read "New title or open an exist one: "
+					   (gk-roam--all-titles) nil nil)))
 	 (page (gk-roam--get-page title)))
     (if page
 	(find-file (gk-roam--get-file page))
@@ -334,7 +338,7 @@ and output NUM*2 lines before and after the link line."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
 	       (expand-file-name gk-roam-root-dir))
-      (let* ((title (or title (ido-completing-read
+      (let* ((title (or title (completing-read
 			       "Choose a page or create a new: "
 			       (gk-roam--all-titles) nil nil
 			       (thing-at-point 'word t))))
