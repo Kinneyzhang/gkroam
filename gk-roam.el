@@ -165,89 +165,120 @@
       (setq heading (org-get-heading t t t t)))
     heading))
 
-(defun gk-roam--format-backlink (line page)
-  "Format gk-roam backlink of specific LINE in PAGE.
-Need to fix!"
-  (let* ((heading (gk-roam-heading-of-line line page))
-	 (title (gk-roam--get-title page)))
-    (if (null heading)
-	(format "[[file:%s][%s]]" page title)
-      (format "[[file:%s][%s]]" page title))))
+(defun gk-roam--format-backlink (page)
+  "Format gk-roam backlink in PAGE."
+  (let* ((title (gk-roam--get-title page)))
+    (format "[[file:%s][%s]]" page title)))
 
-(defun gk-roam--process-reference (text)
+;; ----------------------------------------
+(defvar gk-roam-link-re-format
+      "\\(\\(-\\|+\\|*\\|[0-9]+\\.\\|[0-9]+)\\) .*?{\\[%s\\]}.*\\(\n+ +.*\\)*
+\\|\\(.*{\\[%s\\]}.*\\\\\n\\|.+\\\\\n\\)+\\(.+\\|.*{\\[%s\\]}.*\\)*
+\\|.*#\\+begin_verse.*\n\\(.+\n\\|.*{\\[%s\\]}.*\n\\)*.*{\\[%s\\]}.*\n\\(\\)+\\(.+\n\\|.*{\\[%s\\]}.*\n\\)*.*#\\+end_verse.*
+\\|.*{\\[%s\\]}.*
+\\)")
+
+(defun gk-roam--search-process (page linum)
+  "Search gk-roam links or hashtags in org-mode in list,
+and output NUM*2 lines before and after the link line."
+  (let ((title (gk-roam--get-title page))
+	(name (generate-new-buffer-name "*gk-roam-rg*")))
+    (start-process
+     name name "rg" "-C" (number-to-string linum)
+     "-FN" "--heading"
+     (format "{[%s]}" title)
+     (expand-file-name gk-roam-root-dir) ;; must be absolute path.
+     "-g" "!index.org*")))
+
+(defun gk-roam--process-link-in-references (str)
   "Remove links in reference's text."
   (with-temp-buffer
-    (insert (string-trim text "\\** +" nil))
+    (insert (string-trim str "\n+" "[\n ]+"))
     (goto-char (point-min))
     (while (re-search-forward "\\({\\[\\|\\]}\\)+?" nil t)
-      (replace-match ""))
+      (replace-match "/"))
     (buffer-string)))
 
-(defun gk-roam--search-linked-pages (page callback)
-  "Call CALLBACK with a list of files’ name that has a link to PAGE."
-  (let* ((name (generate-new-buffer-name " *gk-roam-rg*"))
-         (process (start-process
-                   name name "rg" "-Fn" "--heading"
-		   (gk-roam--format-link (gk-roam--get-title page))
-		   (expand-file-name gk-roam-root-dir) ;; must be absolute path.
-		   "-g" "!index.org*"))
-         ;; When the rg process finishes, we parse the result files
-         ;; and call CALLBACK with them.
-         (sentinal
-          (lambda (process event)
+(defun gk-roam-process-searched-string (string title linum)
+  "Process searched STRING by 'rg', get page LINUM*2+1 lines of TITLE and context."
+  (with-temp-buffer
+    (insert string)
+    (goto-char (point-min))
+    (let ((gk-roam-file-re (format "%s[0-9]\\{14\\}\\.org"
+				   (expand-file-name gk-roam-root-dir)))
+	  (num 0) references)
+      (while (re-search-forward gk-roam-file-re nil t)
+	(let* ((path (match-string-no-properties 0))
+	       (page (file-name-nondirectory path))
+	       beg end content context)
+	  (forward-line)
+	  (catch 'break
+	    (while (re-search-forward
+		    (replace-regexp-in-string "%s" title gk-roam-link-re-format )
+		    nil t)
+	      (setq num (1+ num))
+	      (setq content (match-string-no-properties 0))
+	      (setq context (concat context content "\n"))
+	      (save-excursion
+		(when (re-search-forward
+		       (replace-regexp-in-string "%s" title gk-roam-link-re-format )
+		       nil t)
+		  (re-search-backward gk-roam-file-re nil t)
+		  (unless (string= path (match-string-no-properties 0))
+		    (throw 'break nil))))))
+	  (setq context (gk-roam--process-link-in-references context))
+	  (setq references
+		(concat references
+			(format "* %s\n%s\n\n" (gk-roam--format-backlink page) context)))))
+      (cons num references))))
+
+(defun gk-roam--search-linked-pages (process callback)
+  "Call CALLBACK with the matched string that has a link to PAGE,
+ using the rg PROCESS."
+  (let (sentinel)
+    (setq sentinel
+	  (lambda (process event)
             (if (string-match-p (rx (or "finished" "exited"))
-                                event)
+				event)
                 (if-let ((buf (process-buffer process)))
                     (with-current-buffer buf
-                      (let ((results (split-string (buffer-string) "\n\n")))
-                        (funcall callback (remove "" results))))
+		      (funcall callback (buffer-string)))
                   (error "Gk-roam’s rg process’ buffer is killed"))
-              (error "Gk-roam’s rg process failed with signal: %s"
-                     event)))))
-    (set-process-sentinel process sentinal)))
+	      (error "Gk-roam’s rg process failed with signal: %s"
+                     event))))
+    (set-process-sentinel process sentinel)))
 
 (defun gk-roam-update-reference (page)
   "Update gk-roam file reference."
   (unless (executable-find "rg")
     (user-error "Cannot find program rg"))
-  (gk-roam--search-linked-pages
-   page
-   (lambda (results)
-     (let* ((file (gk-roam--get-file page))
-	    (file-buf (or (get-file-buffer file)
-			  (find-file-noselect file nil nil))))
-       (with-current-buffer file-buf
-	 (save-excursion
-	   (goto-char (point-max))
-	   (re-search-backward "\n-----\n" nil t)
-	   (delete-region (point) (point-max))
-	   (let ((num 0))
-	     (when results
-	       (insert "\n-----\n")
-	       (dolist (res results)
-		 (let* ((res-list (split-string res "\n" t "[ \n]+"))
-			(res-file (car res-list))
-			line caption text texts)
-		   (pop res-list) ;; return first elem!
-		   (setq num (+ num (length res-list)))
-		   (dolist (item res-list)
-		     (setq line (when (string-match "[0-9]+" item)
-				  (match-string 0 item)))
-		     (setq caption (gk-roam--format-backlink
-				    line (file-name-nondirectory res-file)))
-		     (setq text
-			   (gk-roam--process-reference
-			    (string-trim item
-					 (when (string-match "[0-9]+: *" item)
-					   (match-string 0 item))
-					 nil)))
-		     (setq texts (concat texts (concat "\n" text))))
-		   (insert (concat caption texts "\n\n"))))
-	       (goto-char (point-min))
-	       (re-search-forward "-----\n" nil t)
-	       (insert (format "%d Linked References to \"%s\"\n\n" num (gk-roam--get-title page)))
+  (let ((linum 10))
+    (gk-roam--search-linked-pages
+     (gk-roam--search-process page linum)
+     (lambda (string)
+       (let* ((title (gk-roam--get-title page))
+	      (file (gk-roam--get-file page))
+	      (file-buf (or (get-file-buffer file)
+			    (find-file-noselect file nil nil))))
+	 (with-current-buffer file-buf
+	   (save-excursion
+	     (goto-char (point-max))
+	     (re-search-backward "\n-----\n" nil t)
+	     (delete-region (point) (point-max))
+	     (unless (string= string "")
+	       (let* ((processed-str (gk-roam-process-searched-string string title linum))
+		      (num (car processed-str))
+		      (references (cdr processed-str)))
+		 (insert "\n-----\n")
+		 (goto-char (point-min))
+		 (re-search-forward "-----\n" nil t)
+		 (insert (format "%d Linked References to \"%s\"\n\n" num
+				 (gk-roam--get-title page)))
+		 (insert references))
 	       (save-buffer))))))))
   (message "%s reference updated" page))
+
+;; -----------------------------------
 
 (defun gk-roam-new (title)
   "Just create a new gk-roam file."
