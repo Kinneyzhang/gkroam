@@ -5,14 +5,15 @@
   - [[#dependency][Dependency]]
   - [[#usage][Usage]]
   - [[#changelog][ChangeLog]]
-  - [[#todo][Todo]]
+  - [[#todolist][TodoList]]
   - [[#acknowledgements][Acknowledgements]]
 
 ** Introduction
    Gk-roam is a light-weight roam replica, built on top of emacs org-mode. It uses 'ripgrep' to search pages' links and insert references at the bottom of org pages automatically. Almostly, gk-roam imitates roam research in many aspects. More useful functionality will be implemented in future.
 
 ** Demos
-
+   [[./demos/linked-references.gif]]
+   
    [[./demos/completion.gif]]
 
    [[./demos/brackets.gif]]
@@ -102,7 +103,7 @@
    - =v2.0.4=: Many bugs fixed and code improvement.
    - =v2.1.0=: A more powerful linked references system.
 
-** Todo
+** TodoList
    
    Recently, I have been watching [[https://www.youtube.com/playlist?list=PLwXSqDdn_CpE934BjXMgmzHnlwXMy41TC][videos]] about Roam Research. From it, I have got lots of ideas to improve gk-roam. The ideas are as follows:
 
