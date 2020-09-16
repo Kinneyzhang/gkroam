@@ -473,7 +473,9 @@ and output NUM*2 lines before and after the link line."
 	       (expand-file-name gk-roam-root-dir))
       (progn
 	(gk-roam-update)
-	(org-publish-file (buffer-file-name)))
+	(if undo-tree-mode
+	    (org-publish-file (buffer-file-name))
+	  (message "please enable 'undo-tree-mode' in this buffer!")))
     (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
@@ -486,7 +488,9 @@ and output NUM*2 lines before and after the link line."
         (httpd-serve-directory gk-roam-pub-dir)
         (unless (httpd-running-p) (httpd-start))
         (gk-roam-publish-current-file)
-        (browse-url (format "http://%s:%d/%s" "127.0.0.1" 8080 current-file)))
+	(if undo-tree-mode
+	    (browse-url (format "http://%s:%d/%s" "127.0.0.1" 8080 current-file))
+	  (message "please enable 'undo-tree-mode' in this buffer!")))
     (message "Not in the gk-roam directory!")))
 
 ;;;###autoload
@@ -495,7 +499,9 @@ and output NUM*2 lines before and after the link line."
   (interactive)
   (gk-roam-update-index)
   ;; (gk-roam-update-all)
-  (org-publish-project "gk-roam" FORCE ASYNC))
+  (if global-undo-tree-mode
+      (org-publish-project "gk-roam" FORCE ASYNC)
+    (message "please enable 'global-undo-tree-mode'!")))
 
 ;;;###autoload
 (defun gk-roam-preview ()
@@ -505,7 +511,9 @@ and output NUM*2 lines before and after the link line."
     (httpd-serve-directory gk-roam-pub-dir)
     (unless (httpd-running-p) (httpd-start))
     (gk-roam-publish-site t nil)
-    (browse-url (format "http://%s:%d" "127.0.0.1" 8080))))
+    (if global-undo-tree-mode
+	(browse-url (format "http://%s:%d" "127.0.0.1" 8080))
+      (message "please enable 'global-undo-tree-mode'!"))))
 
 ;; --------------------------------------------
 ;; minor mode
