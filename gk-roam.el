@@ -51,6 +51,7 @@
 
 ;;; Code:
 
+(require 'ox-publish)
 (require 'simple-httpd)
 (require 'undo-tree)
 
@@ -58,7 +59,6 @@
 (declare-function org-get-heading "org")
 (declare-function org-publish-project "ox-publish")
 (defvar org-link-frame-setup)
-(defvar org-publish-project-alist)
 
 ;;;; Variables
 (defvar gk-roam-root-dir ""

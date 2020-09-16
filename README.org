@@ -20,7 +20,7 @@
 
 ** Installation
    
-   Clone this repo and add gk-roam to your emacs load-path. My configurations are as follows. Free feel to modify them as you like.
+   Clone this repo and add gk-roam to your emacs load-path. My configurations are as follows. Feel free to modify them as you like.
 
    #+BEGIN_SRC emacs-lisp
    (use-package gk-roam
@@ -51,10 +51,10 @@
 
    *Shortcut keys:*
 
-   | shortcut | function                      |
-   |----------+-------------------------------|
-   | ={[]}=   | complete page link at point   |
-   | =#=      | complete hashtag at point     |
+   | shortcut | function                    |
+   |----------+-----------------------------|
+   | ={[]}=   | complete page link at point |
+   | =#=      | complete hashtag at point   |
    
    *Main functions:*
 
