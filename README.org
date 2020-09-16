@@ -114,6 +114,8 @@
    * [X] Automatically hide and show brackets when move to a line including gk-roam links.
    * [X] Convert gk-roam link to org file link before publish and convert back when published.
    * [X] A more reasonable linked references form.
+   * [ ] Implement roam research like sidebar, named 'gk-roam-side-edit' function.
+   * [ ] Implement the slash magics, after input slash, do completion for commands.
    * [ ] Implement 'block reference' and 'block embeds'.
 
    More in future!

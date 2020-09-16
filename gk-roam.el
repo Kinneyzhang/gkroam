@@ -482,9 +482,9 @@ and output NUM*2 lines before and after the link line."
   (if (string= (file-name-directory (buffer-file-name))
 	       (expand-file-name gk-roam-root-dir))
       (let ((current-file (concat (file-name-base (buffer-file-name)) ".html")))
-        (httpd-serve-directory gk-roam-pub-dir)
-        (unless (httpd-running-p) (httpd-start))
-        (gk-roam-publish-current-file)
+	(httpd-serve-directory gk-roam-pub-dir)
+	(unless (httpd-running-p) (httpd-start))
+	(gk-roam-publish-current-file)
 	(if undo-tree-mode
 	    (browse-url (format "http://%s:%d/%s" "127.0.0.1" 8080 current-file))
 	  (message "please enable 'undo-tree-mode' in this buffer!")))
@@ -511,6 +511,20 @@ and output NUM*2 lines before and after the link line."
     (if global-undo-tree-mode
 	(browse-url (format "http://%s:%d" "127.0.0.1" 8080))
       (message "please enable 'global-undo-tree-mode'!"))))
+
+;; --------------------------------------------
+;; Edit pages in side buffer, each page is under a headline.
+
+;; (defun gk-roam-side-edit (title)
+;;   "Edit a page titled with TITLE in a side buffer, 
+;; with 'C-c C-c' to finish, 'C-c C-k' to abort."
+;;   (interactive))
+
+;; --------------------------------------------
+;; slash magic
+
+;; -------------------------------------------
+;; minor mode
 
 (define-button-type 'gk-roam-link
   'action #'gk-roam-follow-link
@@ -660,6 +674,13 @@ and output NUM*2 lines before and after the link line."
     (and (not (= (line-beginning-position) (point)))
 	 (thing-at-point 'word t))))
 
+(defun gk-roam-company-slash-p ()
+  "Judge if need to company slash."
+  (save-excursion
+    (skip-chars-backward "^/" (line-beginning-position))
+    (and (not (= (line-beginning-position) (point)))
+	 (thing-at-point 'word t))))
+
 (defun gk-roam--complete-hashtag ()
   "Complete hashtag with brackets."
   (when (gk-roam-company-hashtag-p)
@@ -677,21 +698,30 @@ and output NUM*2 lines before and after the link line."
     (gk-roam--complete-hashtag)
     (save-buffer)))
 
+;; (defvar gk-roam-slash-magics nil)
+
+;; (setq gk-roam-slash-magics '("TODO" "Page Reference" "Hashtag" "Current Time"))
+
 (defun gk-roam-completion-at-point ()
   "Function binded to `completion-at-point-functions'."
   (interactive)
-  (when (or (gk-roam-company-bracket-p)
-	    (gk-roam-company-hashtag-p))
-    (let (bds start end)
-      (if (gk-roam-company-bracket-p)
-	  (progn
-	    (setq bds (bounds-of-thing-at-point 'list))
-            (setq start (1+ (car bds)))
-	    (setq end (1- (cdr bds))))
-	(setq bds (bounds-of-thing-at-point 'symbol))
-	(setq start (car bds))
-	(setq end (cdr bds)))
-      (list start end gk-roam-pages . nil))))
+  (let (bds beg end)
+    (cond
+     ((gk-roam-company-bracket-p)
+      (setq bds (bounds-of-thing-at-point 'list))
+      (setq beg (1+ (car bds)))
+      (setq end (1- (cdr bds)))
+      (list beg end gk-roam-pages . nil))
+     ((gk-roam-company-hashtag-p)
+      (setq bds (bounds-of-thing-at-point 'symbol))
+      (setq beg (car bds))
+      (setq end (cdr bds))
+      (list beg end gk-roam-pages . nil))
+     ((gk-roam-company-slash-p)
+      (setq bds (bounds-of-thing-at-point 'symbol))
+      (setq beg (car bds))
+      (setq end (cdr bds))
+      (list beg end gk-roam-slash-magics . nil)))))
 
 (progn
   (setq gk-roam-mode-map (make-sparse-keymap)))
@@ -730,7 +760,6 @@ and output NUM*2 lines before and after the link line."
   
   (setq gk-roam-pages (gk-roam--all-titles))
   (setq-local gk-roam-has-link-p nil)
-  
   (use-local-map gk-roam-mode-map))
 
 ;; ---------------------------------
