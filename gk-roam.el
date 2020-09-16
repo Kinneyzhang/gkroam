@@ -235,7 +235,7 @@ and output NUM*2 lines before and after the link line."
 	  (setq context (gk-roam--process-link-in-references context))
 	  (setq references
 		(concat references
-			(format "* %s\n%s" (gk-roam--format-backlink page) context)))))
+			(format "** %s\n%s" (gk-roam--format-backlink page) context)))))
       (cons num references))))
 
 (defun gk-roam--search-linked-pages (process callback)
@@ -278,8 +278,7 @@ and output NUM*2 lines before and after the link line."
 		 (insert "\n-----\n")
 		 (goto-char (point-min))
 		 (re-search-forward "-----\n" nil t)
-		 (insert (format "%d Linked References to \"%s\"\n\n" num
-				 (gk-roam--get-title page)))
+		 (insert (format "* %d Linked References\n" num))
 		 (insert references))
 	       (save-buffer))))))))
   (message "%s reference updated" page))
@@ -710,6 +709,7 @@ and output NUM*2 lines before and after the link line."
   (advice-add 'previous-line :around #'gk-roam-overlay1)
   (advice-add 'newline :around #'gk-roam-overlay1)
   (advice-add 'org-delete-backward-char :around #'gk-roam-overlay1)
+  (advice-add 'org-meta-return :around #'gk-roam-overlay1)
   (advice-add 'mouse-drag-region :around #'gk-roam-overlay2)
   (if (require 'hungry-delete nil t)
       (advice-add 'hungry-delete-backward :around #'gk-roam-overlay1))
