@@ -291,7 +291,6 @@ and output NUM*2 lines before and after the link line."
 	 (file-buf (find-file-noselect file))
 	 beg)
     (with-current-buffer file-buf
-      (gk-roam-mode)
       (insert
        (format "#+TITLE: %s\n#+DATE: %s\n#+OPTIONS: toc:nil H:2 num:0\n» [[file:index.org][ /Gk-Roam/ ]]\n\n" title (format-time-string "%Y-%m-%d")))
       (save-buffer))
@@ -305,7 +304,6 @@ and output NUM*2 lines before and after the link line."
                         (find-file-noselect index-org))))
     (with-current-buffer index-buf
       (erase-buffer)
-      (gk-roam-mode)
       (insert "#+TITLE: gk-roam\n#+OPTIONS: toc:nil H:2 num:0\n\n* Site Map\n\n")
       (dolist (page (gk-roam--all-pages))
 	(insert (format " - [[file:%s][%s]]\n" page (gk-roam--get-title page))))
@@ -323,7 +321,6 @@ and output NUM*2 lines before and after the link line."
     (if page
 	(find-file (gk-roam--get-file page))
       (find-file (gk-roam-new title)))
-    (gk-roam-mode)
     (gk-roam-update)))
 
 ;;;###autoload
@@ -515,9 +512,6 @@ and output NUM*2 lines before and after the link line."
 	(browse-url (format "http://%s:%d" "127.0.0.1" 8080))
       (message "please enable 'global-undo-tree-mode'!"))))
 
-;; --------------------------------------------
-;; minor mode
-
 (define-button-type 'gk-roam-link
   'action #'gk-roam-follow-link
   'title nil
@@ -702,12 +696,21 @@ and output NUM*2 lines before and after the link line."
 (progn
   (setq gk-roam-mode-map (make-sparse-keymap)))
 
+(defun gk-roam-set-major-mode ()
+  (when (string=
+	 (file-name-directory (buffer-file-name))
+	 (expand-file-name gk-roam-root-dir))
+    (gk-roam-mode)))
+
+(add-hook 'find-file-hook #'gk-roam-set-major-mode)
+
 (define-derived-mode gk-roam-mode org-mode "gk-roam"
   "Major mode for gk-roam."
   (add-hook 'completion-at-point-functions 'gk-roam-completion-at-point nil 'local)
   (add-hook 'company-completion-finished-hook 'gk-roam-completion-finish nil 'local)
   (add-hook 'gk-roam-mode-hook 'gk-roam-link-frame-setup)
   (add-hook 'gk-roam-mode-hook 'gk-roam-set-project-alist)
+  (add-hook 'gk-roam-mode-hook 'toggle-truncate-lines)
 
   (advice-add 'org-publish-file :around #'gk-roam-resolve-link)
   
