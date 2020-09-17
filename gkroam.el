@@ -116,7 +116,6 @@
           (file . find-file)
           (wl . wl-other-frame))))
 
-;; -------------------------------
 (defun gkroam--get-title (page)
   "Get PAGE's title."
   (with-temp-buffer
@@ -278,8 +277,6 @@
 	       (save-buffer))))))))
   (message "%s reference updated" page))
 
-;; -----------------------------------
-
 (defun gkroam-new (title)
   "Just create a new gkroam page titled with TITLE."
   (let* ((file (gkroam--gen-file))
@@ -409,7 +406,7 @@
     (message "Not in the gkroam directory!")))
 
 ;;;###autoload
-(defun gkroam-update-all () ;; have problem!
+(defun gkroam-update-all ()
   "Update all gkroam files' reference."
   (interactive)
   (gkroam-update-index)
@@ -441,7 +438,7 @@ This is an advice for ORIG-FUN with argument FILE and other ARGS."
 	    (delete-region beg end)
 	    (insert (format "[[file:%s][%s]]" (gkroam--get-page title) title)))))
       (save-buffer)
-      (apply orig-func file args)
+      (apply orig-fun file args)
       (when gkroam-has-link-p
 	;; if possible, use original undo function.
 	(undo-tree-undo)))))
@@ -510,19 +507,6 @@ If ASYNC is non-nil, publish pages in an async process."
 	(browse-url (format "http://%s:%d" "127.0.0.1" 8080))
       (message "please enable 'global-undo-tree-mode'!"))))
 
-;; --------------------------------------------
-;; Edit pages in side buffer, each page is under a headline.
-
-;; (defun gkroam-side-edit (title)
-;;   "Edit a page titled with TITLE in a side window."
-;;   (interactive))
-
-;; --------------------------------------------
-;; slash magic
-
-;; -------------------------------------------
-;; minor mode
-
 (define-button-type 'gkroam-link
   'action #'gkroam-follow-link
   'title nil
@@ -542,7 +526,6 @@ If ASYNC is non-nil, publish pages in an async process."
 		      (match-end 0)
 		      :type 'gkroam-link
 		      'face '(:underline nil)
-		      ;; 'mouse-face '(:underline nil)
 		      'title (match-string-no-properties 2))))
 
 (defun gkroam-hashtag-fontify(beg end)
@@ -695,10 +678,6 @@ The overlays has a PROP and VALUE."
     (gkroam--complete-hashtag)
     (save-buffer)))
 
-;; (defvar gkroam-slash-magics nil)
-
-;; (setq gkroam-slash-magics '("TODO" "Page Reference" "Hashtag" "Current Time"))
-
 (defun gkroam-completion-at-point ()
   "Function binded to `completion-at-point-functions'."
   (interactive)
@@ -742,7 +721,7 @@ The overlays has a PROP and VALUE."
 
   (advice-add 'org-publish-file :around #'gkroam-resolve-link)
   
-  ;; It's ugly to use 'advice-add', though things seem to go well.
+  ;; It's may be ugly to use 'advice-add', though things seem to go well.
   ;; But I haven't found a better way to auto hide and show brackets.
   (advice-add 'next-line :around #'gkroam-overlay1)
   (advice-add 'previous-line :around #'gkroam-overlay1)
