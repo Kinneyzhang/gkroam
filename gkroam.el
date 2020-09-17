@@ -1,4 +1,4 @@
-;;; gkroam.el --- A light-weight org-mode roam replica  -*- lexical-binding: t; -*-
+;;; gkroam.el --- A lightweight org-mode roam replica  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2020 Kinney Zhang
 ;;
