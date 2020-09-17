@@ -191,8 +191,7 @@
 (defun gkroam--process-link-in-references (string)
   "Remove links in reference's STRING."
   (with-temp-buffer
-    (string-trim str "\n+" "\n+")
-    (insert str)
+    (insert string)
     (goto-char (point-min))
     (while (re-search-forward "#{\\[" nil t)
       (replace-match "*#"))
