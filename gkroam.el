@@ -49,7 +49,7 @@
 
 ;; v2.1.0 - A more powerful linked references system.
 
-;; v2.1.1 - Change package name to 'gkroam'.
+;; v2.1.1 - Change package name to 'gkroam' from 'gk-roam'.
 
 ;;; Code:
 
@@ -58,7 +58,7 @@
 (require 'undo-tree)
 
 ;;;; Declarations
-(declare-function org-get-heading "org")
+;; (declare-function org-get-heading "org")
 (declare-function org-publish-project "ox-publish")
 (defvar org-link-frame-setup)
 
@@ -89,7 +89,7 @@
   "Page candidates for completion.")
 
 (defvar gkroam-mode-map nil
-  "Keymap for `gkroam-mode'")
+  "Keymap for `gkroam-mode'.")
 
 (defvar gkroam-has-link-p nil
   "Judge if has link or hashtag in gkroam buffer.")
@@ -118,7 +118,7 @@
 
 ;; -------------------------------
 (defun gkroam--get-title (page)
-  "Get page title."
+  "Get PAGE's title."
   (with-temp-buffer
     (org-mode)
     (insert-file-contents (gkroam--get-file page) nil 0 2000 t)
@@ -127,6 +127,7 @@
     (plist-get (cadr (org-element-at-point)) :value)))
 
 (defun gkroam--get-page (title)
+  "Get gkroam page from TITLE."
   (let ((pages (gkroam--all-pages))
 	file)
     (catch 'break
@@ -147,7 +148,7 @@
   (directory-files gkroam-root-dir nil (rx bol (+ (in num)) ".org" eol)))
 
 (defun gkroam--all-titles ()
-  "Get all gkroam titles"
+  "Get all gkroam titles."
   (let* ((pages (gkroam--all-pages))
 	 (titles (mapcar (lambda (page) (gkroam--get-title page)) pages)))
     titles))
@@ -164,18 +165,6 @@
   "Format TITLE into a gkroam page link."
   (format "{[%s]}" title))
 
-(defun gkroam-heading-of-line (line page)
-  "Get the org heading of specific LINE in FILE."
-  (let ((line (if (stringp line) (string-to-number line) line))
-	heading)
-    (with-temp-buffer
-      (insert-file-contents (gkroam--get-file page))
-      (goto-char (point-min))
-      (forward-line line)
-      (org-mode)
-      (setq heading (org-get-heading t t t t)))
-    heading))
-
 (defun gkroam--format-backlink (page)
   "Format gkroam backlink in PAGE."
   (let* ((title (gkroam--get-title page)))
@@ -189,8 +178,7 @@
 \\|.*{\\[%s\\]}.*\n\\)")
 
 (defun gkroam--search-process (page linum)
-  "Search gkroam links or hashtags in org-mode in list,
-and output NUM*2 lines before and after the link line."
+  "Return a rg process to search PAGE's link and output LINUM lines before and after matched string."
   (let ((title (gkroam--get-title page))
 	(name (generate-new-buffer-name " *gkroam-rg*")))
     (start-process
@@ -200,8 +188,8 @@ and output NUM*2 lines before and after the link line."
      (expand-file-name gkroam-root-dir) ;; must be absolute path.
      "-g" "!index.org*")))
 
-(defun gkroam--process-link-in-references (str)
-  "Remove links in reference's text."
+(defun gkroam--process-link-in-references (string)
+  "Remove links in reference's STRING."
   (with-temp-buffer
     (string-trim str "\n+" "\n+")
     (insert str)
@@ -248,8 +236,7 @@ and output NUM*2 lines before and after the link line."
       (cons num references))))
 
 (defun gkroam--search-linked-pages (process callback)
-  "Call CALLBACK with the matched string that has a link to PAGE,
- using the rg PROCESS."
+  "Call CALLBACK After the PROCESS finished."
   (let (sentinel)
     (setq sentinel
 	  (lambda (process event)
@@ -264,7 +251,7 @@ and output NUM*2 lines before and after the link line."
     (set-process-sentinel process sentinel)))
 
 (defun gkroam-update-reference (page)
-  "Update gkroam file reference."
+  "Update gkroam PAGE's reference."
   (unless (executable-find "rg")
     (user-error "Cannot find program rg"))
   (let ((linum 10))
@@ -295,7 +282,7 @@ and output NUM*2 lines before and after the link line."
 ;; -----------------------------------
 
 (defun gkroam-new (title)
-  "Just create a new gkroam file."
+  "Just create a new gkroam page titled with TITLE."
   (let* ((file (gkroam--gen-file))
 	 (file-buf (find-file-noselect file))
 	 beg)
@@ -322,7 +309,7 @@ and output NUM*2 lines before and after the link line."
 ;;;; Commands
 ;;;###autoload
 (defun gkroam-find (&optional title)
-  "Create a new gkroam file or open an exist one in current window."
+  "Create a new gkroam page or open an exist one in current window, titled with TITLE."
   (interactive)
   (let* ((title (or title (completing-read "New title or open an exist one: "
 					   (gkroam--all-titles) nil nil)))
@@ -341,7 +328,7 @@ and output NUM*2 lines before and after the link line."
 
 ;;;###autoload
 (defun gkroam-insert (&optional title)
-  "Insert a gkroam page"
+  "Insert a gkroam page titled with TITLE."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
 	       (expand-file-name gkroam-root-dir))
@@ -430,8 +417,9 @@ and output NUM*2 lines before and after the link line."
   (let ((pages (gkroam--all-pages)))
     (mapcar #'gkroam-update-reference pages)))
 
-(defun gkroam-resolve-link (orig-func file &rest args)
-  "Convert gkroam link to org link."
+(defun gkroam-resolve-link (orig-fun file &rest args)
+  "Convert gkroam link to org link.
+This is an advice for ORIG-FUN with argument FILE and other ARGS."
   (let ((file-buf (or (get-file-buffer file)
 		      (find-file-noselect file))))
     (with-current-buffer file-buf
@@ -460,7 +448,7 @@ and output NUM*2 lines before and after the link line."
 	(undo-tree-undo)))))
 
 (defun gkroam-set-project-alist ()
-  "Add gkroam project to 'org-publish-project-alist'"
+  "Add gkroam project to `org-publish-project-alist'."
   (add-to-list
    'org-publish-project-alist
    `("gkroam"
@@ -500,13 +488,15 @@ and output NUM*2 lines before and after the link line."
     (message "Not in the gkroam directory!")))
 
 ;;;###autoload
-(defun gkroam-publish-site (&optional FORCE ASYNC)
-  "Publish gkroam project to html page."
+(defun gkroam-publish-site (&optional force async)
+  "Publish gkroam project to html site.
+If FORCE is non-nil, force to publish all pages.
+If ASYNC is non-nil, publish pages in an async process."
   (interactive)
   (gkroam-update-index)
   ;; (gkroam-update-all)
   (if global-undo-tree-mode
-      (org-publish-project "gkroam" FORCE ASYNC)
+      (org-publish-project "gkroam" force async)
     (message "please enable 'global-undo-tree-mode'!")))
 
 ;;;###autoload
@@ -525,8 +515,7 @@ and output NUM*2 lines before and after the link line."
 ;; Edit pages in side buffer, each page is under a headline.
 
 ;; (defun gkroam-side-edit (title)
-;;   "Edit a page titled with TITLE in a side buffer, 
-;; with 'C-c C-c' to finish, 'C-c C-k' to abort."
+;;   "Edit a page titled with TITLE in a side window."
 ;;   (interactive))
 
 ;; --------------------------------------------
@@ -583,7 +572,8 @@ and output NUM*2 lines before and after the link line."
 ;; gkroam overlays
 
 (defun gkroam-overlay-region (beg end prop value)
-  "Use overlays in region with property."
+  "Put overlays in region started by BEG and ended with END.
+The overlays has a PROP and VALUE."
   (overlay-put (make-overlay beg end) prop value))
 
 (defun gkroam-overlay-hashtag ()
@@ -641,13 +631,13 @@ and output NUM*2 lines before and after the link line."
   (gkroam-put-overlays (point-min) (line-beginning-position)))
 
 (defun gkroam-overlay1 (orig-fun &rest args)
-  "Advice function for automatically hide and show brackets when cursor moves."
+  "Advice for ORIG-FUN with ARGS to automatically hide and show brackets when cursor move."
   (gkroam-put-overlays (line-beginning-position) (line-end-position))
   (apply orig-fun args)
   (gkroam-remove-overlays))
 
 (defun gkroam-overlay2 (orig-fun &rest args)
-  "Advice function for automatically hide and show brackets when cursor moves."
+  "Advice for ORIG-FUN with ARGS to automatically hide and show brackets when cursor move."
   (gkroam-put-overlays (line-beginning-position) (line-end-position))
   (apply orig-fun args)
   (unless (ignore-errors (mouse-on-link-p (point)))
@@ -663,7 +653,6 @@ and output NUM*2 lines before and after the link line."
   (gkroam-overlay-buffer))
 
 ;; ----------------------------------------
-
 ;; major mode
 
 (defun gkroam-company-bracket-p ()
@@ -702,7 +691,7 @@ and output NUM*2 lines before and after the link line."
 	(insert "]}")))))
 
 (defun gkroam-completion-finish (title)
-  "Function binded to `company-completion-finish-hook'."
+  "Function binded to `company-completion-finish-hook' after finishing complete TITLE."
   (when (gkroam-company-hashtag-p)
     (gkroam--complete-hashtag)
     (save-buffer)))
@@ -736,6 +725,7 @@ and output NUM*2 lines before and after the link line."
   (setq gkroam-mode-map (make-sparse-keymap)))
 
 (defun gkroam-set-major-mode ()
+  "Set major mode to `gkroam-mode' after find file in `gkroam-root-dir'."
   (when (string=
 	 (file-name-directory (buffer-file-name))
 	 (expand-file-name gkroam-root-dir))
