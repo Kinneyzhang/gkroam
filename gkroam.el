@@ -1,11 +1,11 @@
-;;; gk-roam.el --- A light-weight org-mode roam replica  -*- lexical-binding: t; -*-
+;;; gkroam.el --- A light-weight org-mode roam replica  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2020 Kinney Zhang
 ;;
-;; Version: 2.1.0
+;; Version: 2.1.1
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
-;; URL: http://github.com/Kinneyzhang/gk-roam
+;; URL: http://github.com/Kinneyzhang/gkroam.el
 ;; Package-Requires: ((emacs "27.1") (simple-httpd "1.5.1") (undo-tree "0.7.5"))
 
 ;; This file is not part of GNU Emacs.
@@ -26,28 +26,30 @@
 
 ;;; Commentary:
 
-;; Gk-roam is a light-weight roam repica, built on top of Org-mode.
+;; Gkroam is a light-weight roam repica, built on top of Org-mode.
 
 ;;; ChangeLog:
 
 ;; v1.0 - Auto update link references at the buttom of page buffer.
 
-;; v2.0 - Use overlay to hide and show gk-roam brackets accordingly and fix some bugs.
+;; v2.0 - Use overlay to hide and show gkroam brackets accordingly and fix some bugs.
 
 ;; v2.0.1 - Fix 'hide and show brackets' problems in some main occasion.
 ;; Such as newline, etc.
 
-;; v2.0.2 - Fix `gk-roam-publish-current-file' and `gk-roam-preview-current',
-;; automatically convert gk-roam link to org link and convert it back
+;; v2.0.2 - Fix `gkroam-publish-current-file' and `gkroam-preview-current',
+;; automatically convert gkroam link to org link and convert it back
 ;; after published (use 'undo', not reliable). But it has problem with publishing
 ;; the whole project.
 
-;; v2.0.3 - Fix `gk-roam-publish-site' and `gk-roam-preview'. Now you can publish and
+;; v2.0.3 - Fix `gkroam-publish-site' and `gkroam-preview'. Now you can publish and
 ;; preview the whole roam site.
 
 ;; v2.0.4 - Many bugs fixed and code improvement.
 
 ;; v2.1.0 - A more powerful linked references system.
+
+;; v2.1.1 - Change package name to 'gkroam'.
 
 ;;; Code:
 
@@ -61,45 +63,52 @@
 (defvar org-link-frame-setup)
 
 ;;;; Variables
-(defvar gk-roam-root-dir ""
-  "Gk-roam's root directory, with org files in it.")
+(defgroup gkroam nil
+  "A roam replica on top of emacs org-mode."
+  :tag "gkroam")
 
-(defvar gk-roam-pub-dir ""
-  "Gk-roam's publish directory, with html files in it.")
+(defcustom gkroam-root-dir ""
+  "Gkroam's root directory, with org files in it."
+  :type 'string
+  :group 'gkroam)
 
-(defvar gk-roam-pub-css "<link rel=\"stylesheet\" href=\"https://gongzhitaao.org/orgcss/org.css\">"
-  "Gk-roam publish css link.")
+(defcustom gkroam-pub-dir ""
+  "Gkroam's publish directory, with html files in it."
+  :type 'string
+  :group 'gkroam)
 
-(defvar gk-roam-temp-file (concat user-emacs-directory "gk-roam/temp")
-  "Gk-roam temporary file.")
+(defcustom gkroam-pub-css "<link rel=\"stylesheet\" href=\"https://gongzhitaao.org/orgcss/org.css\">"
+  "Gkroam publish css style."
+  :type 'string
+  :group 'gkroam)
 
-(defvar gk-roam-toggle-brackets-p t
+(defvar gkroam-toggle-brackets-p t
   "Determine whether to show brackets in page link.")
 
-(defvar gk-roam-pages nil
+(defvar gkroam-pages nil
   "Page candidates for completion.")
 
-(defvar gk-roam-mode-map nil
-  "Keymap for `gk-roam-mode'")
+(defvar gkroam-mode-map nil
+  "Keymap for `gkroam-mode'")
 
-(defvar gk-roam-has-link-p nil
-  "Judge if has link or hashtag in gk-roam buffer.")
+(defvar gkroam-has-link-p nil
+  "Judge if has link or hashtag in gkroam buffer.")
 
-(defvar gk-roam-link-regexp
+(defvar gkroam-link-regexp
   (rx (seq (group "{[")
            (group (+? (not (any "/\n"))))
            (group "]}")))
-  "Regular expression that matches a gk-roam link.")
+  "Regular expression that matches a gkroam link.")
 
-(defvar gk-roam-hashtag-regexp
+(defvar gkroam-hashtag-regexp
   (rx (seq (group "#{[")
            (group (+? (not (any "/\n"))))
            (group "]}")))
-  "Regular expression that matches a gk-roam hashtag.")
+  "Regular expression that matches a gkroam hashtag.")
 
 ;;;; Functions
-(defun gk-roam-link-frame-setup ()
-  "Alter `org-link-frame-setup' for gk-roam."
+(defun gkroam-link-frame-setup ()
+  "Alter `org-link-frame-setup' for gkroam."
   (setq org-link-frame-setup
         '((vm . vm-visit-folder-other-frame)
           (vm-imap . vm-visit-imap-folder-other-frame)
@@ -108,90 +117,90 @@
           (wl . wl-other-frame))))
 
 ;; -------------------------------
-(defun gk-roam--get-title (page)
+(defun gkroam--get-title (page)
   "Get page title."
   (with-temp-buffer
     (org-mode)
-    (insert-file-contents (gk-roam--get-file page) nil 0 2000 t)
+    (insert-file-contents (gkroam--get-file page) nil 0 2000 t)
     (goto-char (point-min))
     (re-search-forward (concat "^ *#\\+TITLE:") nil t)
     (plist-get (cadr (org-element-at-point)) :value)))
 
-(defun gk-roam--get-page (title)
-  (let ((pages (gk-roam--all-pages))
+(defun gkroam--get-page (title)
+  (let ((pages (gkroam--all-pages))
 	file)
     (catch 'break
       (dolist (page pages)
-	(setq file (gk-roam--get-file page))
+	(setq file (gkroam--get-file page))
 	(with-temp-buffer
 	  (insert-file-contents file nil 0 2000 t)
 	  (goto-char (point-min))
 	  (when (re-search-forward (format "^ *#\\+TITLE: *%s *$" title) nil t)
 	    (throw 'break page)))))))
 
-(defun gk-roam--get-file (page)
-  "Get gk-roam file accroding to PAGE."
-  (expand-file-name (concat gk-roam-root-dir page)))
+(defun gkroam--get-file (page)
+  "Get gkroam file accroding to PAGE."
+  (expand-file-name (concat gkroam-root-dir page)))
 
-(defun gk-roam--all-pages ()
-  "Get all gk-roam pages."
-  (directory-files gk-roam-root-dir nil (rx bol (+ (in num)) ".org" eol)))
+(defun gkroam--all-pages ()
+  "Get all gkroam pages."
+  (directory-files gkroam-root-dir nil (rx bol (+ (in num)) ".org" eol)))
 
-(defun gk-roam--all-titles ()
-  "Get all gk-roam titles"
-  (let* ((pages (gk-roam--all-pages))
-	 (titles (mapcar (lambda (page) (gk-roam--get-title page)) pages)))
+(defun gkroam--all-titles ()
+  "Get all gkroam titles"
+  (let* ((pages (gkroam--all-pages))
+	 (titles (mapcar (lambda (page) (gkroam--get-title page)) pages)))
     titles))
 
-(defun gk-roam--gen-file ()
-  "Generate new gk-roam file."
-  (concat gk-roam-root-dir (format "%s.org" (format-time-string "%Y%m%d%H%M%S"))))
+(defun gkroam--gen-file ()
+  "Generate new gkroam file."
+  (concat gkroam-root-dir (format "%s.org" (format-time-string "%Y%m%d%H%M%S"))))
 
-(defun gk-roam--gen-page ()
-  "Generate new gk-roam page."
+(defun gkroam--gen-page ()
+  "Generate new gkroam page."
   (format "%s.org" (format-time-string "%Y%m%d%H%M%S")))
 
-(defsubst gk-roam--format-link (title)
-  "Format TITLE into a gk-roam page link."
+(defsubst gkroam--format-link (title)
+  "Format TITLE into a gkroam page link."
   (format "{[%s]}" title))
 
-(defun gk-roam-heading-of-line (line page)
+(defun gkroam-heading-of-line (line page)
   "Get the org heading of specific LINE in FILE."
   (let ((line (if (stringp line) (string-to-number line) line))
 	heading)
     (with-temp-buffer
-      (insert-file-contents (gk-roam--get-file page))
+      (insert-file-contents (gkroam--get-file page))
       (goto-char (point-min))
       (forward-line line)
       (org-mode)
       (setq heading (org-get-heading t t t t)))
     heading))
 
-(defun gk-roam--format-backlink (page)
-  "Format gk-roam backlink in PAGE."
-  (let* ((title (gk-roam--get-title page)))
+(defun gkroam--format-backlink (page)
+  "Format gkroam backlink in PAGE."
+  (let* ((title (gkroam--get-title page)))
     (format "[[file:%s][%s]]" page title)))
 
 ;; ----------------------------------------
-(setq gk-roam-link-re-format
+(setq gkroam-link-re-format
       "\\(\\(-\\|+\\|*\\|[0-9]+\\.\\|[0-9]+)\\) .*?{\\[%s\\]}.*\\(\n+ +.*\\)*
 \\|\\(.*{\\[%s\\]}.*\\\\\n\\(.+\\\\\n\\)*.+\\|\\(.+\\\\\n\\)+.*{\\[%s\\]}.*\\\\\n\\(.+\\\\\n\\)*.+\\|\\(.+\\\\\n\\)+.*{\\[%s\\]}.*\\)
 \\|.*#\\+begin_verse.*\n+\\(.+\n+\\|.*{\\[%s\\]}.*\n+\\)*.*{\\[%s\\]}.*\n+\\(\\)+\\(.+\n+\\|.*{\\[%s\\]}.*\n+\\)*.*#\\+end_verse.*
 \\|.*{\\[%s\\]}.*\n\\)")
 
-(defun gk-roam--search-process (page linum)
-  "Search gk-roam links or hashtags in org-mode in list,
+(defun gkroam--search-process (page linum)
+  "Search gkroam links or hashtags in org-mode in list,
 and output NUM*2 lines before and after the link line."
-  (let ((title (gk-roam--get-title page))
-	(name (generate-new-buffer-name " *gk-roam-rg*")))
+  (let ((title (gkroam--get-title page))
+	(name (generate-new-buffer-name " *gkroam-rg*")))
     (start-process
      name name "rg" "-C" (number-to-string linum)
      "-FN" "--heading"
      (format "{[%s]}" title)
-     (expand-file-name gk-roam-root-dir) ;; must be absolute path.
+     (expand-file-name gkroam-root-dir) ;; must be absolute path.
      "-g" "!index.org*")))
 
-(defun gk-roam--process-link-in-references (str)
+(defun gkroam--process-link-in-references (str)
   "Remove links in reference's text."
   (with-temp-buffer
     (string-trim str "\n+" "\n+")
@@ -204,41 +213,41 @@ and output NUM*2 lines before and after the link line."
       (replace-match "*"))
     (buffer-string)))
 
-(defun gk-roam-process-searched-string (string title linum)
+(defun gkroam-process-searched-string (string title linum)
   "Process searched STRING by 'rg', get page LINUM*2+1 lines of TITLE and context."
   (with-temp-buffer
     (insert string)
     (goto-char (point-min))
-    (let ((gk-roam-file-re (format "%s[0-9]\\{14\\}\\.org"
-				   (expand-file-name gk-roam-root-dir)))
+    (let ((gkroam-file-re (format "%s[0-9]\\{14\\}\\.org"
+				  (expand-file-name gkroam-root-dir)))
 	  (num 0) references)
-      (while (re-search-forward gk-roam-file-re nil t)
+      (while (re-search-forward gkroam-file-re nil t)
 	(let* ((path (match-string-no-properties 0))
 	       (page (file-name-nondirectory path))
 	       beg end content context)
 	  (forward-line)
 	  (catch 'break
 	    (while (re-search-forward
-		    (replace-regexp-in-string "%s" title gk-roam-link-re-format)
+		    (replace-regexp-in-string "%s" title gkroam-link-re-format)
 		    nil t)
 	      (setq num (1+ num))
 	      (setq content (concat (match-string-no-properties 0) "\n"))
-	      ;; (setq content (gk-roam-process-references-style content))
+	      ;; (setq content (gkroam-process-references-style content))
 	      (setq context (concat context content))
 	      (save-excursion
 		(when (re-search-forward
-		       (replace-regexp-in-string "%s" title gk-roam-link-re-format)
+		       (replace-regexp-in-string "%s" title gkroam-link-re-format)
 		       nil t)
-		  (re-search-backward gk-roam-file-re nil t)
+		  (re-search-backward gkroam-file-re nil t)
 		  (unless (string= path (match-string-no-properties 0))
 		    (throw 'break nil))))))
-	  (setq context (gk-roam--process-link-in-references context))
+	  (setq context (gkroam--process-link-in-references context))
 	  (setq references
 		(concat references
-			(format "** %s\n%s" (gk-roam--format-backlink page) context)))))
+			(format "** %s\n%s" (gkroam--format-backlink page) context)))))
       (cons num references))))
 
-(defun gk-roam--search-linked-pages (process callback)
+(defun gkroam--search-linked-pages (process callback)
   "Call CALLBACK with the matched string that has a link to PAGE,
  using the rg PROCESS."
   (let (sentinel)
@@ -249,21 +258,21 @@ and output NUM*2 lines before and after the link line."
                 (if-let ((buf (process-buffer process)))
                     (with-current-buffer buf
 		      (funcall callback (buffer-string)))
-                  (error "Gk-roam’s rg process’ buffer is killed"))
-	      (error "Gk-roam’s rg process failed with signal: %s"
+                  (error "Gkroam’s rg process’ buffer is killed"))
+	      (error "Gkroam’s rg process failed with signal: %s"
                      event))))
     (set-process-sentinel process sentinel)))
 
-(defun gk-roam-update-reference (page)
-  "Update gk-roam file reference."
+(defun gkroam-update-reference (page)
+  "Update gkroam file reference."
   (unless (executable-find "rg")
     (user-error "Cannot find program rg"))
   (let ((linum 10))
-    (gk-roam--search-linked-pages
-     (gk-roam--search-process page linum)
+    (gkroam--search-linked-pages
+     (gkroam--search-process page linum)
      (lambda (string)
-       (let* ((title (gk-roam--get-title page))
-	      (file (gk-roam--get-file page))
+       (let* ((title (gkroam--get-title page))
+	      (file (gkroam--get-file page))
 	      (file-buf (or (get-file-buffer file)
 			    (find-file-noselect file nil nil))))
 	 (with-current-buffer file-buf
@@ -272,7 +281,7 @@ and output NUM*2 lines before and after the link line."
 	     (re-search-backward "\n-----\n" nil t)
 	     (delete-region (point) (point-max))
 	     (unless (string= string "")
-	       (let* ((processed-str (gk-roam-process-searched-string string title linum))
+	       (let* ((processed-str (gkroam-process-searched-string string title linum))
 		      (num (car processed-str))
 		      (references (cdr processed-str)))
 		 (insert "\n-----\n")
@@ -285,151 +294,151 @@ and output NUM*2 lines before and after the link line."
 
 ;; -----------------------------------
 
-(defun gk-roam-new (title)
-  "Just create a new gk-roam file."
-  (let* ((file (gk-roam--gen-file))
+(defun gkroam-new (title)
+  "Just create a new gkroam file."
+  (let* ((file (gkroam--gen-file))
 	 (file-buf (find-file-noselect file))
 	 beg)
     (with-current-buffer file-buf
       (insert
-       (format "#+TITLE: %s\n#+DATE: %s\n#+OPTIONS: toc:nil H:2 num:0\n» [[file:index.org][ /Gk-Roam/ ]]\n\n" title (format-time-string "%Y-%m-%d")))
+       (format "#+TITLE: %s\n#+DATE: %s\n#+OPTIONS: toc:nil H:2 num:0\n» [[file:index.org][ /Gkroam/ ]]\n\n" title (format-time-string "%Y-%m-%d")))
       (save-buffer))
-    (setq gk-roam-pages (gk-roam--all-titles))
+    (setq gkroam-pages (gkroam--all-titles))
     file))
 
-(defun gk-roam-update-index ()
-  "Update gk-roam index page."
-  (let* ((index-org (concat gk-roam-root-dir "index.org"))
+(defun gkroam-update-index ()
+  "Update gkroam index page."
+  (let* ((index-org (concat gkroam-root-dir "index.org"))
          (index-buf (or (get-file-buffer index-org)
                         (find-file-noselect index-org))))
     (with-current-buffer index-buf
       (erase-buffer)
-      (insert "#+TITLE: gk-roam\n#+OPTIONS: toc:nil H:2 num:0\n\n* Site Map\n\n")
-      (dolist (page (gk-roam--all-pages))
-	(insert (format " - [[file:%s][%s]]\n" page (gk-roam--get-title page))))
+      (insert "#+TITLE: INDEX\n#+OPTIONS: toc:nil H:2 num:0\n\n* Site Map\n\n")
+      (dolist (page (gkroam--all-pages))
+	(insert (format " - [[file:%s][%s]]\n" page (gkroam--get-title page))))
       (save-buffer))
     index-buf))
 
 ;;;; Commands
 ;;;###autoload
-(defun gk-roam-find (&optional title)
-  "Create a new gk-roam file or open an exist one in current window."
+(defun gkroam-find (&optional title)
+  "Create a new gkroam file or open an exist one in current window."
   (interactive)
   (let* ((title (or title (completing-read "New title or open an exist one: "
-					   (gk-roam--all-titles) nil nil)))
-	 (page (gk-roam--get-page title)))
+					   (gkroam--all-titles) nil nil)))
+	 (page (gkroam--get-page title)))
     (if page
-	(find-file (gk-roam--get-file page))
-      (find-file (gk-roam-new title)))
-    (gk-roam-update)))
+	(find-file (gkroam--get-file page))
+      (find-file (gkroam-new title)))
+    (gkroam-update)))
 
 ;;;###autoload
-(defun gk-roam-daily ()
-  "Create or open gk-roam daily notes."
+(defun gkroam-daily ()
+  "Create or open gkroam daily notes."
   (interactive)
   (let* ((title (format-time-string "%b %d, %Y")))
-    (gk-roam-find title)))
+    (gkroam-find title)))
 
 ;;;###autoload
-(defun gk-roam-insert (&optional title)
-  "Insert a gk-roam page"
+(defun gkroam-insert (&optional title)
+  "Insert a gkroam page"
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
-	       (expand-file-name gk-roam-root-dir))
+	       (expand-file-name gkroam-root-dir))
       (let* ((title (or title (completing-read
 			       "Choose a page or create a new: "
-			       (gk-roam--all-titles) nil nil
+			       (gkroam--all-titles) nil nil
 			       (thing-at-point 'word t))))
-	     (page (gk-roam--get-page title)))
-	(insert (gk-roam--format-link title))
+	     (page (gkroam--get-page title)))
+	(insert (gkroam--format-link title))
 	(save-buffer)
-	(gk-roam-update-reference page))
-    (message "Not in the gk-roam directory!")))
+	(gkroam-update-reference page))
+    (message "Not in the gkroam directory!")))
 
 ;;;###autoload
-(defun gk-roam-new-at-point ()
+(defun gkroam-new-at-point ()
   "Insert a file link and create a new file according to text at point."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
-	       (expand-file-name gk-roam-root-dir))
+	       (expand-file-name gkroam-root-dir))
       (let* ((title (thing-at-point 'word t))
-	     (page-exist-p (gk-roam--get-page title)))
+	     (page-exist-p (gkroam--get-page title)))
 	(if page-exist-p
 	    (progn
 	      (backward-word)
 	      (kill-word 1)
-	      (gk-roam-insert title)
+	      (gkroam-insert title)
 	      (save-buffer))
-	  (gk-roam-new title)
+	  (gkroam-new title)
 	  (backward-word)
 	  (kill-word 1)
-	  (gk-roam-insert title)
-	  (gk-roam-find title)))
-    (message "Not in the gk-roam directory!")))
+	  (gkroam-insert title)
+	  (gkroam-find title)))
+    (message "Not in the gkroam directory!")))
 
 ;;;###autoload
-(defun gk-roam-new-from-region ()
+(defun gkroam-new-from-region ()
   "Insert a file link and create a new file according to a selected region."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
-	       (expand-file-name gk-roam-root-dir))
+	       (expand-file-name gkroam-root-dir))
       (let* ((beg (region-beginning))
 	     (end (region-end))
 	     (title (when (region-active-p)
 		      (buffer-substring-no-properties beg end)))
-	     (page-exist-p (gk-roam--get-page title)))
+	     (page-exist-p (gkroam--get-page title)))
 	(if page-exist-p
 	    (progn
 	      (delete-region beg end)
-	      (gk-roam-insert title)
+	      (gkroam-insert title)
 	      (save-buffer))
-	  (gk-roam-new title)
+	  (gkroam-new title)
 	  (delete-region beg end)
-	  (gk-roam-insert title)
-	  (gk-roam-find title)))
-    (message "Not in the gk-roam directory!")))
+	  (gkroam-insert title)
+	  (gkroam-find title)))
+    (message "Not in the gkroam directory!")))
 
 ;;;###autoload
-(defun gk-roam-smart-new ()
+(defun gkroam-smart-new ()
   "Smartly create a new file according to point or region."
   (interactive)
   (cond
-   ((region-active-p) (gk-roam-new-from-region))
-   ((thing-at-point 'word) (gk-roam-new-at-point))
-   (t (funcall-interactively 'gk-roam-find))))
+   ((region-active-p) (gkroam-new-from-region))
+   ((thing-at-point 'word) (gkroam-new-at-point))
+   (t (funcall-interactively 'gkroam-find))))
 
 ;;;###autoload
-(defun gk-roam-index ()
-  "Show gk-roam index page."
+(defun gkroam-index ()
+  "Show gkroam index page."
   (interactive)
-  (switch-to-buffer (gk-roam-update-index)))
+  (switch-to-buffer (gkroam-update-index)))
 
 ;;;###autoload
-(defun gk-roam-update ()
-  "Update current gk-roam buffer's reference."
+(defun gkroam-update ()
+  "Update current gkroam buffer's reference."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
-	       (expand-file-name gk-roam-root-dir))
-      (gk-roam-update-reference (file-name-nondirectory (buffer-file-name)))
-    (message "Not in the gk-roam directory!")))
+	       (expand-file-name gkroam-root-dir))
+      (gkroam-update-reference (file-name-nondirectory (buffer-file-name)))
+    (message "Not in the gkroam directory!")))
 
 ;;;###autoload
-(defun gk-roam-update-all () ;; have problem!
-  "Update all gk-roam files' reference."
+(defun gkroam-update-all () ;; have problem!
+  "Update all gkroam files' reference."
   (interactive)
-  (gk-roam-update-index)
-  (let ((pages (gk-roam--all-pages)))
-    (mapcar #'gk-roam-update-reference pages)))
+  (gkroam-update-index)
+  (let ((pages (gkroam--all-pages)))
+    (mapcar #'gkroam-update-reference pages)))
 
-(defun gk-roam-resolve-link (orig-func file &rest args)
-  "Convert gk-roam link to org link."
+(defun gkroam-resolve-link (orig-func file &rest args)
+  "Convert gkroam link to org link."
   (let ((file-buf (or (get-file-buffer file)
 		      (find-file-noselect file))))
     (with-current-buffer file-buf
       (goto-char (point-min))
-      (setq gk-roam-has-link-p nil)
-      (while (re-search-forward gk-roam-link-regexp nil t)
-	(setq gk-roam-has-link-p t)
+      (setq gkroam-has-link-p nil)
+      (while (re-search-forward gkroam-link-regexp nil t)
+	(setq gkroam-has-link-p t)
 	(let (beg end title hashtag-p)
 	  (setq beg (match-beginning 0))
 	  (setq end (match-end 0))
@@ -441,73 +450,73 @@ and output NUM*2 lines before and after the link line."
 	  (if hashtag-p
 	      (progn
 		(delete-region (1- beg) end)
-		(insert (format "[[file:%s][#%s]]" (gk-roam--get-page title) title)))
+		(insert (format "[[file:%s][#%s]]" (gkroam--get-page title) title)))
 	    (delete-region beg end)
-	    (insert (format "[[file:%s][%s]]" (gk-roam--get-page title) title)))))
+	    (insert (format "[[file:%s][%s]]" (gkroam--get-page title) title)))))
       (save-buffer)
       (apply orig-func file args)
-      (when gk-roam-has-link-p
+      (when gkroam-has-link-p
 	;; if possible, use original undo function.
 	(undo-tree-undo)))))
 
-(defun gk-roam-set-project-alist ()
-  "Add gk-roam project to 'org-publish-project-alist'"
+(defun gkroam-set-project-alist ()
+  "Add gkroam project to 'org-publish-project-alist'"
   (add-to-list
    'org-publish-project-alist
-   `("gk-roam"
+   `("gkroam"
      :base-extension "org"
      :recursive nil
-     :base-directory ,(expand-file-name gk-roam-root-dir)
-     :publishing-directory ,(expand-file-name gk-roam-pub-dir)
+     :base-directory ,(expand-file-name gkroam-root-dir)
+     :publishing-directory ,(expand-file-name gkroam-pub-dir)
      :publishing-function org-html-publish-to-html
-     :html-head ,gk-roam-pub-css)))
+     :html-head ,gkroam-pub-css)))
 
 ;;;###autoload
-(defun gk-roam-publish-current-file ()
+(defun gkroam-publish-current-file ()
   "Publish current file."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
-	       (expand-file-name gk-roam-root-dir))
+	       (expand-file-name gkroam-root-dir))
       (progn
-	(gk-roam-update)
+	(gkroam-update)
 	(if undo-tree-mode
 	    (org-publish-file (buffer-file-name))
 	  (message "please enable 'undo-tree-mode' in this buffer!")))
-    (message "Not in the gk-roam directory!")))
+    (message "Not in the gkroam directory!")))
 
 ;;;###autoload
-(defun gk-roam-preview-current ()
+(defun gkroam-preview-current ()
   "Preview current file."
   (interactive)
   (if (string= (file-name-directory (buffer-file-name))
-	       (expand-file-name gk-roam-root-dir))
+	       (expand-file-name gkroam-root-dir))
       (let ((current-file (concat (file-name-base (buffer-file-name)) ".html")))
-	(httpd-serve-directory gk-roam-pub-dir)
+	(httpd-serve-directory gkroam-pub-dir)
 	(unless (httpd-running-p) (httpd-start))
-	(gk-roam-publish-current-file)
+	(gkroam-publish-current-file)
 	(if undo-tree-mode
 	    (browse-url (format "http://%s:%d/%s" "127.0.0.1" 8080 current-file))
 	  (message "please enable 'undo-tree-mode' in this buffer!")))
-    (message "Not in the gk-roam directory!")))
+    (message "Not in the gkroam directory!")))
 
 ;;;###autoload
-(defun gk-roam-publish-site (&optional FORCE ASYNC)
-  "Publish gk-roam project to html page."
+(defun gkroam-publish-site (&optional FORCE ASYNC)
+  "Publish gkroam project to html page."
   (interactive)
-  (gk-roam-update-index)
-  ;; (gk-roam-update-all)
+  (gkroam-update-index)
+  ;; (gkroam-update-all)
   (if global-undo-tree-mode
-      (org-publish-project "gk-roam" FORCE ASYNC)
+      (org-publish-project "gkroam" FORCE ASYNC)
     (message "please enable 'global-undo-tree-mode'!")))
 
 ;;;###autoload
-(defun gk-roam-preview ()
-  "Preview gk-roam site."
+(defun gkroam-preview ()
+  "Preview gkroam site."
   (interactive)
   (progn
-    (httpd-serve-directory gk-roam-pub-dir)
+    (httpd-serve-directory gkroam-pub-dir)
     (unless (httpd-running-p) (httpd-start))
-    (gk-roam-publish-site t nil)
+    (gkroam-publish-site t nil)
     (if global-undo-tree-mode
 	(browse-url (format "http://%s:%d" "127.0.0.1" 8080))
       (message "please enable 'global-undo-tree-mode'!"))))
@@ -515,7 +524,7 @@ and output NUM*2 lines before and after the link line."
 ;; --------------------------------------------
 ;; Edit pages in side buffer, each page is under a headline.
 
-;; (defun gk-roam-side-edit (title)
+;; (defun gkroam-side-edit (title)
 ;;   "Edit a page titled with TITLE in a side buffer, 
 ;; with 'C-c C-c' to finish, 'C-c C-k' to abort."
 ;;   (interactive))
@@ -526,138 +535,138 @@ and output NUM*2 lines before and after the link line."
 ;; -------------------------------------------
 ;; minor mode
 
-(define-button-type 'gk-roam-link
-  'action #'gk-roam-follow-link
+(define-button-type 'gkroam-link
+  'action #'gkroam-follow-link
   'title nil
   'follow-link t
   'help-echo "Jump to page")
 
-(defun gk-roam-follow-link (button)
+(defun gkroam-follow-link (button)
   "Jump to the page that BUTTON represents."
   (with-demoted-errors "Error when following the link: %s"
-    (gk-roam-find (button-get button 'title))))
+    (gkroam-find (button-get button 'title))))
 
-(defun gk-roam-link-fontify (beg end)
-  "Put gk-roam link between BEG and END."
+(defun gkroam-link-fontify (beg end)
+  "Put gkroam link between BEG and END."
   (goto-char beg)
-  (while (re-search-forward gk-roam-link-regexp end t)
+  (while (re-search-forward gkroam-link-regexp end t)
     (make-text-button (match-beginning 0)
 		      (match-end 0)
-		      :type 'gk-roam-link
+		      :type 'gkroam-link
 		      'face '(:underline nil)
 		      ;; 'mouse-face '(:underline nil)
 		      'title (match-string-no-properties 2))))
 
-(defun gk-roam-hashtag-fontify(beg end)
-  "Put gk-roam link between BEG and END."
+(defun gkroam-hashtag-fontify(beg end)
+  "Put gkroam link between BEG and END."
   (goto-char beg)
-  (while (re-search-forward gk-roam-hashtag-regexp end t)
+  (while (re-search-forward gkroam-hashtag-regexp end t)
     (make-text-button (match-beginning 0)
 		      (match-end 0)
-		      :type 'gk-roam-link
+		      :type 'gkroam-link
 		      'face '(:underline nil)
 		      'title (match-string-no-properties 2))))
 
-(define-minor-mode gk-roam-link-minor-mode
-  "Recognize gk-roam link."
+(define-minor-mode gkroam-link-minor-mode
+  "Recognize gkroam link."
   :lighter ""
   :keymap (make-sparse-keymap)
-  (if gk-roam-link-minor-mode
+  (if gkroam-link-minor-mode
       (progn
-	(jit-lock-register #'gk-roam-hashtag-fontify)
-	(jit-lock-register #'gk-roam-link-fontify))
-    (jit-lock-unregister #'gk-roam-hashtag-fontify)
-    (jit-lock-unregister #'gk-roam-link-fontify))
+	(jit-lock-register #'gkroam-hashtag-fontify)
+	(jit-lock-register #'gkroam-link-fontify))
+    (jit-lock-unregister #'gkroam-hashtag-fontify)
+    (jit-lock-unregister #'gkroam-link-fontify))
   (jit-lock-refontify))
 
 ;; -------------------------------------------------
-;; gk-roam overlays
+;; gkroam overlays
 
-(defun gk-roam-overlay-region (beg end prop value)
+(defun gkroam-overlay-region (beg end prop value)
   "Use overlays in region with property."
   (overlay-put (make-overlay beg end) prop value))
 
-(defun gk-roam-overlay-hashtag ()
-  "Overlay gk-roam hashtag."
+(defun gkroam-overlay-hashtag ()
+  "Overlay gkroam hashtag."
   (with-silent-modifications
-    (gk-roam-overlay-region (match-beginning 1) (match-beginning 2) 'display "")
-    (gk-roam-overlay-region (match-beginning 3) (match-end 0) 'display "")
-    (gk-roam-overlay-region (1- (match-beginning 0)) (match-end 0) 'face '(shadow (:underline nil)))))
+    (gkroam-overlay-region (match-beginning 1) (match-beginning 2) 'display "")
+    (gkroam-overlay-region (match-beginning 3) (match-end 0) 'display "")
+    (gkroam-overlay-region (1- (match-beginning 0)) (match-end 0) 'face '(shadow (:underline nil)))))
 
-(defun gk-roam-overlay-shadow-brackets ()
+(defun gkroam-overlay-shadow-brackets ()
   "Set overlays to shadow brackets."
   (with-silent-modifications
     (remove-overlays (match-beginning 1) (match-beginning 2) 'display "")
     (remove-overlays (match-beginning 3) (match-end 0) 'display "")
-    (gk-roam-overlay-region (match-beginning 1) (match-beginning 2) 'face 'shadow)
-    (gk-roam-overlay-region (match-beginning 3) (match-end 0) 'face 'shadow)
-    (gk-roam-overlay-region (match-beginning 0) (match-end 0) 'face '(warning (:underline nil)))))
+    (gkroam-overlay-region (match-beginning 1) (match-beginning 2) 'face 'shadow)
+    (gkroam-overlay-region (match-beginning 3) (match-end 0) 'face 'shadow)
+    (gkroam-overlay-region (match-beginning 0) (match-end 0) 'face '(warning (:underline nil)))))
 
-(defun gk-roam-overlay-hide-brackets ()
-  "Set overlays to hide gk-roam brackets."
+(defun gkroam-overlay-hide-brackets ()
+  "Set overlays to hide gkroam brackets."
   (with-silent-modifications
-    (gk-roam-overlay-region (match-beginning 1) (match-beginning 2) 'display "")
-    (gk-roam-overlay-region (match-beginning 3) (match-end 0) 'display "")
-    (gk-roam-overlay-region (match-beginning 0) (match-end 0) 'face '(warning (:underline nil)))))
+    (gkroam-overlay-region (match-beginning 1) (match-beginning 2) 'display "")
+    (gkroam-overlay-region (match-beginning 3) (match-end 0) 'display "")
+    (gkroam-overlay-region (match-beginning 0) (match-end 0) 'face '(warning (:underline nil)))))
 
-(defun gk-roam-put-overlays (beg &optional bound)
+(defun gkroam-put-overlays (beg &optional bound)
   "Put overlays between BEG and BOUND."
-  (when (string= major-mode "gk-roam-mode")
+  (when (string= major-mode "gkroam-mode")
     (let ((bound (or bound (point-max)))
 	  pos)
       (save-excursion
 	(goto-char beg)
-	(while (re-search-forward gk-roam-link-regexp bound t)
+	(while (re-search-forward gkroam-link-regexp bound t)
 	  (setq pos (point))
 	  (goto-char (1- (match-beginning 0)))
 	  (if (string= (thing-at-point 'char t) "#")
-	      (gk-roam-overlay-hashtag)
-	    (if gk-roam-toggle-brackets-p
-		(gk-roam-overlay-shadow-brackets)
-	      (gk-roam-overlay-hide-brackets)))
+	      (gkroam-overlay-hashtag)
+	    (if gkroam-toggle-brackets-p
+		(gkroam-overlay-shadow-brackets)
+	      (gkroam-overlay-hide-brackets)))
 	  (goto-char pos))))))
 
-(defun gk-roam-remove-overlays ()
+(defun gkroam-remove-overlays ()
   "Remove overlays in current line."
-  (when (string= major-mode "gk-roam-mode")
+  (when (string= major-mode "gkroam-mode")
     (save-excursion
       (goto-char (line-beginning-position))
-      (when (re-search-forward gk-roam-link-regexp (line-end-position) t)
+      (when (re-search-forward gkroam-link-regexp (line-end-position) t)
 	(with-silent-modifications
 	  (remove-overlays (line-beginning-position) (line-end-position)))))))
 
-(defun gk-roam-overlay-buffer ()
-  "Put overlay in currnt gk-roam buffer."
-  (gk-roam-put-overlays (line-end-position) (point-max))
-  (gk-roam-put-overlays (point-min) (line-beginning-position)))
+(defun gkroam-overlay-buffer ()
+  "Put overlay in currnt gkroam buffer."
+  (gkroam-put-overlays (line-end-position) (point-max))
+  (gkroam-put-overlays (point-min) (line-beginning-position)))
 
-(defun gk-roam-overlay1 (orig-fun &rest args)
+(defun gkroam-overlay1 (orig-fun &rest args)
   "Advice function for automatically hide and show brackets when cursor moves."
-  (gk-roam-put-overlays (line-beginning-position) (line-end-position))
+  (gkroam-put-overlays (line-beginning-position) (line-end-position))
   (apply orig-fun args)
-  (gk-roam-remove-overlays))
+  (gkroam-remove-overlays))
 
-(defun gk-roam-overlay2 (orig-fun &rest args)
+(defun gkroam-overlay2 (orig-fun &rest args)
   "Advice function for automatically hide and show brackets when cursor moves."
-  (gk-roam-put-overlays (line-beginning-position) (line-end-position))
+  (gkroam-put-overlays (line-beginning-position) (line-end-position))
   (apply orig-fun args)
   (unless (ignore-errors (mouse-on-link-p (point)))
-    (gk-roam-remove-overlays)))
+    (gkroam-remove-overlays)))
 
 ;;;###autoload
-(defun gk-roam-toggle-brackets ()
+(defun gkroam-toggle-brackets ()
   "Determine whether to show brackets in page link."
   (interactive)
-  (if gk-roam-toggle-brackets-p
-      (setq gk-roam-toggle-brackets-p nil)
-    (setq gk-roam-toggle-brackets-p t))
-  (gk-roam-overlay-buffer))
+  (if gkroam-toggle-brackets-p
+      (setq gkroam-toggle-brackets-p nil)
+    (setq gkroam-toggle-brackets-p t))
+  (gkroam-overlay-buffer))
 
 ;; ----------------------------------------
 
 ;; major mode
 
-(defun gk-roam-company-bracket-p ()
+(defun gkroam-company-bracket-p ()
   "Judge if need to company bracket link."
   (save-excursion
     (let (word)
@@ -667,23 +676,23 @@ and output NUM*2 lines before and after the link line."
       (string= (thing-at-point 'sexp t)
 	       (format "{[%s]}" word)))))
 
-(defun gk-roam-company-hashtag-p ()
+(defun gkroam-company-hashtag-p ()
   "Judge if need to company hashtag link."
   (save-excursion
     (skip-chars-backward "^#" (line-beginning-position))
     (and (not (= (line-beginning-position) (point)))
 	 (thing-at-point 'word t))))
 
-(defun gk-roam-company-slash-p ()
+(defun gkroam-company-slash-p ()
   "Judge if need to company slash."
   (save-excursion
     (skip-chars-backward "^/" (line-beginning-position))
     (and (not (= (line-beginning-position) (point)))
 	 (thing-at-point 'word t))))
 
-(defun gk-roam--complete-hashtag ()
+(defun gkroam--complete-hashtag ()
   "Complete hashtag with brackets."
-  (when (gk-roam-company-hashtag-p)
+  (when (gkroam-company-hashtag-p)
     (save-excursion
       (let (end len)
 	(setq end (point))
@@ -692,76 +701,76 @@ and output NUM*2 lines before and after the link line."
 	(forward-char len)
 	(insert "]}")))))
 
-(defun gk-roam-completion-finish (title)
+(defun gkroam-completion-finish (title)
   "Function binded to `company-completion-finish-hook'."
-  (when (gk-roam-company-hashtag-p)
-    (gk-roam--complete-hashtag)
+  (when (gkroam-company-hashtag-p)
+    (gkroam--complete-hashtag)
     (save-buffer)))
 
-;; (defvar gk-roam-slash-magics nil)
+;; (defvar gkroam-slash-magics nil)
 
-;; (setq gk-roam-slash-magics '("TODO" "Page Reference" "Hashtag" "Current Time"))
+;; (setq gkroam-slash-magics '("TODO" "Page Reference" "Hashtag" "Current Time"))
 
-(defun gk-roam-completion-at-point ()
+(defun gkroam-completion-at-point ()
   "Function binded to `completion-at-point-functions'."
   (interactive)
   (let (bds beg end)
     (cond
-     ((gk-roam-company-bracket-p)
+     ((gkroam-company-bracket-p)
       (setq bds (bounds-of-thing-at-point 'list))
       (setq beg (1+ (car bds)))
       (setq end (1- (cdr bds)))
-      (list beg end gk-roam-pages . nil))
-     ((gk-roam-company-hashtag-p)
+      (list beg end gkroam-pages . nil))
+     ((gkroam-company-hashtag-p)
       (setq bds (bounds-of-thing-at-point 'symbol))
       (setq beg (car bds))
       (setq end (cdr bds))
-      (list beg end gk-roam-pages . nil))
-     ((gk-roam-company-slash-p)
+      (list beg end gkroam-pages . nil))
+     ((gkroam-company-slash-p)
       (setq bds (bounds-of-thing-at-point 'symbol))
       (setq beg (car bds))
       (setq end (cdr bds))
-      (list beg end gk-roam-slash-magics . nil)))))
+      (list beg end gkroam-slash-magics . nil)))))
 
 (progn
-  (setq gk-roam-mode-map (make-sparse-keymap)))
+  (setq gkroam-mode-map (make-sparse-keymap)))
 
-(defun gk-roam-set-major-mode ()
+(defun gkroam-set-major-mode ()
   (when (string=
 	 (file-name-directory (buffer-file-name))
-	 (expand-file-name gk-roam-root-dir))
-    (gk-roam-mode)))
+	 (expand-file-name gkroam-root-dir))
+    (gkroam-mode)))
 
-(add-hook 'find-file-hook #'gk-roam-set-major-mode)
+(add-hook 'find-file-hook #'gkroam-set-major-mode)
 
-(define-derived-mode gk-roam-mode org-mode "gk-roam"
-  "Major mode for gk-roam."
-  (add-hook 'completion-at-point-functions 'gk-roam-completion-at-point nil 'local)
-  (add-hook 'company-completion-finished-hook 'gk-roam-completion-finish nil 'local)
-  (add-hook 'gk-roam-mode-hook 'gk-roam-link-frame-setup)
-  (add-hook 'gk-roam-mode-hook 'gk-roam-set-project-alist)
-  (add-hook 'gk-roam-mode-hook 'toggle-truncate-lines)
+(define-derived-mode gkroam-mode org-mode "gkroam"
+  "Major mode for gkroam."
+  (add-hook 'completion-at-point-functions 'gkroam-completion-at-point nil 'local)
+  (add-hook 'company-completion-finished-hook 'gkroam-completion-finish nil 'local)
+  (add-hook 'gkroam-mode-hook 'gkroam-link-frame-setup)
+  (add-hook 'gkroam-mode-hook 'gkroam-set-project-alist)
+  (add-hook 'gkroam-mode-hook 'toggle-truncate-lines)
 
-  (advice-add 'org-publish-file :around #'gk-roam-resolve-link)
+  (advice-add 'org-publish-file :around #'gkroam-resolve-link)
   
   ;; It's ugly to use 'advice-add', though things seem to go well.
   ;; But I haven't found a better way to auto hide and show brackets.
-  (advice-add 'next-line :around #'gk-roam-overlay1)
-  (advice-add 'previous-line :around #'gk-roam-overlay1)
-  (advice-add 'newline :around #'gk-roam-overlay1)
-  (advice-add 'org-delete-backward-char :around #'gk-roam-overlay1)
-  (advice-add 'org-meta-return :around #'gk-roam-overlay1)
-  (advice-add 'mouse-drag-region :around #'gk-roam-overlay2)
+  (advice-add 'next-line :around #'gkroam-overlay1)
+  (advice-add 'previous-line :around #'gkroam-overlay1)
+  (advice-add 'newline :around #'gkroam-overlay1)
+  (advice-add 'org-delete-backward-char :around #'gkroam-overlay1)
+  (advice-add 'org-meta-return :around #'gkroam-overlay1)
+  (advice-add 'mouse-drag-region :around #'gkroam-overlay2)
   (if (require 'hungry-delete nil t)
-      (advice-add 'hungry-delete-backward :around #'gk-roam-overlay1))
+      (advice-add 'hungry-delete-backward :around #'gkroam-overlay1))
   
-  (gk-roam-link-minor-mode)
-  (add-hook 'gk-roam-mode-hook 'gk-roam-overlay-buffer)
+  (gkroam-link-minor-mode)
+  (add-hook 'gkroam-mode-hook 'gkroam-overlay-buffer)
   
-  (setq gk-roam-pages (gk-roam--all-titles))
-  (setq-local gk-roam-has-link-p nil)
-  (use-local-map gk-roam-mode-map))
+  (setq gkroam-pages (gkroam--all-titles))
+  (setq-local gkroam-has-link-p nil)
+  (use-local-map gkroam-mode-map))
 
 ;; ---------------------------------
-(provide 'gk-roam)
-;;; gk-roam.el ends here
+(provide 'gkroam)
+;;; gkroam.el ends here
