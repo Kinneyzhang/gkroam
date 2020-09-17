@@ -58,14 +58,15 @@
 (require 'undo-tree)
 
 ;;;; Declarations
-;; (declare-function org-get-heading "org")
 (declare-function org-publish-project "ox-publish")
 (defvar org-link-frame-setup)
+(defvar org-publish-project-alist)
 
 ;;;; Variables
 (defgroup gkroam nil
   "A roam replica on top of emacs org-mode."
-  :tag "gkroam")
+  :tag "gkroam"
+  :group nil)
 
 (defcustom gkroam-root-dir ""
   "Gkroam's root directory, with org files in it."
