@@ -154,11 +154,11 @@
     titles))
 
 (defun gkroam--gen-file ()
-  "Generate new gkroam file."
-  (concat gkroam-root-dir (format "%s.org" (format-time-string "%Y%m%d%H%M%S"))))
+  "Generate new gkroam file path."
+  (concat gkroam-root-dir (gkroam--gen-page)))
 
 (defun gkroam--gen-page ()
-  "Generate new gkroam page."
+  "Generate new gkroam page filename, without directory prefix."
   (format "%s.org" (format-time-string "%Y%m%d%H%M%S")))
 
 (defsubst gkroam--format-link (title)
@@ -510,6 +510,9 @@ If ASYNC is non-nil, publish pages in an async process."
 	(browse-url (format "http://%s:%d" "127.0.0.1" 8080))
       (message "please enable 'global-undo-tree-mode'!"))))
 
+;;; ----------------------------------------
+;; minor mode: gkroam-link-minor-mode
+
 (define-button-type 'gkroam-link
   'action #'gkroam-follow-link
   'title nil
@@ -553,7 +556,6 @@ If ASYNC is non-nil, publish pages in an async process."
     (jit-lock-unregister #'gkroam-link-fontify))
   (jit-lock-refontify))
 
-;; -------------------------------------------------
 ;; gkroam overlays
 
 (defun gkroam-overlay-region (beg end prop value)
@@ -636,6 +638,219 @@ The overlays has a PROP and VALUE."
       (setq gkroam-toggle-brackets-p nil)
     (setq gkroam-toggle-brackets-p t))
   (gkroam-overlay-buffer))
+
+;;; ----------------------------------------
+;; minor mode: gkroam-edit-mode
+
+(defvar gkroam-return-wconf nil
+  "Saved window configuration before goto gkroam edit.")
+
+(defvar gkroam-edit-flag nil
+  "Judge if in process of gkroam edit.")
+
+(defvar gkroam-edit-buf "*gkroam-edit*"
+  "Gkroam edit buffer name.")
+
+(defvar gkroam-edit-pages nil
+  "Pages that have been editing in gkroam edit buffer.
+The value is a list of page's title.")
+
+(defun gkroam-dwim-page ()
+  "Get page from gkroam link, org link, region or at point."
+  (let (title page page-exist-p)
+    (cond
+     ((button-at (point))
+      (setq title (string-trim (button-label (button-at (point))) "#?{\\[" "\\]}")))
+     ((get-text-property (point) 'htmlize-link)
+      (setq page (string-trim-left
+		  (plist-get (get-text-property (point) 'htmlize-link) :uri) "file:")))
+     ((region-active-p)
+      (setq title (buffer-substring-no-properties (region-beginning) (region-end))))
+     ((thing-at-point 'word t)
+      (setq title (thing-at-point 'word t)))
+     (t (setq title "")))
+    (unless (string-empty-p title)
+      (if (or page (gkroam--get-page title))
+	  (cons (or page (gkroam--get-page title)) 'page)
+	(cons title 'title)))))
+
+(defun gkroam--get-content-region ()
+  "Get the region of real contents.
+The region is a begin position and end position cons."
+  (let (beg end)
+    (goto-char (point-min))
+    (re-search-forward "\\[\\[file:index\\.org\\]\\[.+?\\]\\]" nil t)
+    (forward-line 1)
+    (setq beg (point))
+    (if (re-search-forward "^-----" nil t)
+	(progn
+	  (forward-line -1)
+	  (goto-char (line-end-position)))
+      (goto-char (point-max)))
+    (setq end (point))
+    (cons beg end)))
+
+(defun gkroam--get-content (page)
+  "Get the real contents in PAGE.
+Except mata infomation and page references."
+  (let ((file (gkroam--get-file page))
+	region beg end)
+    (with-current-buffer (or (get-file-buffer file)
+			     (find-file-noselect file nil t))
+      (setq region (gkroam--get-content-region))
+      (setq beg (car region))
+      (setq end (cdr region))
+      (string-trim (buffer-substring-no-properties beg end)))))
+
+(defun gkroam-edit-append--cons ()
+  "Get the title and content cons needed to be appended to side window."
+  (let ((title-or-page (car (gkroam-dwim-page)))
+	(type (cdr (gkroam-dwim-page)))
+	title page file content)
+    (when title-or-page
+      (if (equal type 'page)
+	  (progn
+	    (setq page title-or-page)
+	    (setq title (gkroam--get-title page))
+	    (setq content (gkroam--get-content page)))
+	(setq title title-or-page)
+	(setq content ""))
+      (cons title content))))
+
+(defun gkroam-edit-append--process (content)
+  "Process the CONTENT of appended page to make sure 
+the headline level is greater than one."
+  (with-temp-buffer
+    (insert content)
+    (goto-char (point-min))
+    (while (re-search-forward "^*+ " nil t)
+      (backward-char 1)
+      (insert "*"))
+    (buffer-string)))
+
+(defun gkroam-edit-append (title content)
+  "Append title and content in gkroam edit buffer"
+  (goto-char (point-min))
+  (re-search-forward "^*" nil t)
+  (goto-char (line-beginning-position))
+  (newline-and-indent 2)
+  (goto-char (point-min))
+  (insert (format "* %s\n%s" title content)))
+
+(defun gkroam-edit-write--process (content)
+  "Process the CONTENT, restore the headline level when write back to pages."
+  (with-temp-buffer
+    (insert content)
+    (goto-char (point-min))
+    (while (re-search-forward "^*+ " nil t)
+      (backward-char 1)
+      (delete-char -1))
+    (buffer-string)))
+
+(defun gkroam-edit-write-pages ()
+  "Write the gkroam edit buffer contents to pages ordinally"
+  (interactive)
+  (let (title content page file plist region beg end)
+    (goto-char (point-min))
+    (while (re-search-forward "^* .+" nil t)
+      (setq title (string-trim-left (match-string-no-properties 0) "* "))
+      (setq page (gkroam--get-page title))
+      (if page
+	  (setq file (gkroam--get-file page))
+	(setq file (gkroam-new title)))
+      (goto-char (line-beginning-position))
+      (setq plist (cadr (org-element-headline-parser (point-max))))
+      (setq beg (plist-get plist :contents-begin))
+      (setq end (plist-get plist :contents-end))
+      (goto-char end)
+      (setq content (string-trim (buffer-substring beg end)))
+      (setq content (gkroam-edit-write--process content))
+      (save-current-buffer
+	(let (beg2 end2)
+	  (set-buffer (or (get-file-buffer file)
+			  (find-file-noselect file)))
+	  (setq region (gkroam--get-content-region))
+	  (setq beg2 (car region))
+	  (setq end2 (cdr region))
+	  (delete-region beg2 end2)
+	  (insert (format "\n%s\n" content))
+	  (gkroam-mode)
+	  (save-buffer))))))
+
+(defun gkroam-edit-finalize ()
+  "Finalize current gkroam edit process, write content to pages ordinally 
+and restore window configuration."
+  (interactive)
+  (setq gkroam-edit-flag nil)
+  (setq gkroam-edit-pages nil)
+  (gkroam-edit-write-pages)
+  (kill-current-buffer)
+  (set-window-configuration gkroam-return-wconf)
+  (setq gkroam-return-wconf nil))
+
+(defun gkroam-edit-kill ()
+  "Abort current gkroam edit process and restore window configuration."
+  (interactive)
+  (setq gkroam-edit-flag nil)
+  (setq gkroam-edit-pages nil)
+  (kill-current-buffer)
+  (set-window-configuration gkroam-return-wconf)
+  (setq gkroam-return-wconf nil))
+
+(defvar gkroam-edit-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map "\C-c\C-c" #'gkroam-edit-finalize)
+    (define-key map "\C-c\C-k" #'gkroam-edit-kill)
+    map)
+  "Keymap for `gkroam-edit-mode', a minor mode.
+Use this map to set additional keybindings for when Gkroam mode is used
+for a side edit buffer.")
+
+(defvar gkroam-edit-mode-hook nil
+  "Hook for the `gkroam-edit-mode' minor mode.")
+
+(define-minor-mode gkroam-edit-mode
+  "Minor mode for special key bindings in a gkroam edit buffer.
+Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
+  nil " Edit" gkroam-edit-mode-map
+  (setq-local
+   header-line-format
+   (substitute-command-keys
+    "\\<gkroam-edit-mode-map>Edit buffer. Finish \
+`\\[gkroam-edit-finalize]', abort `\\[gkroam-edit-kill]'.")))
+
+;;;###autoload
+(defun gkroam-edit ()
+  "Temporary edit pages in side window."
+  (interactive)
+  (let* ((cons (gkroam-edit-append--cons))
+	 title content)
+    (if (null cons)
+	(progn
+	  (setq title (completing-read "Choose a page to edit: "
+				       (gkroam--all-titles) nil nil))
+	  (setq content (gkroam-edit-append--process
+			 (gkroam--get-content (gkroam--get-page title)))))
+      (setq title (car cons))
+      (setq content (gkroam-edit-append--process (cdr cons))))
+    (if (member title gkroam-edit-pages)
+	(message "'%s' page is already in edit buffer!" title)
+      (push title gkroam-edit-pages)
+      (if (null gkroam-edit-flag)
+	  (progn
+	    (setq gkroam-return-wconf
+		  (current-window-configuration))
+	    (delete-other-windows)
+	    (split-window-right)
+	    (other-window 1)
+	    (switch-to-buffer gkroam-edit-buf)
+	    (org-mode)
+	    (setq truncate-lines nil)
+	    (gkroam-edit-mode)
+	    (gkroam-edit-append title content)
+	    (setq gkroam-edit-flag t))
+	(other-window 1)
+	(gkroam-edit-append title content)))))
 
 ;; ----------------------------------------
 ;; major mode
