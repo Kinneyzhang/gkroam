@@ -446,6 +446,8 @@ This is an advice for ORIG-FUN with argument FILE and other ARGS."
 
 (defun gkroam-set-project-alist ()
   "Add gkroam project to `org-publish-project-alist'."
+  (setq org-publish-project-alist
+	(remove (assoc "gkroam" org-publish-project-alist) org-publish-project-alist))
   (add-to-list
    'org-publish-project-alist
    `("gkroam"
