@@ -955,6 +955,8 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
   
   (setq gkroam-pages (gkroam--all-titles))
   (setq-local gkroam-has-link-p nil)
+  (setq-local org-startup-folded nil)
+  (setq-local org-return-follows-link t)
   (use-local-map gkroam-mode-map))
 
 ;; ---------------------------------
