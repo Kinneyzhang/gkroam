@@ -362,7 +362,7 @@
 (defun gkroam-new-from-region ()
   "Insert a file link and create a new file according to a selected region."
   (interactive)
-  (if (gkroam-at-root-p)
+  (if (and (gkroam-at-root-p) (region-active-p))
       (let* ((beg (region-beginning))
 	         (end (region-end))
 	         (title (when (region-active-p)
@@ -384,9 +384,9 @@
   "Smartly create a new file according to point or region."
   (interactive)
   (cond
-   ((region-active-p) (gkroam-new-from-region))
+   ((gkroam-new-from-region))
    ((thing-at-point 'word) (gkroam-new-at-point))
-   (t (funcall-interactively 'gkroam-find))))
+   (t (call-interactively 'gkroam-find))))
 
 ;;;###autoload
 (defun gkroam-index ()
