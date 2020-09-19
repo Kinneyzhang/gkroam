@@ -263,8 +263,7 @@
      (lambda (string)
        (let* ((title (gkroam--get-title page))
 	          (file (gkroam--get-file page))
-	          (file-buf (or (get-file-buffer file)
-			                (find-file-noselect file t))))
+	          (file-buf (find-file-noselect file t)))
 	     (with-current-buffer file-buf
 	       (save-excursion
 	         (goto-char (point-max))
@@ -295,9 +294,8 @@
 
 (defun gkroam-update-index ()
   "Update gkroam index page."
-  (let* ((index-org (concat gkroam-root-dir "index.org"))
-         (index-buf (or (get-file-buffer index-org)
-                        (find-file-noselect index-org t))))
+  (let* ((index-org (expand-file-name "index.org" gkroam-root-dir))
+         (index-buf (find-file-noselect index-org t)))
     (with-current-buffer index-buf
       (erase-buffer)
       (insert "#+TITLE: INDEX\n#+OPTIONS: toc:nil H:2 num:0\n\n* Site Map\n\n")
@@ -416,8 +414,7 @@
 (defun gkroam-resolve-link (orig-fun file &rest args)
   "Convert gkroam link to org link.
 This is an advice for ORIG-FUN with argument FILE and other ARGS."
-  (let ((file-buf (or (get-file-buffer file)
-		              (find-file-noselect file t))))
+  (let ((file-buf (find-file-noselect file t)))
     (with-current-buffer file-buf
       (goto-char (point-min))
       (setq gkroam-has-link-p nil)
@@ -768,8 +765,7 @@ the headline level is greater than one."
       (setq content (gkroam-edit-write--process content))
       (save-current-buffer
 	    (let (beg2 end2)
-	      (set-buffer (or (get-file-buffer file)
-			              (find-file-noselect file t)))
+	      (set-buffer (find-file-noselect file t))
 	      (setq region (gkroam--get-content-region))
 	      (setq beg2 (car region))
 	      (setq end2 (cdr region))
