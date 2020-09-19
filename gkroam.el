@@ -673,14 +673,10 @@ The region is a begin position and end position cons."
   (let (beg end)
     (goto-char (point-min))
     (re-search-forward "\\[\\[file:index\\.org\\]\\[.+?\\]\\]" nil t)
-    (forward-line 1)
-    (setq beg (point))
+    (setq beg (1+ (match-end 0)))
     (if (re-search-forward "^-----" nil t)
-	    (progn
-	      (forward-line -1)
-	      (goto-char (line-end-position)))
-      (goto-char (point-max)))
-    (setq end (point))
+	    (setq end (1- (match-beginning 0)))
+      (setq end (point-max)))
     (cons beg end)))
 
 (defun gkroam--get-content (page)
