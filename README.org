@@ -12,6 +12,8 @@
    Gkroam is a light-weight roam replica, built on top of emacs org-mode. It uses 'ripgrep' to search pages' links and insert references at the bottom of org pages automatically. Almostly, gkroam imitates roam research in many aspects. More useful functionality will be implemented in future.
 
 ** Demos
+   [[./demos/gkroam-edit.gif]]
+   
    [[./demos/linked-references.gif]]
    
    [[./demos/completion.gif]]
@@ -33,6 +35,7 @@
       ("C-c r g" . gkroam-update)
       ("C-c r d" . gkroam-daily)
       ("C-c r f" . gkroam-find)
+      ("C-c r e" . gkroam-edit)
       ("C-c r n" . gkroam-smart-new)
       ("C-c r i" . gkroam-insert)
       ("C-c r I" . gkroam-index)
@@ -60,6 +63,9 @@
 
    =gkroam-find=\\
    Find a gkroam file and open it. If not exisit, create a new one. Just like /ido-find-file/.
+
+   =gkroam-edit=\\
+   Edit many pages in a side window and save changes by pressing =C-c C-c=, abort changes by pressing =C-c c-k=.
 
    =gkroam-daily=\\
    Create or open 'daily notes' page.
@@ -115,7 +121,7 @@
    * [X] Automatically hide and show brackets when move to a line including gkroam links.
    * [X] Convert gkroam link to org file link before publish and convert back when published.
    * [X] A more reasonable linked references form.
-   * [ ] Implement roam research like sidebar, named 'gkroam-side-edit' function.
+   * [X] Implement roam research like sidebar, named 'gkroam-edit' function.
    * [ ] Implement the slash magics, after input slash, do completion for commands.
    * [ ] Implement 'block reference' and 'block embeds'.
 
