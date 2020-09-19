@@ -285,8 +285,7 @@
 (defun gkroam-new (title)
   "Just create a new gkroam page titled with TITLE."
   (let* ((file (gkroam--gen-file))
-	     (file-buf (find-file-noselect file t))
-	     beg)
+	     (file-buf (find-file-noselect file t)))
     (with-current-buffer file-buf
       (insert
        (format "#+TITLE: %s\n#+DATE: %s\n#+OPTIONS: toc:nil H:2 num:0\n» [[file:index.org][ /Gkroam/ ]]\n\n" title (format-time-string "%Y-%m-%d")))
