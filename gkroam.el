@@ -210,8 +210,7 @@
   (with-temp-buffer
     (insert string)
     (goto-char (point-min))
-    (let ((gkroam-file-re (format "%s[0-9]\\{14\\}\\.org"
-				                  (expand-file-name gkroam-root-dir)))
+    (let ((gkroam-file-re (expand-file-name "[0-9]\\{14\\}\\.org" gkroam-root-dir))
 	      (num 0) references)
       (while (re-search-forward gkroam-file-re nil t)
 	    (let* ((path (match-string-no-properties 0))
