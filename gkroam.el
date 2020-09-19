@@ -684,8 +684,7 @@ The region is a begin position and end position cons."
 Except mata infomation and page references."
   (let ((file (gkroam--get-file page))
 	    region beg end)
-    (with-current-buffer (or (get-file-buffer file)
-			                 (find-file-noselect file t))
+    (with-current-buffer (find-file-noselect file t)
       (setq region (gkroam--get-content-region))
       (setq beg (car region))
       (setq end (cdr region))
@@ -697,13 +696,14 @@ Except mata infomation and page references."
 	    (type (cdr (gkroam-dwim-page)))
 	    title page file content)
     (when title-or-page
-      (if (equal type 'page)
-	      (progn
-	        (setq page title-or-page)
-	        (setq title (gkroam--get-title page))
-	        (setq content (gkroam--get-content page)))
-	    (setq title title-or-page)
-	    (setq content ""))
+      (pcase type
+        ('page
+	     (setq page title-or-page)
+	     (setq title (gkroam--get-title page))
+	     (setq content (gkroam--get-content page)))
+	    (_
+         (setq title title-or-page)
+	     (setq content "")))
       (cons title content))))
 
 (defun gkroam-edit-append--process (content)
