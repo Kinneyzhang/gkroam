@@ -350,8 +350,7 @@
 	        (progn
 	          (backward-word)
 	          (kill-word 1)
-	          (gkroam-insert title)
-	          (save-buffer))
+	          (gkroam-insert title))
 	      (gkroam-new title)
 	      (backward-word)
 	      (kill-word 1)
