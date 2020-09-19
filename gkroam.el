@@ -260,7 +260,7 @@
        (let* ((title (gkroam--get-title page))
 	      (file (gkroam--get-file page))
 	      (file-buf (or (get-file-buffer file)
-			    (find-file-noselect file nil nil))))
+			    (find-file-noselect file t))))
 	 (with-current-buffer file-buf
 	   (save-excursion
 	     (goto-char (point-max))
@@ -281,7 +281,7 @@
 (defun gkroam-new (title)
   "Just create a new gkroam page titled with TITLE."
   (let* ((file (gkroam--gen-file))
-	 (file-buf (find-file-noselect file))
+	 (file-buf (find-file-noselect file t))
 	 beg)
     (with-current-buffer file-buf
       (insert
@@ -294,7 +294,7 @@
   "Update gkroam index page."
   (let* ((index-org (concat gkroam-root-dir "index.org"))
          (index-buf (or (get-file-buffer index-org)
-                        (find-file-noselect index-org))))
+                        (find-file-noselect index-org t))))
     (with-current-buffer index-buf
       (erase-buffer)
       (insert "#+TITLE: INDEX\n#+OPTIONS: toc:nil H:2 num:0\n\n* Site Map\n\n")
@@ -418,7 +418,7 @@
   "Convert gkroam link to org link.
 This is an advice for ORIG-FUN with argument FILE and other ARGS."
   (let ((file-buf (or (get-file-buffer file)
-		      (find-file-noselect file))))
+		      (find-file-noselect file t))))
     (with-current-buffer file-buf
       (goto-char (point-min))
       (setq gkroam-has-link-p nil)
@@ -522,7 +522,11 @@ If ASYNC is non-nil, publish pages in an async process."
 (defun gkroam-follow-link (button)
   "Jump to the page that BUTTON represents."
   (with-demoted-errors "Error when following the link: %s"
-    (gkroam-find (button-get button 'title))))
+    (if (string= (buffer-name) gkroam-edit-buf)
+	(progn
+	  (other-window 1)
+	  (gkroam-find (button-get button 'title)))
+      (gkroam-find (button-get button 'title)))))
 
 (defun gkroam-link-fontify (beg end)
   "Put gkroam link between BEG and END."
@@ -696,7 +700,7 @@ Except mata infomation and page references."
   (let ((file (gkroam--get-file page))
 	region beg end)
     (with-current-buffer (or (get-file-buffer file)
-			     (find-file-noselect file nil t))
+			     (find-file-noselect file t))
       (setq region (gkroam--get-content-region))
       (setq beg (car region))
       (setq end (cdr region))
@@ -768,7 +772,7 @@ the headline level is greater than one."
       (save-current-buffer
 	(let (beg2 end2)
 	  (set-buffer (or (get-file-buffer file)
-			  (find-file-noselect file)))
+			  (find-file-noselect file t)))
 	  (setq region (gkroam--get-content-region))
 	  (setq beg2 (car region))
 	  (setq end2 (cdr region))
@@ -777,25 +781,27 @@ the headline level is greater than one."
 	  (gkroam-mode)
 	  (save-buffer))))))
 
+(defun gkroam-reset-variables ()
+  "Reset all variables gkroam edit relays on."
+  (setq gkroam-edit-flag nil)
+  (setq gkroam-edit-pages nil)
+  (setq gkroam-return-wconf nil))
+
 (defun gkroam-edit-finalize ()
   "Finalize current gkroam edit process, write content to pages ordinally 
 and restore window configuration."
   (interactive)
-  (setq gkroam-edit-flag nil)
-  (setq gkroam-edit-pages nil)
   (gkroam-edit-write-pages)
   (kill-current-buffer)
   (set-window-configuration gkroam-return-wconf)
-  (setq gkroam-return-wconf nil))
+  (gkroam-reset-variables))
 
 (defun gkroam-edit-kill ()
   "Abort current gkroam edit process and restore window configuration."
   (interactive)
-  (setq gkroam-edit-flag nil)
-  (setq gkroam-edit-pages nil)
   (kill-current-buffer)
   (set-window-configuration gkroam-return-wconf)
-  (setq gkroam-return-wconf nil))
+  (gkroam-reset-variables))
 
 (defvar gkroam-edit-mode-map
   (let ((map (make-sparse-keymap)))
@@ -844,13 +850,14 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
 	    (split-window-right)
 	    (other-window 1)
 	    (switch-to-buffer gkroam-edit-buf)
-	    (org-mode)
-	    (setq truncate-lines nil)
-	    (gkroam-edit-mode)
 	    (gkroam-edit-append title content)
+	    (gkroam-mode)
+	    (gkroam-edit-mode)
 	    (setq gkroam-edit-flag t))
-	(other-window 1)
-	(gkroam-edit-append title content)))))
+	(select-window (get-buffer-window gkroam-edit-buf))
+	(gkroam-edit-append title content)
+	(gkroam-mode)
+	(gkroam-edit-mode)))))
 
 ;; ----------------------------------------
 ;; major mode
