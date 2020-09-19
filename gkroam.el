@@ -146,7 +146,7 @@
 
 (defun gkroam--get-file (page)
   "Get gkroam file accroding to PAGE."
-  (expand-file-name (concat gkroam-root-dir page)))
+  (expand-file-name page gkroam-root-dir))
 
 (defun gkroam--all-pages ()
   "Get all gkroam pages."
