@@ -365,14 +365,12 @@
   (if (and (gkroam-at-root-p) (region-active-p))
       (let* ((beg (region-beginning))
 	         (end (region-end))
-	         (title (when (region-active-p)
-		              (buffer-substring-no-properties beg end)))
+	         (title (buffer-substring-no-properties beg end))
 	         (page-exist-p (gkroam--get-page title)))
 	    (if page-exist-p
 	        (progn
 	          (delete-region beg end)
-	          (gkroam-insert title)
-	          (save-buffer))
+	          (gkroam-insert title))
 	      (gkroam-new title)
 	      (delete-region beg end)
 	      (gkroam-insert title)
@@ -413,31 +411,30 @@
 (defun gkroam-resolve-link (orig-fun file &rest args)
   "Convert gkroam link to org link.
 This is an advice for ORIG-FUN with argument FILE and other ARGS."
-  (let ((file-buf (find-file-noselect file t)))
-    (with-current-buffer file-buf
-      (goto-char (point-min))
-      (setq gkroam-has-link-p nil)
-      (while (re-search-forward gkroam-link-regexp nil t)
-	    (setq gkroam-has-link-p t)
-	    (let (beg end title hashtag-p)
-	      (setq beg (match-beginning 0))
-	      (setq end (match-end 0))
-	      (setq title (match-string-no-properties 2))
-	      (save-excursion
-	        (goto-char (1- beg))
-	        (when (string= (thing-at-point 'char t) "#")
-	          (setq hashtag-p t)))
-	      (if hashtag-p
-	          (progn
-		        (delete-region (1- beg) end)
-		        (insert (format "[[file:%s][#%s]]" (gkroam--get-page title) title)))
-	        (delete-region beg end)
-	        (insert (format "[[file:%s][%s]]" (gkroam--get-page title) title)))))
-      (save-buffer)
-      (apply orig-fun file args)
-      (when gkroam-has-link-p
-	    ;; if possible, use original undo function.
-	    (undo-tree-undo)))))
+  (with-current-buffer (find-file-noselect file t)
+    (goto-char (point-min))
+    (setq gkroam-has-link-p nil)
+    (while (re-search-forward gkroam-link-regexp nil t)
+	  (setq gkroam-has-link-p t)
+	  (let (beg end title hashtag-p)
+	    (setq beg (match-beginning 0))
+	    (setq end (match-end 0))
+	    (setq title (match-string-no-properties 2))
+	    (save-excursion
+	      (goto-char (1- beg))
+	      (when (string= (thing-at-point 'char t) "#")
+	        (setq hashtag-p t)))
+        (delete-region beg end)
+        (when hashtag-p (delete-region (1- beg) beg))
+        (insert (format (if hashtag-p
+                            "[[file:%s][#%s]]"
+                          "[[file:%s][%s]]")
+                        (gkroam--get-page title) title))))
+    (save-buffer)
+    (apply orig-fun file args)
+    (when gkroam-has-link-p
+	  ;; if possible, use original undo function.
+	  (undo-tree-undo))))
 
 (defun gkroam-set-project-alist ()
   "Add gkroam project to `org-publish-project-alist'."
