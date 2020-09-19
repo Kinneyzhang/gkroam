@@ -160,7 +160,7 @@
 
 (defun gkroam--gen-file ()
   "Generate new gkroam file path."
-  (expand-file-name gkroam-root-dir (gkroam--gen-page)))
+  (expand-file-name (gkroam--gen-page) gkroam-root-dir))
 
 (defun gkroam--gen-page ()
   "Generate new gkroam page filename, without directory prefix."
