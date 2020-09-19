@@ -588,14 +588,12 @@ The overlays has a PROP and VALUE."
       (save-excursion
 	    (goto-char beg)
 	    (while (re-search-forward gkroam-link-regexp bound t)
-	      (setq pos (point))
-	      (goto-char (1- (match-beginning 0)))
-	      (if (string= (thing-at-point 'char t) "#")
+	      (goto-char (match-beginning 0))
+	      (if (string= (char-to-string (char-before)) "#")
 	          (gkroam-overlay-hashtag)
 	        (if gkroam-toggle-brackets-p
 		        (gkroam-overlay-shadow-brackets)
-	          (gkroam-overlay-hide-brackets)))
-	      (goto-char pos))))))
+	          (gkroam-overlay-hide-brackets))))))))
 
 (defun gkroam-remove-overlays ()
   "Remove overlays in current line."
