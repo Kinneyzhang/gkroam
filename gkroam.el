@@ -588,8 +588,9 @@ The overlays has a PROP and VALUE."
       (save-excursion
 	    (goto-char beg)
 	    (while (re-search-forward gkroam-link-regexp bound t)
-	      (goto-char (match-beginning 0))
-	      (if (string= (char-to-string (char-before)) "#")
+	      (if (string= (char-to-string
+                        (char-before (match-beginning 0)))
+                       "#")
 	          (gkroam-overlay-hashtag)
 	        (if gkroam-toggle-brackets-p
 		        (gkroam-overlay-shadow-brackets)
