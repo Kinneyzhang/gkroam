@@ -46,9 +46,10 @@
 
 ** Dependency
 
-   * [[https://github.com/skeeto/emacs-web-server][simple-httpd.el]] is used for html preview, install it in emacs.
-   * [[https://github.com/tarsiiformes/undo-tree][undo-tree.el]] is used to restore gkroam formatted link after publishing.
-   * *ripgrep(rg)* is used for search reference link, install it through os package manager and ensure that the command =rg= is in /exec-path/ variable.
+   * [[https://github.com/skeeto/emacs-web-server][simple-httpd]] is used to preview html.
+   * [[https://github.com/company-mode/company-mode][company-mode]] is used to complete double brackets link and hashtags.
+   * [[https://github.com/tarsiiformes/undo-tree][undo-tree]] is used to restore gkroam formatted link after publishing.
+   * *ripgrep(rg)* is used to search reference link.
 
 ** Usage
 
@@ -109,6 +110,7 @@
    - =v2.0.4=: Many bugs fixed and code improvement.
    - =v2.1.0=: A more powerful linked references system.
    - =v2.1.1=: Change package name to 'gkroam'.
+   - =v2.2.0=: Implement =gkroam-edit= and bump version to 2.2.0.
 
 ** TodoList
    

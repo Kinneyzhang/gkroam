@@ -51,6 +51,8 @@
 
 ;; v2.1.1 - Change package name to 'gkroam' from 'gk-roam'.
 
+;; v2.2.0 - Edit many pages in one side window and save changes separately.
+
 ;;; Code:
 
 (require 'ox-publish)
