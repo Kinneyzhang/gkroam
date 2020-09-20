@@ -620,8 +620,8 @@ The overlays has a PROP and VALUE."
     (save-excursion
       (goto-char (line-beginning-position))
       (when (re-search-forward gkroam-link-regexp (line-end-position) t)
-	(with-silent-modifications
-	  (remove-overlays (line-beginning-position) (line-end-position)))))))
+        (with-silent-modifications
+          (remove-overlays (line-beginning-position) (line-end-position)))))))))))
 
 (defun gkroam-overlay-buffer ()
   "Put overlay in currnt gkroam buffer."
