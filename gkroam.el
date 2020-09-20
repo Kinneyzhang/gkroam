@@ -6,7 +6,7 @@
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: http://github.com/Kinneyzhang/gkroam.el
-;; Package-Requires: ((emacs "27.1") (simple-httpd "1.5.1") (undo-tree "0.7.5"))
+;; Package-Requires: ((emacs "27.1") (company "0.9.10") (simple-httpd "1.5.1") (undo-tree "0.7.5"))
 
 ;; This file is not part of GNU Emacs.
 
