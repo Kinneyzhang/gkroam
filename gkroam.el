@@ -119,9 +119,10 @@
           (file . find-file)
           (wl . wl-other-frame))))
 
-(defun gkroam-at-root-p ()
-  "Check if current file exists in `gkroam-root-dir'."
-  (string= (file-name-directory (buffer-file-name))
+(defun gkroam-at-root-p (&optional buffer)
+  "Check if current file exists in `gkroam-root-dir'.
+If BUFFER is non-nil, check the buffer visited file."
+  (string= (file-name-directory (buffer-file-name buffer))
 	   (expand-file-name gkroam-root-dir)))
 
 (defun gkroam--get-title (page)
@@ -612,18 +613,18 @@ The overlays has a PROP and VALUE."
   (gkroam-put-overlays (line-end-position) (point-max))
   (gkroam-put-overlays (point-min) (line-beginning-position)))
 
-(defun gkroam-overlay1 (orig-fun &rest args)
-  "Advice for ORIG-FUN with ARGS to automatically hide and show brackets when cursor move."
-  (gkroam-put-overlays (line-beginning-position) (line-end-position))
-  (apply orig-fun args)
-  (gkroam-remove-overlays))
+;; (defun gkroam-overlay1 (orig-fun &rest args)
+;;   "Advice for ORIG-FUN with ARGS to automatically hide and show brackets when cursor move."
+;;   (gkroam-put-overlays (line-beginning-position) (line-end-position))
+;;   (apply orig-fun args)
+;;   (gkroam-remove-overlays))
 
-(defun gkroam-overlay2 (orig-fun &rest args)
-  "Advice for ORIG-FUN with ARGS to automatically hide and show brackets when cursor move."
-  (gkroam-put-overlays (line-beginning-position) (line-end-position))
-  (apply orig-fun args)
-  (unless (ignore-errors (mouse-on-link-p (point)))
-    (gkroam-remove-overlays)))
+;; (defun gkroam-overlay2 (orig-fun &rest args)
+;;   "Advice for ORIG-FUN with ARGS to automatically hide and show brackets when cursor move."
+;;   (gkroam-put-overlays (line-beginning-position) (line-end-position))
+;;   (apply orig-fun args)
+;;   (unless (ignore-errors (mouse-on-link-p (point)))
+;;     (gkroam-remove-overlays)))
 
 ;;;###autoload
 (defun gkroam-toggle-brackets ()
@@ -932,14 +933,14 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
   
   ;; It's may be ugly to use 'advice-add', though things seem to go well.
   ;; But I haven't found a better way to auto hide and show brackets.
-  (advice-add 'next-line :around #'gkroam-overlay1)
-  (advice-add 'previous-line :around #'gkroam-overlay1)
-  (advice-add 'newline :around #'gkroam-overlay1)
-  (advice-add 'org-delete-backward-char :around #'gkroam-overlay1)
-  (advice-add 'org-meta-return :around #'gkroam-overlay1)
-  (advice-add 'mouse-drag-region :around #'gkroam-overlay2)
-  (if (require 'hungry-delete nil t)
-      (advice-add 'hungry-delete-backward :around #'gkroam-overlay1))
+  ;; (advice-add 'next-line :around #'gkroam-overlay1)
+  ;; (advice-add 'previous-line :around #'gkroam-overlay1)
+  ;; (advice-add 'newline :around #'gkroam-overlay1)
+  ;; (advice-add 'org-delete-backward-char :around #'gkroam-overlay1)
+  ;; (advice-add 'org-meta-return :around #'gkroam-overlay1)
+  ;; (advice-add 'mouse-drag-region :around #'gkroam-overlay2)
+  ;; (if (require 'hungry-delete nil t)
+  ;;     (advice-add 'hungry-delete-backward :around #'gkroam-overlay1))
   
   (gkroam-link-minor-mode)
   (add-hook 'gkroam-mode-hook 'gkroam-overlay-buffer)
