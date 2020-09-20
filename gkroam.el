@@ -97,6 +97,9 @@
 (defvar gkroam-has-link-p nil
   "Judge if has link or hashtag in gkroam buffer.")
 
+(defvar gkroam-update-index-timer nil
+  "gkroam indexing timer")
+
 (defvar gkroam-link-regexp
   (rx (seq (group "{[")
            (group (+? (not (any "/\n"))))
@@ -155,9 +158,8 @@
 
 (defun gkroam--all-titles ()
   "Get all gkroam titles."
-  (let* ((pages (gkroam--all-pages))
-	     (titles (mapcar (lambda (page) (gkroam--get-title page)) pages)))
-    titles))
+  (let* ((pages (gkroam--all-pages)))
+    (mapcar (lambda (page) (gkroam--get-title page)) pages)))
 
 (defun gkroam--gen-file ()
   "Generate new gkroam file path."
@@ -187,12 +189,12 @@
   "Return a rg process to search PAGE's link and output LINUM lines before and after matched string."
   (let ((title (gkroam--get-title page))
 	    (name (generate-new-buffer-name " *gkroam-rg*")))
-    (start-process
-     name name "rg" "-C" (number-to-string linum)
-     "-FN" "--heading"
-     (format "{[%s]}" title)
-     (expand-file-name gkroam-root-dir) ;; must be absolute path.
-     "-g" "!index.org*")))
+    (start-process name name "rg" "-C"
+                   (number-to-string linum)
+                   "-FN" "--heading"
+                   (format "{[%s]}" title)
+                   (expand-file-name gkroam-root-dir) ;; must be absolute path.
+                   "-g" "!index.org*")))
 
 (defun gkroam--process-link-in-references (string)
   "Remove links in reference's STRING."
@@ -289,7 +291,7 @@
       (insert
        (format "#+TITLE: %s\n#+DATE: %s\n#+OPTIONS: toc:nil H:2 num:0\n» [[file:index.org][ /Gkroam/ ]]\n\n" title (format-time-string "%Y-%m-%d")))
       (save-buffer))
-    (push title /gkroam-pages)
+    (push title gkroam-pages)
     file))
 
 (defun gkroam-update-index ()
@@ -303,6 +305,17 @@
 	    (insert (format " - [[file:%s][%s]]\n" page (gkroam--get-title page))))
       (save-buffer))
     index-buf))
+
+(define-minor-mode gkroam-minor-mode
+  "update index using idle timer"
+  :init-value nil
+  :lighter ""
+  :group "gkroam"
+  (if gkroam-minor-mode
+      (setq gkroam-update-index-timer
+	        (run-with-idle-timer 5 10 'gkroam-update-index))
+    (cancel-timer gkroam-update-index-timer)
+    (setq gkroam-update-index-timer nil)))
 
 ;;;; Commands
 ;;;###autoload
