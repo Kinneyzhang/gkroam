@@ -57,6 +57,7 @@
 
 (require 'ox-publish)
 (require 'simple-httpd)
+(require 'company)
 (require 'undo-tree)
 
 ;;;; Declarations
