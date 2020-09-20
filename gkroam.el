@@ -122,11 +122,11 @@
           (file . find-file)
           (wl . wl-other-frame))))
 
-(defun gkroam-at-root-p (&optional buffer)
+(defun gkroam-at-root-p ()
   "Check if current file exists in `gkroam-root-dir'.
 If BUFFER is non-nil, check the buffer visited file."
-  (string= (file-name-directory (buffer-file-name buffer))
-	   (expand-file-name gkroam-root-dir)))
+  (file-equal-p (file-name-directory (buffer-file-name))
+                (expand-file-name gkroam-root-dir)))
 
 (defun gkroam--get-title (page)
   "Get PAGE's title."
@@ -916,7 +916,7 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
 
 (defun gkroam-set-major-mode ()
   "Set major mode to `gkroam-mode' after find file in `gkroam-root-dir'."
-  (when (string=
+  (when (file-equal-p
 	 (file-name-directory (buffer-file-name))
 	 (expand-file-name gkroam-root-dir))
     (gkroam-mode)))
