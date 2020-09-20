@@ -125,8 +125,9 @@
 (defun gkroam-at-root-p ()
   "Check if current file exists in `gkroam-root-dir'.
 If BUFFER is non-nil, check the buffer visited file."
-  (file-equal-p (file-name-directory (buffer-file-name))
-                (expand-file-name gkroam-root-dir)))
+  (when (buffer-file-name)
+    (file-equal-p (file-name-directory (buffer-file-name))
+                  (expand-file-name gkroam-root-dir))))
 
 (defun gkroam--get-title (page)
   "Get PAGE's title."
@@ -596,7 +597,7 @@ The overlays has a PROP and VALUE."
 
 (defun gkroam-put-overlays (beg &optional bound)
   "Put overlays between BEG and BOUND."
-  (when (gkroam-at-root-p)
+  (when (string= major-mode "gkroam-mode")
     (let ((bound (or bound (point-max)))
           pos)
       (save-excursion
@@ -616,7 +617,7 @@ The overlays has a PROP and VALUE."
 
 (defun gkroam-remove-line-overlays ()
   "Remove overlays in current line."
-  (when (gkroam-at-root-p)
+  (when (string= major-mode "gkroam-mode")
     (save-excursion
       (goto-char (line-beginning-position))
       (when (re-search-forward gkroam-link-regexp (line-end-position) t)
@@ -758,16 +759,15 @@ Except mata infomation and page references."
       (goto-char end)
       (setq content (string-trim (buffer-substring beg end)))
       (setq content (gkroam-edit-write--process content))
-      (save-current-buffer
+      (with-current-buffer (find-file-noselect file t)
         (let (beg2 end2)
-          (set-buffer (find-file-noselect file t))
           (setq region (gkroam--get-content-region))
           (setq beg2 (car region))
           (setq end2 (cdr region))
           (delete-region beg2 end2)
           (insert (format "\n%s\n" content))
-          (gkroam-mode)
-          (save-buffer))))))
+          (save-buffer)
+          (gkroam-mode))))))
 
 (defun gkroam-reset-variables ()
   "Reset all variables gkroam edit relays on."
