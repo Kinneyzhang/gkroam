@@ -68,7 +68,7 @@
 (defgroup gkroam nil
   "A roam replica on top of emacs org-mode."
   :tag "gkroam"
-  :group nil)
+  :group 'org)
 
 (defcustom gkroam-root-dir ""
   "Gkroam's root directory, with org files in it."
@@ -122,10 +122,11 @@
           (file . find-file)
           (wl . wl-other-frame))))
 
-(defun gkroam-at-root-p ()
-  "Check if current file exists in `gkroam-root-dir'"
-  (file-equal-p (file-name-directory (buffer-file-name))
-	            (expand-file-name gkroam-root-dir)))
+(defun gkroam-at-root-p (&optional buffer)
+  "Check if current file exists in `gkroam-root-dir'.
+If BUFFER is non-nil, check the buffer visited file."
+  (string= (file-name-directory (buffer-file-name buffer))
+	   (expand-file-name gkroam-root-dir)))
 
 (defun gkroam--get-title (page)
   "Get PAGE's title."
@@ -623,18 +624,18 @@ The overlays has a PROP and VALUE."
   (gkroam-put-overlays (line-end-position) (point-max))
   (gkroam-put-overlays (point-min) (line-beginning-position)))
 
-(defun gkroam-overlay1 (orig-fun &rest args)
-  "Advice for ORIG-FUN with ARGS to automatically hide and show brackets when cursor move."
-  (gkroam-put-overlays (line-beginning-position) (line-end-position))
-  (apply orig-fun args)
-  (gkroam-remove-overlays))
+;; (defun gkroam-overlay1 (orig-fun &rest args)
+;;   "Advice for ORIG-FUN with ARGS to automatically hide and show brackets when cursor move."
+;;   (gkroam-put-overlays (line-beginning-position) (line-end-position))
+;;   (apply orig-fun args)
+;;   (gkroam-remove-overlays))
 
-(defun gkroam-overlay2 (orig-fun &rest args)
-  "Advice for ORIG-FUN with ARGS to automatically hide and show brackets when cursor move."
-  (gkroam-put-overlays (line-beginning-position) (line-end-position))
-  (apply orig-fun args)
-  (unless (ignore-errors (mouse-on-link-p (point)))
-    (gkroam-remove-overlays)))
+;; (defun gkroam-overlay2 (orig-fun &rest args)
+;;   "Advice for ORIG-FUN with ARGS to automatically hide and show brackets when cursor move."
+;;   (gkroam-put-overlays (line-beginning-position) (line-end-position))
+;;   (apply orig-fun args)
+;;   (unless (ignore-errors (mouse-on-link-p (point)))
+;;     (gkroam-remove-overlays)))
 
 ;;;###autoload
 (defun gkroam-toggle-brackets ()
@@ -652,7 +653,7 @@ The overlays has a PROP and VALUE."
   "Saved window configuration before goto gkroam edit.")
 
 (defvar gkroam-edit-flag nil
-  "Judge if in process of gkroam edit.")
+  "Non-nil means it's in process of gkroam edit.")
 
 (defvar gkroam-edit-buf "*gkroam-edit*"
   "Gkroam edit buffer name.")
@@ -720,8 +721,7 @@ Except mata infomation and page references."
       (cons title content))))
 
 (defun gkroam-edit-append--process (content)
-  "Process the CONTENT of appended page to make sure 
-the headline level is greater than one."
+  "Process the CONTENT of appended page to make sure the headline level is greater than one."
   (with-temp-buffer
     (insert content)
     (goto-char (point-min))
@@ -731,7 +731,7 @@ the headline level is greater than one."
     (buffer-string)))
 
 (defun gkroam-edit-append (title content)
-  "Append title and content in gkroam edit buffer"
+  "Append TITLE and CONTENT in gkroam edit buffer."
   (goto-char (point-min))
   (re-search-forward "^*" nil t)
   (goto-char (line-beginning-position))
@@ -750,7 +750,7 @@ the headline level is greater than one."
     (buffer-string)))
 
 (defun gkroam-edit-write-pages ()
-  "Write the gkroam edit buffer contents to pages ordinally"
+  "Write the gkroam edit buffer contents to pages separately."
   (interactive)
   (let (title content page file plist region beg end)
     (goto-char (point-min))
@@ -785,8 +785,7 @@ the headline level is greater than one."
   (setq gkroam-return-wconf nil))
 
 (defun gkroam-edit-finalize ()
-  "Finalize current gkroam edit process, write content to pages ordinally 
-and restore window configuration."
+  "Finalize current gkroam edit process, write content to pages ordinally and restore window configuration."
   (interactive)
   (gkroam-edit-write-pages)
   (kill-current-buffer)
@@ -945,14 +944,14 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
   
   ;; It's may be ugly to use 'advice-add', though things seem to go well.
   ;; But I haven't found a better way to auto hide and show brackets.
-  (advice-add 'next-line :around #'gkroam-overlay1)
-  (advice-add 'previous-line :around #'gkroam-overlay1)
-  (advice-add 'newline :around #'gkroam-overlay1)
-  (advice-add 'org-delete-backward-char :around #'gkroam-overlay1)
-  (advice-add 'org-meta-return :around #'gkroam-overlay1)
-  (advice-add 'mouse-drag-region :around #'gkroam-overlay2)
-  (if (require 'hungry-delete nil t)
-      (advice-add 'hungry-delete-backward :around #'gkroam-overlay1))
+  ;; (advice-add 'next-line :around #'gkroam-overlay1)
+  ;; (advice-add 'previous-line :around #'gkroam-overlay1)
+  ;; (advice-add 'newline :around #'gkroam-overlay1)
+  ;; (advice-add 'org-delete-backward-char :around #'gkroam-overlay1)
+  ;; (advice-add 'org-meta-return :around #'gkroam-overlay1)
+  ;; (advice-add 'mouse-drag-region :around #'gkroam-overlay2)
+  ;; (if (require 'hungry-delete nil t)
+  ;;     (advice-add 'hungry-delete-backward :around #'gkroam-overlay1))
   
   (gkroam-link-minor-mode)
   (add-hook 'gkroam-mode-hook 'gkroam-overlay-buffer)
