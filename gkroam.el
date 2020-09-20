@@ -121,8 +121,8 @@
 
 (defun gkroam-at-root-p ()
   "Check if current file exists in `gkroam-root-dir'"
-  (string= (file-name-directory (buffer-file-name))
-	       (expand-file-name gkroam-root-dir)))
+  (file-equal-p (file-name-directory (buffer-file-name))
+	            (expand-file-name gkroam-root-dir)))
 
 (defun gkroam--get-title (page)
   "Get PAGE's title."
@@ -382,7 +382,7 @@
   "Smartly create a new file according to point or region."
   (interactive)
   (cond
-   ((gkroam-new-from-region))
+   ((region-active-p) (gkroam-new-from-region))
    ((thing-at-point 'word) (gkroam-new-at-point))
    (t (call-interactively 'gkroam-find))))
 
