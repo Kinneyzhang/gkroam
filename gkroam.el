@@ -878,21 +878,21 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
     (and (not (= (line-beginning-position) (point)))
          (thing-at-point 'word t))))
 
-(defun gkroam--complete-hashtag ()
-  "Complete hashtag with brackets."
-  (when (gkroam-company-hashtag-p)
-    (save-excursion
-      (let (end len)
-        (setq end (point))
+(defun gkroam--complete-hashtag (title)
+  "Complete hashtag with brackets for TITLE."
+  (let (len)
+    (when (gkroam-company-hashtag-p)
+      (save-excursion
         (setq len (abs (skip-chars-backward "^#")))
         (insert "{[")
         (forward-char len)
-        (insert "]}")))))
+        (insert "]}")))
+    title))
 
 (defun gkroam-completion-finish (title)
   "Function binded to `company-completion-finish-hook' after finishing complete TITLE."
   (when (gkroam-company-hashtag-p)
-    (gkroam--complete-hashtag)
+    (gkroam--complete-hashtag title)
     (save-buffer)))
 
 (defun gkroam-completion-at-point ()
