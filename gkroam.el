@@ -577,7 +577,7 @@ The overlays has a PROP and VALUE."
   (with-silent-modifications
     (gkroam-overlay-region (match-beginning 1) (match-beginning 2) 'display "")
     (gkroam-overlay-region (match-beginning 3) (match-end 0) 'display "")
-    (gkroam-overlay-region (1- (match-beginning 0)) (match-end 0) 'face '(shadow (:underline nil)))))
+    (gkroam-overlay-region (1- (match-beginning 0)) (match-end 0) 'face 'shadow)))
 
 (defun gkroam-overlay-shadow-brackets ()
   "Set overlays to shadow brackets."
@@ -586,14 +586,14 @@ The overlays has a PROP and VALUE."
     (remove-overlays (match-beginning 3) (match-end 0) 'display "")
     (gkroam-overlay-region (match-beginning 1) (match-beginning 2) 'face 'shadow)
     (gkroam-overlay-region (match-beginning 3) (match-end 0) 'face 'shadow)
-    (gkroam-overlay-region (match-beginning 0) (match-end 0) 'face '(warning (:underline nil)))))
+    (gkroam-overlay-region (match-beginning 0) (match-end 0) 'face 'warning)))
 
 (defun gkroam-overlay-hide-brackets ()
   "Set overlays to hide gkroam brackets."
   (with-silent-modifications
     (gkroam-overlay-region (match-beginning 1) (match-beginning 2) 'display "")
     (gkroam-overlay-region (match-beginning 3) (match-end 0) 'display "")
-    (gkroam-overlay-region (match-beginning 0) (match-end 0) 'face '(warning (:underline nil)))))
+    (gkroam-overlay-region (match-beginning 0) (match-end 0) 'face 'warning)))
 
 (defun gkroam-put-overlays (beg &optional bound)
   "Put overlays between BEG and BOUND."
@@ -927,18 +927,20 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
 
 (define-derived-mode gkroam-mode org-mode "gkroam"
   "Major mode for gkroam."
+  (gkroam-link-minor-mode)
+  
   (add-hook 'completion-at-point-functions 'gkroam-completion-at-point nil 'local)
   (add-hook 'company-completion-finished-hook 'gkroam-completion-finish nil 'local)
+  
   (add-hook 'gkroam-mode-hook 'gkroam-link-frame-setup)
   (add-hook 'gkroam-mode-hook 'gkroam-set-project-alist)
   (add-hook 'gkroam-mode-hook 'toggle-truncate-lines)
-  
   (add-hook 'gkroam-mode-hook 'gkroam-overlay-buffer)
+  
   (add-hook 'pre-command-hook 'gkroam-restore-line-overlays)
   (add-hook 'post-command-hook 'gkroam-remove-line-overlays)
-  (advice-add 'org-publish-file :around #'gkroam-resolve-link)
   
-  (gkroam-link-minor-mode)
+  (advice-add 'org-publish-file :around #'gkroam-resolve-link)
   
   (setq gkroam-pages (gkroam--all-titles))
   (setq-local gkroam-has-link-p nil)
