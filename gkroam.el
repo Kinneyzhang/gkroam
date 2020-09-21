@@ -304,12 +304,16 @@ If BUFFER is non-nil, check the buffer visited file."
                (save-buffer))))))))
   (message "%s reference updated" page))
 
+(defvar gkroam-index-title "INDEX"
+  "Title of index page.")
+
 (defun gkroam-new (title)
   "Just create a new gkroam page titled with TITLE."
   (let* ((file (gkroam--gen-file)))
     (with-current-buffer (find-file-noselect file t)
       (insert
-       (format "#+TITLE: %s\n#+DATE: %s\n#+OPTIONS: toc:nil H:2 num:0\n» [[file:index.org][ /Gkroam/ ]]\n\n" title (format-time-string "%Y-%m-%d")))
+       (format "#+TITLE: %s\n#+OPTIONS: toc:nil H:2 num:0\n» [[file:index.org][%s]]\n\n"
+               title gkroam-index-title))
       (save-buffer))
     (push title gkroam-pages)
     file))
@@ -320,9 +324,10 @@ If BUFFER is non-nil, check the buffer visited file."
          (index-buf (find-file-noselect index-org t)))
     (with-current-buffer index-buf
       (erase-buffer)
-      (insert "#+TITLE: INDEX\n#+OPTIONS: toc:nil H:2 num:0\n\n* Site Map\n\n")
+      (insert (format "#+TITLE: %s\n#+OPTIONS: toc:nil H:2 num:0\n\n* Site Map\n\n"
+                      gkroam-index-title))
       (dolist (page (gkroam--all-pages))
-        (insert (format " - [[file:%s][%s]]\n" page (gkroam--get-title page))))
+        (insert (format " + [[file:%s][%s]]\n" page (gkroam--get-title page))))
       (save-buffer))
     index-buf))
 
@@ -815,7 +820,7 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
   (setq-local
    header-line-format
    (substitute-command-keys
-    "\\<gkroam-edit-mode-map>Edit buffer. Finish \
+    "\\<gkroam-edit-mode-map>Edit buffer, finish \
 `\\[gkroam-edit-finalize]', abort `\\[gkroam-edit-kill]'.")))
 
 ;;;###autoload
