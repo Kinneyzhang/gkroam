@@ -12,7 +12,7 @@
   - [[#acknowledgements][Acknowledgements]]
 
 ** Introduction
-   Gkroam is a light-weight roam replica, built on top of emacs org-mode. It uses 'ripgrep' to search pages' links and insert references at the bottom of org pages automatically. Almostly, gkroam imitates roam research in many aspects. More useful functionality will be implemented in future.
+   Gkroam is a lightweight [[https://roamresearch.com][Roam Research]] replica, built on top of emacs org-mode. It uses 'ripgrep' to search pages' links and insert references at the bottom of org pages automatically. Almostly, gkroam imitates roam research in as many aspects as possible.
 
 ** Demos
    [[./demos/gkroam-edit.gif]]
@@ -27,14 +27,14 @@
    
    Clone this repo and add gkroam to your emacs load-path. My configurations are as follows. Feel free to modify them as you like.
 
-   Now, you can also install gkroam from Melpa with package.el!
+   Now, you can also install gkroam from Melpa with =package-install=.
 
    #+BEGIN_SRC emacs-lisp
    (use-package gkroam
      :ensure t
      :init
      (setq gkroam-root-dir "~/gkroam/org/"
-	   gkroam-pub-dir "~/gkroam/site/")
+           gkroam-pub-dir "~/gkroam/site/")
      :bind
      (("C-c r G" . gkroam-update-all)
       ("C-c r g" . gkroam-update)
