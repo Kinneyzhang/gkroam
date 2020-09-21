@@ -1,3 +1,5 @@
+[[https://melpa.org/#/gkroam][file:https://melpa.org/packages/gkroam-badge.svg]]
+
 * Table of Contents :TOC_3:
   - [[#introduction][Introduction]]
   - [[#demos][Demos]]
@@ -24,9 +26,11 @@
    
    Clone this repo and add gkroam to your emacs load-path. My configurations are as follows. Feel free to modify them as you like.
 
+   Now, you can also install gkroam from Melpa with package.el!
+
    #+BEGIN_SRC emacs-lisp
    (use-package gkroam
-     :load-path "~/iCloud/hack/gkroam/"
+     :ensure t
      :init
      (setq gkroam-root-dir "~/gkroam/org/"
 	   gkroam-pub-dir "~/gkroam/site/")
