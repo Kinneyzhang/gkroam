@@ -5,8 +5,8 @@
   - [[#demos][Demos]]
   - [[#installation][Installation]]
   - [[#dependency][Dependency]]
+  - [[#tips-important][Tips (Important!)]]
   - [[#usage][Usage]]
-  - [[#tips][Tips]]
   - [[#changelog][ChangeLog]]
   - [[#todolist][TodoList]]
   - [[#acknowledgements][Acknowledgements]]
@@ -55,6 +55,14 @@
    * [[https://github.com/company-mode/company-mode][company-mode]] is used to complete double brackets link and hashtags.
    * [[https://github.com/tarsiiformes/undo-tree][undo-tree]] is used to restore gkroam formatted link after publishing.
    * *ripgrep(rg)* is used to search reference link.
+
+** Tips (Important!)
+
+   - Install ripgrep(rg) command line firstly and make sure it is in exec-path list.
+   - Please set =gkroam-root-dir= and =gkroam-pub-dir= variables properly and create the directories manually before calling gkroam commands.
+   - If you want to use your custom publish css, set =gkroam-pub-css= variable. See the original value to know the format.
+   - Do not set =company-idle-delay= variable to zero, it will causes an error. see [[https://github.com/company-mode/company-mode/issues/455][issue#455]].
+   - When double brackets were hidden, it needs double click to follow a page link. This is a known issue and will be solved recently.
 
 ** Usage
 
@@ -105,11 +113,6 @@
 
    =gkroam-preview=\\
    Preview gkroam site's index page.
-
-** Tips
-
-   - Do not set =company-idle-delay= variable to zero, it will causes an error. see [[https://github.com/company-mode/company-mode/issues/455][issue#455]].
-   - When double brackets were hidden, it needs double click to follow a page link. This is a known issue and will be solved recently.
 
 ** ChangeLog
    - =v1.0=: Auto update link references at the bottom of page buffer.
