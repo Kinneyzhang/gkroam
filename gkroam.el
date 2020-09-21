@@ -71,12 +71,12 @@
   :tag "gkroam"
   :group 'org)
 
-(defcustom gkroam-root-dir ""
+(defcustom gkroam-root-dir "~/gkroam/org/"
   "Gkroam's root directory, with org files in it."
   :type 'string
   :group 'gkroam)
 
-(defcustom gkroam-pub-dir ""
+(defcustom gkroam-pub-dir "~/gkroam/site/"
   "Gkroam's publish directory, with html files in it."
   :type 'string
   :group 'gkroam)
