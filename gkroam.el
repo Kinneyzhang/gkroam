@@ -86,6 +86,9 @@
   :type 'string
   :group 'gkroam)
 
+(defvar gkroam-index-title "INDEX"
+  "Title of index page.")
+
 (defvar gkroam-toggle-brackets-p t
   "Determine whether to show brackets in page link.")
 
@@ -303,9 +306,6 @@ If BUFFER is non-nil, check the buffer visited file."
                  (insert references))
                (save-buffer))))))))
   (message "%s reference updated" page))
-
-(defvar gkroam-index-title "INDEX"
-  "Title of index page.")
 
 (defun gkroam-new (title)
   "Just create a new gkroam page titled with TITLE."

@@ -6,6 +6,7 @@
   - [[#installation][Installation]]
   - [[#dependency][Dependency]]
   - [[#usage][Usage]]
+  - [[#tips][Tips]]
   - [[#changelog][ChangeLog]]
   - [[#todolist][TodoList]]
   - [[#acknowledgements][Acknowledgements]]
@@ -104,6 +105,11 @@
 
    =gkroam-preview=\\
    Preview gkroam site's index page.
+
+** Tips
+
+   - Do not set =company-idle-delay= variable to zero, it will causes an error. see [[https://github.com/company-mode/company-mode/issues/455][issue#455]].
+   - When double brackets were hidden, it needs double click to follow a page link. This is a known issue and will be solved recently.
 
 ** ChangeLog
    - =v1.0=: Auto update link references at the bottom of page buffer.
