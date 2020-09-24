@@ -86,8 +86,16 @@
   :type 'string
   :group 'gkroam)
 
-(defvar gkroam-index-title "INDEX"
-  "Title of index page.")
+(defcustom gkroam-page-template
+  "#+TITLE: %s\n#+OPTIONS: toc:nil H:2 num:0\n"
+  "Gkroam page's template, including export options of org files, end with \\n"
+  :type 'string
+  :group 'gkroam)
+
+(defcustom gkroam-index-title "INDEX"
+  "Title of index page."
+  :type 'string
+  :group 'gkroam)
 
 (defvar gkroam-toggle-brackets-p t
   "Determine whether to show brackets in page link.")
@@ -312,7 +320,7 @@ If BUFFER is non-nil, check the buffer visited file."
   (let* ((file (gkroam--gen-file)))
     (with-current-buffer (find-file-noselect file t)
       (insert
-       (format "#+TITLE: %s\n#+OPTIONS: toc:nil H:2 num:0\n» [[file:index.org][%s]]\n\n"
+       (format (concat gkroam-page-template "» [[file:index.org][%s]]\n\n")
                title gkroam-index-title))
       (save-buffer))
     (push title gkroam-pages)
