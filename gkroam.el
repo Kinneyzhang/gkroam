@@ -332,23 +332,23 @@ If BUFFER is non-nil, check the buffer visited file."
          (index-buf (find-file-noselect index-org t)))
     (with-current-buffer index-buf
       (erase-buffer)
-      (insert (format "#+TITLE: %s\n#+OPTIONS: toc:nil H:2 num:0\n\n* Site Map\n\n"
+      (insert (format (concat gkroam-page-template "\n* Site Map\n\n")
                       gkroam-index-title))
       (dolist (page (gkroam--all-pages))
         (insert (format " + [[file:%s][%s]]\n" page (gkroam--get-title page))))
       (save-buffer))
     index-buf))
 
-(define-minor-mode gkroam-minor-mode
-  "update index using idle timer"
-  :init-value nil
-  :lighter ""
-  :group "gkroam"
-  (if gkroam-minor-mode
-      (setq gkroam-update-index-timer
-            (run-with-idle-timer 5 10 #'gkroam-update-index))
-    (cancel-timer gkroam-update-index-timer)
-    (setq gkroam-update-index-timer nil)))
+;; (define-minor-mode gkroam-index-mode
+;;   "Update index using idle timer."
+;;   :init-value nil
+;;   :lighter ""
+;;   :group "gkroam"
+;;   (if gkroam-index-mode
+;;       (setq gkroam-update-index-timer
+;;             (run-with-idle-timer 5 10 #'gkroam-update-index))
+;;     (cancel-timer gkroam-update-index-timer)
+;;     (setq gkroam-update-index-timer nil)))
 
 ;;;; Commands
 ;;;###autoload
@@ -547,7 +547,7 @@ If ASYNC is non-nil, publish pages in an async process."
       (message "please enable 'global-undo-tree-mode'!"))))
 
 ;;; ----------------------------------------
-;; minor mode: gkroam-link-minor-mode
+;; minor mode: gkroam-link-mode
 
 (define-button-type 'gkroam-link
   'action #'gkroam-follow-link
@@ -584,11 +584,11 @@ If ASYNC is non-nil, publish pages in an async process."
                       'face '(:underline nil)
                       'title (match-string-no-properties 2))))
 
-(define-minor-mode gkroam-link-minor-mode
+(define-minor-mode gkroam-link-mode
   "Recognize gkroam link."
   :lighter ""
   :keymap (make-sparse-keymap)
-  (if gkroam-link-minor-mode
+  (if gkroam-link-mode
       (progn
         (jit-lock-register #'gkroam-hashtag-fontify)
         (jit-lock-register #'gkroam-link-fontify))
@@ -932,6 +932,7 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
 
 (defun gkroam-set-major-mode ()
   "Set major mode to `gkroam-mode' after find file in `gkroam-root-dir'."
+  (interactive)
   (when (file-equal-p
          (file-name-directory (buffer-file-name))
          (expand-file-name gkroam-root-dir))
@@ -941,7 +942,7 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
 
 (define-derived-mode gkroam-mode org-mode "gkroam"
   "Major mode for gkroam."
-  (gkroam-link-minor-mode)
+  (gkroam-link-mode)
   
   (add-hook 'completion-at-point-functions #'gkroam-completion-at-point nil 'local)
   (add-hook 'company-completion-finished-hook #'gkroam-completion-finish nil 'local)
