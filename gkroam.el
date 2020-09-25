@@ -835,14 +835,16 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
   "Temporary edit pages in side window."
   (interactive)
   (let* ((cons (gkroam-edit-append--cons))
-         title content)
+         title page content)
     (if (null cons)
         (progn
           (setq title (completing-read "Choose a page to edit or create a new one: "
                                        (gkroam--all-titles) nil nil))
-          (setq content (gkroam-edit-append--process
-                         (gkroam--get-content (or (gkroam--get-page title)
-                                                  (gkroam-new title))))))
+          (setq page (gkroam--get-page title))
+          (if page
+              (setq content (gkroam-edit-append--process
+                             (gkroam--get-content (gkroam--get-page title))))
+            (setq content "")))
       (setq title (car cons))
       (setq content (gkroam-edit-append--process (cdr cons))))
     (if (member title gkroam-edit-pages)
