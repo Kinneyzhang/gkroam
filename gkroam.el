@@ -908,7 +908,8 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
 (defun gkroam-completion-finish (title)
   "Function binded to `company-completion-finish-hook' after finishing complete TITLE."
   (when (gkroam-company-hashtag-p)
-    (gkroam--complete-hashtag title)
+    (gkroam--complete-hashtag title))
+  (unless (string= (buffer-name) gkroam-edit-buf)
     (save-buffer)))
 
 (defun gkroam-completion-at-point ()
