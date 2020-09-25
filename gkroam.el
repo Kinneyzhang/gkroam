@@ -55,6 +55,7 @@
 
 ;;; Code:
 
+(require 'org-id)
 (require 'ox-publish)
 (require 'simple-httpd)
 (require 'company)
@@ -78,6 +79,16 @@
 
 (defcustom gkroam-pub-dir "~/gkroam/site/"
   "Gkroam's publish directory, with html files in it."
+  :type 'string
+  :group 'gkroam)
+
+(defcustom gkroam-static-dir "~/gkroam/static/"
+  "Gkroam's static files directory."
+  :type 'string
+  :group 'gkroam)
+
+(defcustom gkroam-static-pub-dir "~/gkroam/site/static/"
+  "Gkroam's static files publish directory."
   :type 'string
   :group 'gkroam)
 
@@ -483,17 +494,28 @@ This is an advice for ORIG-FUN with argument FILE and other ARGS."
 
 (defun gkroam-set-project-alist ()
   "Add gkroam project to `org-publish-project-alist'."
-  (setq org-publish-project-alist
-        (remove (assoc "gkroam" org-publish-project-alist) org-publish-project-alist))
-  (add-to-list
-   'org-publish-project-alist
-   `("gkroam"
-     :base-extension "org"
-     :recursive nil
-     :base-directory ,(expand-file-name gkroam-root-dir)
-     :publishing-directory ,(expand-file-name gkroam-pub-dir)
-     :publishing-function org-html-publish-to-html
-     :html-head ,gkroam-pub-css)))
+  (let (gkroam-publish-project-alist)
+    (setq org-publish-project-alist
+          (remove-if (lambda (lst)
+                       (string-match "gkroam.*" (car lst)))
+                     org-publish-project-alist))
+    (setq gkroam-publish-project-alist
+          `(("gkroam-page"
+             :base-extension "org"
+             :recursive nil
+             :base-directory ,(expand-file-name gkroam-root-dir)
+             :publishing-directory ,(expand-file-name gkroam-pub-dir)
+             :publishing-function org-html-publish-to-html
+             :html-head ,gkroam-pub-css)
+            ("gkroam-static"
+             :base-directory ,(expand-file-name gkroam-static-dir)
+             :base-extension "css\\|js\\|png\\|jpg\\|gif\\|pdf\\|mp3\\|ogg\\|swf"
+             :publishing-directory ,(expand-file-name gkroam-static-pub-dir)
+             :recursive t
+             :publishing-function org-publish-attachment)
+            ("gkroam" :components ("gkroam-page" "gkroam-static"))))
+    (dolist (lst gkroam-publish-project-alist)
+      (add-to-list 'org-publish-project-alist lst))))
 
 ;;;###autoload
 (defun gkroam-publish-current-file ()
@@ -501,7 +523,9 @@ This is an advice for ORIG-FUN with argument FILE and other ARGS."
   (interactive)
   (if (gkroam-at-root-p)
       (progn
+        (gkroam-update-index)
         (gkroam-update)
+        (gkroam-set-project-alist)
         (if undo-tree-mode
             (org-publish-file (buffer-file-name))
           (message "please enable 'undo-tree-mode' in this buffer!")))
@@ -529,6 +553,7 @@ If ASYNC is non-nil, publish pages in an async process."
   (interactive)
   (gkroam-update-index)
   ;; (gkroam-update-all)
+  (gkroam-set-project-alist)
   (if global-undo-tree-mode
       (org-publish-project "gkroam" force async)
     (message "please enable 'global-undo-tree-mode'!")))
@@ -537,13 +562,12 @@ If ASYNC is non-nil, publish pages in an async process."
 (defun gkroam-preview ()
   "Preview gkroam site."
   (interactive)
-  (progn
-    (httpd-serve-directory gkroam-pub-dir)
-    (unless (httpd-running-p) (httpd-start))
-    (gkroam-publish-site t nil)
-    (if global-undo-tree-mode
-        (browse-url (format "http://%s:%d" "127.0.0.1" 8080))
-      (message "please enable 'global-undo-tree-mode'!"))))
+  (httpd-serve-directory gkroam-pub-dir)
+  (unless (httpd-running-p) (httpd-start))
+  (gkroam-publish-site t nil)
+  (if global-undo-tree-mode
+      (browse-url (format "http://%s:%d" "127.0.0.1" 8080))
+    (message "please enable 'global-undo-tree-mode'!")))
 
 ;;; ----------------------------------------
 ;; minor mode: gkroam-link-mode
@@ -961,6 +985,7 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
   (advice-add 'org-publish-file :around #'gkroam-resolve-link)
   
   (setq gkroam-pages (gkroam--all-titles))
+  (setq-local org-id-link-to-org-use-id 'create-if-interactive-and-no-custom-id)
   (setq-local gkroam-has-link-p nil)
   (setq-local org-startup-folded nil)
   (setq-local org-return-follows-link t)
