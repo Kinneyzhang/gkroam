@@ -838,10 +838,11 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
          title content)
     (if (null cons)
         (progn
-          (setq title (completing-read "Choose a page to edit: "
+          (setq title (completing-read "Choose a page to edit or create a new one: "
                                        (gkroam--all-titles) nil nil))
           (setq content (gkroam-edit-append--process
-                         (gkroam--get-content (gkroam--get-page title)))))
+                         (gkroam--get-content (or (gkroam--get-page title)
+                                                  (gkroam-new title))))))
       (setq title (car cons))
       (setq content (gkroam-edit-append--process (cdr cons))))
     (if (member title gkroam-edit-pages)
