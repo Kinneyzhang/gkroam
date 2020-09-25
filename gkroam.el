@@ -98,16 +98,33 @@
   :type 'string
   :group 'gkroam)
 
-(defcustom gkroam-page-template
-  "#+TITLE: %s\n#+OPTIONS: toc:nil H:2 num:0\n"
-  "Gkroam page's template, including export options of org files, end with \\n"
-  :type 'string
-  :group 'gkroam)
-
-(defcustom gkroam-index-title "INDEX"
+(defcustom gkroam-index-title "GKROAM"
   "Title of index page."
   :type 'string
   :group 'gkroam)
+
+(defvar gkroam-publish-project-alist
+  `(("gkroam-page"
+     :base-extension "org"
+     :recursive nil
+     :base-directory ,(expand-file-name gkroam-root-dir)
+     :publishing-directory ,(expand-file-name gkroam-pub-dir)
+     :publishing-function org-html-publish-to-html
+     :html-head ,gkroam-pub-css
+     :html-home/up-format
+     "<div id=\"org-div-header\"><a href=\"/index.html\">INDEX</a></div?"
+     :html-link-home "/"
+     :html-link-up "/"
+     :with-toc nil
+     :body-only nil)
+    ("gkroam-static"
+     :base-directory ,(expand-file-name gkroam-static-dir)
+     :base-extension "css\\|js\\|png\\|jpg\\|gif\\|pdf\\|mp3\\|ogg\\|swf"
+     :publishing-directory ,(expand-file-name gkroam-static-pub-dir)
+     :recursive t
+     :publishing-function org-publish-attachment)
+    ("gkroam" :components ("gkroam-page" "gkroam-static")))
+  "Gkroam project alist for `org-publish-project-alist'.")
 
 (defvar gkroam-toggle-brackets-p t
   "Determine whether to show brackets in page link.")
@@ -331,9 +348,7 @@ If BUFFER is non-nil, check the buffer visited file."
   "Just create a new gkroam page titled with TITLE."
   (let* ((file (gkroam--gen-file)))
     (with-current-buffer (find-file-noselect file t)
-      (insert
-       (format (concat gkroam-page-template "» [[file:index.org][%s]]\n\n")
-               title gkroam-index-title))
+      (insert (format "#+TITLE: %s\n\n" title))
       (save-buffer))
     (push title gkroam-pages)
     file))
@@ -344,8 +359,7 @@ If BUFFER is non-nil, check the buffer visited file."
          (index-buf (find-file-noselect index-org t)))
     (with-current-buffer index-buf
       (erase-buffer)
-      (insert (format (concat gkroam-page-template "\n* Site Map\n\n")
-                      gkroam-index-title))
+      (insert (format "#+TITLE: %s\n\n" gkroam-index-title))
       (dolist (page (gkroam--all-pages))
         (insert (format " + [[file:%s][%s]]\n" page (gkroam--get-title page))))
       (save-buffer))
@@ -496,28 +510,12 @@ This is an advice for ORIG-FUN with argument FILE and other ARGS."
 
 (defun gkroam-set-project-alist ()
   "Add gkroam project to `org-publish-project-alist'."
-  (let (gkroam-publish-project-alist)
-    (setq org-publish-project-alist
-          (remove-if (lambda (lst)
-                       (string-match "gkroam.*" (car lst)))
-                     org-publish-project-alist))
-    (setq gkroam-publish-project-alist
-          `(("gkroam-page"
-             :base-extension "org"
-             :recursive nil
-             :base-directory ,(expand-file-name gkroam-root-dir)
-             :publishing-directory ,(expand-file-name gkroam-pub-dir)
-             :publishing-function org-html-publish-to-html
-             :html-head ,gkroam-pub-css)
-            ("gkroam-static"
-             :base-directory ,(expand-file-name gkroam-static-dir)
-             :base-extension "css\\|js\\|png\\|jpg\\|gif\\|pdf\\|mp3\\|ogg\\|swf"
-             :publishing-directory ,(expand-file-name gkroam-static-pub-dir)
-             :recursive t
-             :publishing-function org-publish-attachment)
-            ("gkroam" :components ("gkroam-page" "gkroam-static"))))
-    (dolist (lst gkroam-publish-project-alist)
-      (add-to-list 'org-publish-project-alist lst))))
+  (setq org-publish-project-alist
+        (remove-if (lambda (lst)
+                     (string-match "gkroam.*" (car lst)))
+                   org-publish-project-alist))    
+  (dolist (lst gkroam-publish-project-alist)
+    (add-to-list 'org-publish-project-alist lst)))
 
 ;;;###autoload
 (defun gkroam-publish-current-file ()
