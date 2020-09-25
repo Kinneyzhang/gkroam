@@ -53,9 +53,10 @@
 
 ;; v2.2.0 - Edit many pages in one side window and save changes separately.
 
+;; v2.2.1 - Many bug fixed and misc code optimization.
+
 ;;; Code:
 
-(require 'org-id)
 (require 'ox-publish)
 (require 'simple-httpd)
 (require 'company)
@@ -372,6 +373,7 @@ If BUFFER is non-nil, check the buffer visited file."
     (if page
         (find-file (gkroam--get-file page))
       (find-file (gkroam-new title)))
+    (gkroam-mode)
     (gkroam-update)))
 
 ;;;###autoload
@@ -957,6 +959,7 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
       (setq end (cdr bds))
       (list beg end gkroam-slash-magics . nil)))))
 
+;;;###autoload
 (defun gkroam-set-major-mode ()
   "Set major mode to `gkroam-mode' after find file in `gkroam-root-dir'."
   (interactive)
@@ -985,7 +988,6 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
   (advice-add 'org-publish-file :around #'gkroam-resolve-link)
   
   (setq gkroam-pages (gkroam--all-titles))
-  (setq-local org-id-link-to-org-use-id 'create-if-interactive-and-no-custom-id)
   (setq-local gkroam-has-link-p nil)
   (setq-local org-startup-folded nil)
   (setq-local org-return-follows-link t)
