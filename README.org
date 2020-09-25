@@ -5,7 +5,7 @@
   - [[#demos][Demos]]
   - [[#installation][Installation]]
   - [[#dependency][Dependency]]
-  - [[#tips-important][Tips (Important!)]]
+  - [[#tips-important][Tips (important!)]]
   - [[#usage][Usage]]
   - [[#changelog][ChangeLog]]
   - [[#todolist][TodoList]]
@@ -52,15 +52,16 @@
 ** Dependency
 
    * [[https://github.com/skeeto/emacs-web-server][simple-httpd]] is used to preview html.
-   * [[https://github.com/company-mode/company-mode][company-mode]] is used to complete double brackets link and hashtags.
+   * [[https://github.com/company-mode/company-mode][company]] is used to complete double brackets link and hashtags.
    * [[https://github.com/tarsiiformes/undo-tree][undo-tree]] is used to restore gkroam formatted link after publishing.
    * *ripgrep(rg)* is used to search reference link.
 
-** Tips (Important!)
+** Tips (important!)
 
    - Install ripgrep(rg) command line firstly and make sure it is in exec-path list.
    - Please set =gkroam-root-dir= and =gkroam-pub-dir= variables properly and create the directories manually before calling gkroam commands.
-   - If you want to use your custom publish css, set =gkroam-pub-css= variable. See the original value to know the format.
+   - Set =gkroam-page-template= variable to custom your own org file meta in header.
+   - If you want to use your custom publish css, set =gkroam-pub-css= variable.
    - Do not set =company-idle-delay= variable to zero, it will causes an error. see [[https://github.com/company-mode/company-mode/issues/455][issue#455]].
    - When double brackets were hidden, it needs double click to follow a page link. This is a known issue and will be solved recently.
 
@@ -79,7 +80,7 @@
    Find a gkroam file and open it. If not exisit, create a new one. Just like /ido-find-file/.
 
    =gkroam-edit=\\
-   Edit many pages in a side window and save changes by pressing =C-c C-c=, abort changes by pressing =C-c c-k=.
+   Edit many pages in a side window and save changes by pressing =C-c C-c=, abort changes by pressing =C-c C-k=.
 
    =gkroam-daily=\\
    Create or open 'daily notes' page.
@@ -137,7 +138,7 @@
    * [X] Convert gkroam link to org file link before publish and convert back when published.
    * [X] A more reasonable linked references form.
    * [X] Implement roam research like sidebar, named 'gkroam-edit' function.
-   * [ ] Implement the slash magics, after input slash, do completion for commands.
+   * [ ] Implement org headline linked references.
    * [ ] Implement 'block reference' and 'block embeds'.
 
    More in future!
