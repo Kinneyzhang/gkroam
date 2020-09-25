@@ -391,15 +391,14 @@ If BUFFER is non-nil, check the buffer visited file."
   (interactive)
   (if (gkroam-at-root-p)
       (let* ((title (thing-at-point 'word t))
+             (bounds (bounds-of-thing-at-point 'word))
              (page-exist-p (gkroam--get-page title)))
         (if page-exist-p
             (progn
-              (backward-word)
-              (kill-word 1)
+              (delete-region (car bounds) (cdr bounds))
               (gkroam-insert title))
           (gkroam-new title)
-          (backward-word)
-          (kill-word 1)
+          (delete-region (car bounds) (cdr bounds))
           (gkroam-insert title)
           (gkroam-find title)))
     (message "Not in the gkroam directory!")))
