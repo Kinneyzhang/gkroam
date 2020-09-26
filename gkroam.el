@@ -116,6 +116,7 @@
      :html-link-home "/"
      :html-link-up "/"
      :with-toc nil
+     :section-numbers 0
      :body-only nil)
     ("gkroam-static"
      :base-directory ,(expand-file-name gkroam-static-dir)
@@ -125,6 +126,9 @@
      :publishing-function org-publish-attachment)
     ("gkroam" :components ("gkroam-page" "gkroam-static")))
   "Gkroam project alist for `org-publish-project-alist'.")
+
+(defvar gkroam-window-margin 2
+  "Gkroam window's left and right margin.")
 
 (defvar gkroam-toggle-brackets-p t
   "Determine whether to show brackets in page link.")
@@ -176,8 +180,13 @@ The value is a list of page's title.")
         '((vm . vm-visit-folder-other-frame)
           (vm-imap . vm-visit-imap-folder-other-frame)
           (gnus . org-gnus-no-new-news)
-          (file . find-file)
+          (file . gkroam--find-file)
           (wl . wl-other-frame))))
+
+(defun gkroam--find-file (filename)
+  "Find file function for `org-link-frame-setup'"
+  (find-file filename)
+  (gkroam-mode))
 
 (defun gkroam-at-root-p ()
   "Check if current file exists in `gkroam-root-dir'.
@@ -191,7 +200,7 @@ If BUFFER is non-nil, check the buffer visited file."
   (with-temp-buffer
     (insert-file-contents (gkroam--get-file page) nil 0 2000 t)
     (goto-char (point-min))
-    (re-search-forward (concat "^ *#\\+TITLE:") nil t)
+    (re-search-forward "^ *#\\+TITLE:" nil t)
     (string-trim (buffer-substring (match-end 0) (line-end-position)))))
 
 (defun gkroam--get-page (title)
@@ -361,7 +370,7 @@ If BUFFER is non-nil, check the buffer visited file."
       (erase-buffer)
       (insert (format "#+TITLE: %s\n\n" gkroam-index-title))
       (dolist (page (gkroam--all-pages))
-        (insert (format " + [[file:%s][%s]]\n" page (gkroam--get-title page))))
+        (insert (format "+ [[file:%s][%s]]\n" page (gkroam--get-title page))))
       (save-buffer))
     index-buf))
 
@@ -462,7 +471,8 @@ If BUFFER is non-nil, check the buffer visited file."
 (defun gkroam-index ()
   "Show gkroam index page."
   (interactive)
-  (switch-to-buffer (gkroam-update-index)))
+  (switch-to-buffer (gkroam-update-index))
+  (gkroam-mode))
 
 ;;;###autoload
 (defun gkroam-update ()
@@ -513,7 +523,7 @@ This is an advice for ORIG-FUN with argument FILE and other ARGS."
   (setq org-publish-project-alist
         (remove-if (lambda (lst)
                      (string-match "gkroam.*" (car lst)))
-                   org-publish-project-alist))    
+                   org-publish-project-alist))
   (dolist (lst gkroam-publish-project-alist)
     (add-to-list 'org-publish-project-alist lst)))
 
@@ -524,7 +534,6 @@ This is an advice for ORIG-FUN with argument FILE and other ARGS."
   (if (gkroam-at-root-p)
       (progn
         (gkroam-update-index)
-        (gkroam-update)
         (gkroam-set-project-alist)
         (if undo-tree-mode
             (org-publish-file (buffer-file-name))
@@ -552,7 +561,6 @@ If FORCE is non-nil, force to publish all pages.
 If ASYNC is non-nil, publish pages in an async process."
   (interactive)
   (gkroam-update-index)
-  ;; (gkroam-update-all)
   (gkroam-set-project-alist)
   (if global-undo-tree-mode
       (org-publish-project "gkroam" force async)
@@ -564,7 +572,7 @@ If ASYNC is non-nil, publish pages in an async process."
   (interactive)
   (httpd-serve-directory gkroam-pub-dir)
   (unless (httpd-running-p) (httpd-start))
-  (gkroam-publish-site t nil)
+  (gkroam-publish-site nil nil)
   (if global-undo-tree-mode
       (browse-url (format "http://%s:%d" "127.0.0.1" 8080))
     (message "please enable 'global-undo-tree-mode'!")))
@@ -655,6 +663,11 @@ The overlays has a PROP and VALUE."
     (let ((bound (or bound (point-max))))
       (save-excursion
         (goto-char beg)
+        (when (re-search-forward "\\(^ *#\\+TITLE: \\)\\(.*\\)" bound t)
+          (overlay-put (make-overlay (match-beginning 1) (match-beginning 2))
+                       'display "")
+          (overlay-put (make-overlay (match-beginning 2) (match-end 0))
+                       'face '(:height 300 :)))
         (while (re-search-forward gkroam-link-regexp bound t)
           (if (string= (char-to-string
                         (char-before (match-beginning 0)))
@@ -673,14 +686,17 @@ The overlays has a PROP and VALUE."
   (when (eq major-mode 'gkroam-mode)
     (save-excursion
       (goto-char (line-beginning-position))
+      (when (re-search-forward "\\(^ *#\\+TITLE: \\)\\(.*\\)" nil t)
+        (with-silent-modifications
+          (remove-overlays (line-beginning-position) (line-end-position))))
       (when (re-search-forward gkroam-link-regexp (line-end-position) t)
         (with-silent-modifications
           (remove-overlays (line-beginning-position) (line-end-position)))))))
 
 (defun gkroam-overlay-buffer ()
   "Put overlay in currnt gkroam buffer."
-  (gkroam-put-overlays (line-end-position) (point-max))
-  (gkroam-put-overlays (point-min) (line-beginning-position)))
+  (gkroam-put-overlays (point-min) (line-beginning-position))
+  (gkroam-put-overlays (line-end-position) (point-max)))
 
 ;;;###autoload
 (defun gkroam-toggle-brackets ()
@@ -718,9 +734,9 @@ The overlays has a PROP and VALUE."
 The region is a begin position and end position cons."
   (let (beg end)
     (goto-char (point-min))
-    (re-search-forward "\\[\\[file:index\\.org\\]\\[.+?\\]\\]" nil t)
+    (while (re-search-forward "^ *#\\+.+?:.*" nil t))
     (setq beg (1+ (match-end 0)))
-    (if (re-search-forward "^-----" nil t)
+    (if (re-search-forward "^-----+" nil t)
         (setq end (1- (match-beginning 0)))
       (setq end (point-max)))
     (cons beg end)))
@@ -968,13 +984,18 @@ Turning on this mode runs the normal hook `gkroam-edit-mode-hook'."
 
 (add-hook 'find-file-hook #'gkroam-set-major-mode)
 
+(defun gkroam-window-setup ()
+  "Setup for gkroam window."
+  (set-window-margins (selected-window) gkroam-window-margin gkroam-window-margin))
+
 (define-derived-mode gkroam-mode org-mode "gkroam"
   "Major mode for gkroam."
   (gkroam-link-mode)
   
   (add-hook 'completion-at-point-functions #'gkroam-completion-at-point nil 'local)
   (add-hook 'company-completion-finished-hook #'gkroam-completion-finish nil 'local)
-  
+
+  (add-hook 'gkroam-mode-hook #'gkroam-window-setup)
   (add-hook 'gkroam-mode-hook #'gkroam-link-frame-setup)
   (add-hook 'gkroam-mode-hook #'gkroam-set-project-alist)
   (add-hook 'gkroam-mode-hook #'toggle-truncate-lines)
