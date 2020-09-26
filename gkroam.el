@@ -667,7 +667,7 @@ The overlays has a PROP and VALUE."
           (overlay-put (make-overlay (match-beginning 1) (match-beginning 2))
                        'display "")
           (overlay-put (make-overlay (match-beginning 2) (match-end 0))
-                       'face '(:height 300 :)))
+                       'face '(:height 300)))
         (while (re-search-forward gkroam-link-regexp bound t)
           (if (string= (char-to-string
                         (char-before (match-beginning 0)))
@@ -686,9 +686,9 @@ The overlays has a PROP and VALUE."
   (when (eq major-mode 'gkroam-mode)
     (save-excursion
       (goto-char (line-beginning-position))
-      (when (re-search-forward "\\(^ *#\\+TITLE: \\)\\(.*\\)" nil t)
-        (with-silent-modifications
-          (remove-overlays (line-beginning-position) (line-end-position))))
+      ;; (when (re-search-forward "\\(^ *#\\+TITLE: \\)\\(.*\\)" nil t)
+      ;;   (with-silent-modifications
+      ;;     (remove-overlays (line-beginning-position) (line-end-position))))
       (when (re-search-forward gkroam-link-regexp (line-end-position) t)
         (with-silent-modifications
           (remove-overlays (line-beginning-position) (line-end-position)))))))
