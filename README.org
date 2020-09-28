@@ -15,13 +15,6 @@
    Gkroam is a lightweight [[https://roamresearch.com][Roam Research]] replica, built on top of emacs org-mode. It uses 'ripgrep' to search pages' links and insert references at the bottom of org pages automatically. Almostly, gkroam imitates roam research in as many aspects as possible.
 
 ** Demos
-   [[./demos/gkroam-edit.gif]]
-   
-   [[./demos/linked-references.gif]]
-   
-   [[./demos/completion.gif]]
-
-   [[./demos/brackets.gif]]
 
 ** Installation
    
@@ -40,13 +33,18 @@
       ("C-c r g" . gkroam-update)
       ("C-c r d" . gkroam-daily)
       ("C-c r f" . gkroam-find)
-      ("C-c r e" . gkroam-edit)
+      ("C-c r c" . gkroam-capture)
+      ("C-c r e" . gkroam-link-edit)
       ("C-c r n" . gkroam-smart-new)
       ("C-c r i" . gkroam-insert)
       ("C-c r I" . gkroam-index)
       ("C-c r p" . gkroam-preview)
       ("C-c r v" . gkroam-preview-current)
-      ("C-c r t" . gkroam-toggle-brackets)))
+      ("C-c r t" . gkroam-toggle-brackets))
+     :config
+     ;; when this minor mode is on, show and hide brackets dynamically.
+     ;; Here we turn it off.
+     (gkroam-dynamic-brackets-mode -1))
    #+END_SRC
 
 ** Dependency
@@ -79,8 +77,11 @@
    =gkroam-find=\\
    Find a gkroam file and open it. If not exisit, create a new one. Just like /ido-find-file/.
 
-   =gkroam-edit=\\
-   Edit many pages in a side window and save changes by pressing =C-c C-c=, abort changes by pressing =C-c C-k=.
+   =gkroam-capture=\\
+   Capture many pages in a side window and save changes by pressing =C-c C-c=, abort changes by pressing =C-c C-k=.
+
+   =gkroam-link-edit=\\
+   Edit link in minibuffer. This function is very useful when brackets are hidden.
 
    =gkroam-daily=\\
    Create or open 'daily notes' page.
@@ -124,7 +125,8 @@
    - =v2.0.4=: Many bugs fixed and code improvement.
    - =v2.1.0=: A more powerful linked references system.
    - =v2.1.1=: Change package name to 'gkroam'.
-   - =v2.2.0=: Implement =gkroam-edit= and bump version to 2.2.0.
+   - =v2.2.0=: Implement =gkroam-edit= .
+   - =v2.3.0=: Implement headline references, add a new minor mode =gkroam-dynamic-brackets-mode= and rename =gkroam-edit= to =gkroam-capture=.
 
 ** TodoList
    
@@ -138,8 +140,8 @@
    * [X] Convert gkroam link to org file link before publish and convert back when published.
    * [X] A more reasonable linked references form.
    * [X] Implement roam research like sidebar, named 'gkroam-edit' function.
-   * [ ] Implement org headline linked references.
-   * [ ] Implement 'block reference' and 'block embeds'.
+   * [X] Implement org headline references.
+   * [ ] Implement 'block reference' and 'block embeds' and a new minor mode =gkroam-dynamic-brackets-mode=.
 
    More in future!
 
