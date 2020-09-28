@@ -57,11 +57,7 @@
 ** Tips (important!)
 
    - Install ripgrep(rg) command line firstly and make sure it is in exec-path list.
-   - Please set =gkroam-root-dir= and =gkroam-pub-dir= variables properly and create the directories manually before calling gkroam commands.
-   - Set =gkroam-page-template= variable to custom your own org file meta in header.
-   - If you want to use your custom publish css, set =gkroam-pub-css= variable.
    - Do not set =company-idle-delay= variable to zero, it will causes an error. see [[https://github.com/company-mode/company-mode/issues/455][issue#455]].
-   - When double brackets were hidden, it needs double click to follow a page link. This is a known issue and will be solved recently.
 
 ** Usage
 
