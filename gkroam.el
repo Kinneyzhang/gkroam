@@ -194,7 +194,7 @@
   "Non-nil means it's in process of gkroam capture.")
 
 (defvar gkroam-capture-buf "*gkroam-capture*"
-  "gkroam capture buffer name.")
+  "Gkroam capture buffer name.")
 
 (defvar gkroam-capture-pages nil
   "Pages that have been capturing in gkroam capture buffer.
@@ -297,7 +297,7 @@ With optional argument ALIASE, format also with aliase."
   "Return a rg process to search PAGE's link and output LINUM lines before and after matched string."
   (let ((title (gkroam--get-title page))
         (name (generate-new-buffer-name " *gkroam-rg*")))
-    (start-process name name "rg"
+    (start-process name name "rg" "--ignore-case"
                    (format "\\{\\[%s.*?\\](\\[.+?\\])*\\}" title)
                    "-C" (number-to-string linum)
                    "-N" "--heading"
@@ -337,7 +337,7 @@ With optional argument ALIASE, format also with aliase."
                     (replace-regexp-in-string "%s" title gkroam-link-re-format)
                     nil t)
               (setq num (1+ num))
-              (setq content (concat (match-string-no-properties 0) "\n"))
+              (setq content (concat " " (match-string-no-properties 0) "\n"))
               ;; (setq content (gkroam-process-references-style content))
               (setq context (concat context content))
               (save-excursion
@@ -496,7 +496,8 @@ With optional argument ALIASE, format also with aliase."
 
 ;;;###autoload
 (defun gkroam-insert (&optional title headline aliase)
-  "Insert a gkroam page titled with TITLE."
+  "Insert a gkroam page link at point.
+With optional arguments, use TITLE or HEADLINE or ALIASE to format link."
   (interactive)
   (if (gkroam-at-root-p)
       (let* ((title (or title (completing-read
