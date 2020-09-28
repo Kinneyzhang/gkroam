@@ -16,6 +16,8 @@
 
 ** Demos
 
+   [[./demos/headline-reference.gif]]
+
 ** Installation
    
    Clone this repo and add gkroam to your emacs load-path. My configurations are as follows. Feel free to modify them as you like.

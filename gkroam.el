@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Kinney Zhang
 ;;
-;; Version: 2.2.0
+;; Version: 2.3.0
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: https://github.com/Kinneyzhang/gkroam.el
