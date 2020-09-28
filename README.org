@@ -15,11 +15,13 @@
    Gkroam is a lightweight [[https://roamresearch.com][Roam Research]] replica, built on top of emacs org-mode. It uses 'ripgrep' to search pages' links and insert references at the bottom of org pages automatically. Almostly, gkroam imitates roam research in as many aspects as possible.
 
 ** Demos
-
+   
+   #+ATTR_HTML: :width 50%
    [[./demos/headline-reference.gif]]
    
-   have change the way (above) to insert page link:
+   *have changed the way (above) to insert page link:*
 
+   #+ATTR_HTML: :width 80%
    [[./demos/better-headline-insert.gif]]
    
 ** Installation
