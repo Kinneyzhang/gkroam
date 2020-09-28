@@ -52,6 +52,7 @@
 ** Dependency
 
    * [[https://github.com/skeeto/emacs-web-server][simple-httpd]] is used to preview html.
+   * [[https://github.com/nicferrier/emacs-db][db]] is used to cache page and headline id.
    * [[https://github.com/company-mode/company-mode][company]] is used to complete double brackets link and hashtags.
    * [[https://github.com/tarsiiformes/undo-tree][undo-tree]] is used to restore gkroam formatted link after publishing.
    * *ripgrep(rg)* is used to search reference link.
@@ -60,6 +61,7 @@
 
    - Install ripgrep(rg) command line firstly and make sure it is in exec-path list.
    - Do not set =company-idle-delay= variable to zero, it will causes an error. see [[https://github.com/company-mode/company-mode/issues/455][issue#455]].
+   - Use =gkroam-build-caches= to generate all healines' id and cache them in db manually.
 
 ** Usage
 
