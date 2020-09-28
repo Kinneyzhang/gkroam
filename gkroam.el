@@ -507,15 +507,15 @@ With optional arguments, use TITLE or HEADLINE or ALIASE to format link."
              (headline
               (or headline
                   (when headlines (completing-read
-                                   "Choose a headline or input \"q\" to ignore: "
+                                   "Choose a headline, \"C-p\" or \"RET\" to ignore: "
                                    headlines nil nil))))
              (aliase (or aliase
                          (completing-read
-                          "Give an aliase or input \"q\" to ignore: "
+                          "Give an aliase, \"RET\" to ignore: "
                           nil nil nil))))
-        (if (string= headline "q")
+        (if (string= headline "")
             (setq headline nil))
-        (if (string= aliase "q")
+        (if (string= aliase "")
             (setq aliase nil))
         (insert (gkroam--format-link title headline aliase))
         (save-buffer))
@@ -1186,6 +1186,10 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
                             (gkroam-build-page-cache))))))
   
   (advice-add 'org-publish-file :around #'gkroam-resolve-link)
+
+  (when (require 'ivy nil t)
+    (unless (null ivy-mode)
+      (setq-local ivy-use-selectable-prompt t)))
   
   (setq gkroam-pages (gkroam--all-titles))
   (setq-local org-id-link-to-org-use-id 'create-if-interactive-and-no-custom-id)
