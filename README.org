@@ -18,12 +18,12 @@
 
 ** Demos
    
-   #+ATTR_HTML: :width 50%
+   #+ATTR_HTML: :width 400px
    [[./demos/headline-reference.gif]]
    
    *have changed the way (above) to insert page link:*
 
-   #+ATTR_HTML: :width 80%
+   #+ATTR_HTML: :width 400px
    [[./demos/better-headline-insert.gif]]
    
 ** Installation
@@ -39,18 +39,16 @@
      (setq gkroam-root-dir "~/gkroam/org/"
            gkroam-pub-dir "~/gkroam/site/")
      :bind
-     (("C-c r G" . gkroam-update-all)
-      ("C-c r g" . gkroam-update)
+     (("C-c r I" . gkroam-index)
       ("C-c r d" . gkroam-daily)
       ("C-c r f" . gkroam-find)
+      ("C-c r i" . gkroam-insert)
       ("C-c r c" . gkroam-capture)
       ("C-c r e" . gkroam-link-edit)
       ("C-c r n" . gkroam-smart-new)
-      ("C-c r i" . gkroam-insert)
-      ("C-c r I" . gkroam-index)
-      ("C-c r p" . gkroam-preview)
-      ("C-c r v" . gkroam-preview-current)
-      ("C-c r t" . gkroam-toggle-brackets))
+      ("C-c r t" . gkroam-toggle-brackets)
+      ("C-c r g" . gkroam-update)
+      ("C-c r G" . gkroam-update-all))
      :config
      ;; when this minor mode is on, show and hide brackets dynamically.
      (gkroam-dynamic-brackets-mode -1))
@@ -111,7 +109,7 @@
     =gkroam-update-all=\\
     Update all files' references.
 
-    /It's not a good idea to publish roam pages to html beacause when there are a huge of pages, the publishing process will be much slow. So I will consider remove the following commands./
+    *It's not a good idea to publish roam pages to html beacause when there are a huge of pages, the publishing process will be much slow. So I will consider remove the following commands.*
 
     =gkroam-publish-current-file=\\
     Publish current file to html.
@@ -136,7 +134,7 @@
    - =v2.1.1=: Change package name to 'gkroam'.
    - =v2.2.0=: Implement =gkroam-edit= .
    - =v2.3.0=: Implement headline references, add a new minor mode =gkroam-dynamic-brackets-mode= and rename =gkroam-edit= to =gkroam-capture=.
-   - =2.3.1=: A more resonable way to insert link. Press "C-p RET" or "C-M-j" directly to skip headline completion for ivy user or just press "RET" for vanilla user.
+   - =v2.3.1=: A more resonable way to insert link. Press "C-p RET" or "C-M-j" directly to skip headline completion for ivy user or just press "RET" for vanilla user.
 
 ** TodoList
    
