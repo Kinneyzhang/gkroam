@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Kinney Zhang
 ;;
-;; Version: 2.3.0
+;; Version: 2.3.1
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: https://github.com/Kinneyzhang/gkroam.el
@@ -56,6 +56,8 @@
 ;; v2.2.1 - Many bug fixed and misc code optimization.
 
 ;; v2.3.0 - Implement headline references, add a new minor mode `gkroam-dynamic-brackets-mode' and rename 'gkroam-edit' to `gkroam-capture'.
+
+;; 2.3.1 - A more resonable way to insert link. Press "C-p RET" or "C-M-j" to skip headline completion for ivy user or just press "RET" for vanilla user.
 
 ;;; Code:
 
@@ -424,16 +426,11 @@ With optional argument ALIASE, format also with aliase."
   "Get page title with TITLE headlines."
   (mapcar #'car (db-get title gkroam-db)))
 
-(defun gkroam--beautify-page ()
-  "Beautify gkroam page."
-  (gkroam-window-setup)
-  (gkroam-overlay-buffer))
-
 (defun gkroam-goto-headline (id)
   "Goto headline with id ID."
   (org-id-goto id)
   (gkroam-update)
-  (gkroam--beautify-page))
+  (gkroam-overlay-buffer))
 
 (defun gkroam-heading-id-pairs ()
   "Return all heading and id pairs of current page."
@@ -507,11 +504,11 @@ With optional arguments, use TITLE or HEADLINE or ALIASE to format link."
              (headline
               (or headline
                   (when headlines (completing-read
-                                   "Choose a headline, \"C-p\" or \"RET\" to ignore: "
+                                   "Choose a headline, directly press \"C-p RET\" or \"RET\" to skip: "
                                    headlines nil nil))))
              (aliase (or aliase
                          (completing-read
-                          "Give an aliase, \"RET\" to ignore: "
+                          "Give an aliase, directly press \"RET\" to skip: "
                           nil nil nil))))
         (if (string= headline "")
             (setq headline nil))
@@ -1160,18 +1157,13 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
 
 (add-hook 'find-file-hook #'gkroam-set-major-mode)
 
-(defun gkroam-window-setup ()
-  "Setup for gkroam window."
-  (set-window-margins (selected-window) gkroam-window-margin gkroam-window-margin))
-
 (define-derived-mode gkroam-mode org-mode "gkroam"
   "Major mode for gkroam."
   (gkroam-link-mode)
   
   (add-hook 'completion-at-point-functions #'gkroam-completion-at-point nil 'local)
   (add-hook 'company-completion-finished-hook #'gkroam-completion-finish nil 'local)
-
-  (add-hook 'gkroam-mode-hook #'gkroam-window-setup)
+  
   (add-hook 'gkroam-mode-hook #'gkroam-link-frame-setup)
   (add-hook 'gkroam-mode-hook #'gkroam-set-project-alist)
   (add-hook 'gkroam-mode-hook #'toggle-truncate-lines)

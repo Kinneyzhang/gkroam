@@ -7,6 +7,8 @@
   - [[#dependency][Dependency]]
   - [[#tips-important][Tips (important!)]]
   - [[#usage][Usage]]
+    - [[#link-form][Link form]]
+    - [[#main-functions][Main functions]]
   - [[#changelog][ChangeLog]]
   - [[#todolist][TodoList]]
   - [[#acknowledgements][Acknowledgements]]
@@ -51,7 +53,6 @@
       ("C-c r t" . gkroam-toggle-brackets))
      :config
      ;; when this minor mode is on, show and hide brackets dynamically.
-     ;; Here we turn it off.
      (gkroam-dynamic-brackets-mode -1))
    #+END_SRC
 
@@ -68,59 +69,61 @@
    - Install ripgrep(rg) command line firstly and make sure it is in exec-path list.
    - Do not set =company-idle-delay= variable to zero, it will causes an error. see [[https://github.com/company-mode/company-mode/issues/455][issue#455]].
    - Use =gkroam-build-caches= to generate all healines' id and cache them in db manually.
+   - If message "None existence agenda file ..." when first open a gkroam page, set =org-agenda-files= to a directory may take care of it.
 
 ** Usage
+*** Link form
 
-   *Shortcut keys:*
+    - page link: ={[<title>]}=
+    - headline link: ={[<title> » <headline>]}=
+    - page link with aliase: ={[<title>][aliase]}=
+    - headline link with aliase: ={[<title> » <headline>][aliase]}=
 
-   | shortcut | function                    |
-   |----------+-----------------------------|
-   | ={[]}=   | complete page link at point |
-   | =#=      | complete hashtag at point   |
-   
-   *Main functions:*
+*** Main functions
 
-   =gkroam-find=\\
-   Find a gkroam file and open it. If not exisit, create a new one. Just like /ido-find-file/.
+    =gkroam-find=\\
+    Find a gkroam file and open it. If not exisit, create a new one. Just like /ido-find-file/.
 
-   =gkroam-capture=\\
-   Capture many pages in a side window and save changes by pressing =C-c C-c=, abort changes by pressing =C-c C-k=.
+    =gkroam-capture=\\
+    Capture many pages in a side window and save changes by pressing =C-c C-c=, abort changes by pressing =C-c C-k=.
 
-   =gkroam-link-edit=\\
-   Edit link in minibuffer. This function is very useful when brackets are hidden.
+    =gkroam-link-edit=\\
+    Edit link in minibuffer. This function is very useful when brackets are hidden.
 
-   =gkroam-daily=\\
-   Create or open 'daily notes' page.
+    =gkroam-daily=\\
+    Create or open 'daily notes' page.
 
-   =gkroam-toggle-brackets=\\
-   Hide and show brackets of link and hashtag.
+    =gkroam-toggle-brackets=\\
+    Hide and show brackets of link and hashtag.
 
-   =gkroam-insert=\\
-   Insert a page bracket link at point.
+    =gkroam-insert=\\
+    Insert a page bracket link at point.
 
-   =gkroam-smart-new=\\
-   Smartly create a new file. If in a region, read the text in region as file title. if a word at point, read the text at point as file title. Otherwise, use =gkroam-find=. At last, insert a file link at point or in region.
+    =gkroam-smart-new=\\
+    Smartly create a new file. If in a region, read the text in region as file title. if a word at point, read the text at point as file title. Otherwise, use =gkroam-find=. At last, insert a file link at point or in region.
 
-   =gkroam-index=\\
-   Show gkroam index page. Well, it's just a simple site map because I have not get good ideas about it. Feel free to give me an issue or PR.
+    =gkroam-index=\\
+    Show gkroam index page. Well, it's just a simple site map because I have not get good ideas about it. Feel free to give me an issue or PR.
 
-   =gkroam-update=\\
-   Update current buffer's references. Actually, references are updated automatically.
+    =gkroam-update=\\
+    Update current buffer's references. Actually, references are updated automatically.
 
-   =gkroam-update-all=\\
-   Update all files' references.
+    =gkroam-update-all=\\
+    Update all files' references.
 
-   =gkroam-publish-current-file=\\
-   Publish current file to html.
+    /It's not a good idea to publish roam pages to html beacause when there are a huge of pages, the publishing process will be much slow. So I will consider remove the following commands./
 
-   =gkroam-preview-current=\\
-   Preview current file in browser.
+    =gkroam-publish-current-file=\\
+    Publish current file to html.
 
-   =gkroam-publish-site=\\
-   Publish the whole gkroam site.
+    =gkroam-preview-current=\\
+    Preview current file in browser.
 
-   =gkroam-preview=\\
-   Preview gkroam site's index page.
+    =gkroam-publish-site=\\
+    Publish the whole gkroam site.
+
+    =gkroam-preview=\\
+    Preview gkroam site's index page.
 
 ** ChangeLog
    - =v1.0=: Auto update link references at the bottom of page buffer.
@@ -133,6 +136,7 @@
    - =v2.1.1=: Change package name to 'gkroam'.
    - =v2.2.0=: Implement =gkroam-edit= .
    - =v2.3.0=: Implement headline references, add a new minor mode =gkroam-dynamic-brackets-mode= and rename =gkroam-edit= to =gkroam-capture=.
+   - =2.3.1=: A more resonable way to insert link. Press "C-p RET" or "C-M-j" directly to skip headline completion for ivy user or just press "RET" for vanilla user.
 
 ** TodoList
    
@@ -146,8 +150,9 @@
    * [X] Convert gkroam link to org file link before publish and convert back when published.
    * [X] A more reasonable linked references form.
    * [X] Implement roam research like sidebar, named 'gkroam-edit' function.
-   * [X] Implement org headline references.
-   * [ ] Implement 'block reference' and 'block embeds' and a new minor mode =gkroam-dynamic-brackets-mode=.
+   * [X] Implement org headline references, add a new minor mode =gkroam-dynamic-brackets-mode=.
+   * [ ] Beautify gkroam page: set window margin, unify bullet style and so on.
+   * [ ] Implement 'block references' and 'block embeds'.
 
    More in future!
 
