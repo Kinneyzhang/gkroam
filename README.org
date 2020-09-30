@@ -17,13 +17,14 @@
    Gkroam is a lightweight [[https://roamresearch.com][Roam Research]] replica, built on top of emacs org-mode. It uses 'ripgrep' to search pages' links and insert references at the bottom of org pages automatically. Almostly, gkroam imitates roam research in as many aspects as possible.
 
 ** Demos
+   *Beautify page*
+
+   [[./demos/page-beautify.gif]]
    
-   #+ATTR_HTML: :width 400px
    [[./demos/headline-reference.gif]]
    
    *have changed the way (above) to insert page link:*
 
-   #+ATTR_HTML: :width 400px
    [[./demos/better-headline-insert.gif]]
    
 ** Installation
@@ -46,6 +47,7 @@
       ("C-c r c" . gkroam-capture)
       ("C-c r e" . gkroam-link-edit)
       ("C-c r n" . gkroam-smart-new)
+      ("C-c r b" . gkroam-toggle-beautify)
       ("C-c r t" . gkroam-toggle-brackets)
       ("C-c r g" . gkroam-update)
       ("C-c r G" . gkroam-update-all))
@@ -135,6 +137,7 @@
    - =v2.2.0=: Implement =gkroam-edit= .
    - =v2.3.0=: Implement headline references, add a new minor mode =gkroam-dynamic-brackets-mode= and rename =gkroam-edit= to =gkroam-capture=.
    - =v2.3.1=: A more resonable way to insert link. Press "C-p RET" or "C-M-j" directly to skip headline completion for ivy user or just press "RET" for vanilla user.
+   - =v2.3.2=: Beautify page: unify org list bullet and beautify org checkbox. Better to turn it off when editing the page. Function `gkroam-toggle-beautify'.
 
 ** TodoList
    
@@ -149,7 +152,8 @@
    * [X] A more reasonable linked references form.
    * [X] Implement roam research like sidebar, named 'gkroam-edit' function.
    * [X] Implement org headline references, add a new minor mode =gkroam-dynamic-brackets-mode=.
-   * [ ] Beautify gkroam page: set window margin, unify bullet style and so on.
+   * [X] Beautify gkroam page: set window margin, unify bullet style and so on.
+   * [ ] Make page filename customizable.
    * [ ] Implement 'block references' and 'block embeds'.
 
    More in future!
