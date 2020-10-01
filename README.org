@@ -5,9 +5,9 @@
   - [[#demos][Demos]]
   - [[#installation][Installation]]
   - [[#dependency][Dependency]]
-  - [[#tips-important][Tips (important!)]]
+  - [[#tips-important][Tips (important)]]
   - [[#usage][Usage]]
-    - [[#link-form][Link form]]
+    - [[#link-format][Link format]]
     - [[#main-functions][Main functions]]
   - [[#changelog][ChangeLog]]
   - [[#todolist][TodoList]]
@@ -37,8 +37,9 @@
    (use-package gkroam
      :ensure t
      :init
-     (setq gkroam-root-dir "~/gkroam/org/"
-           gkroam-pub-dir "~/gkroam/site/")
+     (setq gkroam-root-dir "~/gkroam/org/")
+     (setq gkroam-window-margin 4)
+     (setq org-startup-folded nil)
      :bind
      (("C-c r I" . gkroam-index)
       ("C-c r d" . gkroam-daily)
@@ -62,17 +63,16 @@
    * [[https://github.com/nicferrier/emacs-db][db]] is used to cache page and headline id.
    * [[https://github.com/company-mode/company-mode][company]] is used to complete double brackets link and hashtags.
    * [[https://github.com/tarsiiformes/undo-tree][undo-tree]] is used to restore gkroam formatted link after publishing.
-   * *ripgrep(rg)* is used to search reference link.
+   * [[https://github.com/BurntSushi/ripgrep][ripgrep(rg)]] is used to search reference link.
 
-** Tips (important!)
+** Tips (important)
 
    - Install ripgrep(rg) command line firstly and make sure it is in exec-path list.
    - Do not set =company-idle-delay= variable to zero, it will causes an error. see [[https://github.com/company-mode/company-mode/issues/455][issue#455]].
    - Use =gkroam-build-caches= to generate all healines' id and cache them in db manually.
-   - If message "None existence agenda file ..." when first open a gkroam page, set =org-agenda-files= to a single file may take care of it.
 
 ** Usage
-*** Link form
+*** Link format
 
     - page link: ={[<title>]}=
     - headline link: ={[<title> » <headline>]}=
@@ -111,20 +111,6 @@
     =gkroam-update-all=\\
     Update all files' references.
 
-    *It's not a good idea to publish roam pages to html beacause when there are a huge of pages, the publishing process will be much slow. So I will consider remove the following commands.*
-
-    =gkroam-publish-current-file=\\
-    Publish current file to html.
-
-    =gkroam-preview-current=\\
-    Preview current file in browser.
-
-    =gkroam-publish-site=\\
-    Publish the whole gkroam site.
-
-    =gkroam-preview=\\
-    Preview gkroam site's index page.
-
 ** ChangeLog
    - =v1.0=: Auto update link references at the bottom of page buffer.
    - =v2.0=: Use overlay to hide and show gkroam brackets accordingly and fix some bugs.
@@ -153,8 +139,10 @@
    * [X] Implement roam research like sidebar, named 'gkroam-edit' function.
    * [X] Implement org headline references, add a new minor mode =gkroam-dynamic-brackets-mode=.
    * [X] Beautify gkroam page: set window margin, unify bullet style and so on.
+   * [ ] Use ripgrep multi-line partten to match all occasions.
+   * [ ] Change org-mode backlink to gkroam link style.
    * [ ] Make page filename customizable.
-   * [ ] Implement 'block references' and 'block embeds'.
+   * [ ] Implement 'block reference' and 'block embed'.
 
    More in future!
 
