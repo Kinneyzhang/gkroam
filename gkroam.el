@@ -290,7 +290,7 @@ With optional argument ALIASE, format also with aliase."
 (defun gkroam--format-backlink (page)
   "Format gkroam backlink in PAGE."
   (let* ((title (gkroam--get-title page)))
-    (format "[[file:%s][%s]]" page title)))
+    (format "[[file:%s][%s ➦]]" page title)))
 
 ;; ----------------------------------------
 (defvar gkroam-link-re-format
@@ -333,31 +333,41 @@ With optional argument ALIASE, format also with aliase."
     (insert string)
     (goto-char (point-min))
     (let ((gkroam-file-re (expand-file-name "[0-9]\\{14\\}\\.org" gkroam-root-dir))
-          (num 0) references)
-      (while (re-search-forward gkroam-file-re nil t)
-        (let* ((path (match-string-no-properties 0))
-               (page (file-name-nondirectory path))
-               content context)
-          (forward-line)
-          (catch 'break
+          (beg (point-min)) (end (point)) (num 0) references)
+      (while (not (= end (point-max)))
+        (save-excursion
+          (goto-char beg)
+          (if (re-search-forward gkroam-file-re nil t 2)
+              (progn
+                (forward-line -1)
+                (setq end (point)))
+            (setq end (point-max))))
+        (message "end: %s" end)
+        (save-restriction
+          (narrow-to-region beg end)
+          (goto-char beg)
+          (re-search-forward gkroam-file-re nil t)
+          (let* ((path (match-string-no-properties 0))
+                 (page (file-name-nondirectory path))
+                 context (last-headline ""))
             (while (re-search-forward
                     (replace-regexp-in-string "%s" title gkroam-link-re-format)
                     nil t)
-              (setq num (1+ num))
-              (setq content (concat " " (match-string-no-properties 0) "\n"))
-              ;; (setq content (gkroam-process-references-style content))
-              (setq context (concat context content))
-              (save-excursion
-                (when (re-search-forward
-                       (replace-regexp-in-string "%s" title gkroam-link-re-format)
-                       nil t)
-                  (re-search-backward gkroam-file-re nil t)
-                  (unless (string= path (match-string-no-properties 0))
-                    (throw 'break nil))))))
-          (setq context (gkroam--process-link-in-references context))
-          (setq references
-                (concat references
-                        (format "** %s\n%s" (gkroam--format-backlink page) context)))))
+              (let ((headline "")
+                    (content (match-string-no-properties 0)))
+                (setq num (1+ num))
+                (save-excursion
+                  (when (re-search-backward "^*+ .+\n" nil t)
+                    (setq headline (concat "**" (match-string-no-properties 0)))))
+                (if (string= headline last-headline)
+                    (setq context (concat context content "\n"))
+                  (setq context (concat context headline content "\n")))
+                (setq last-headline headline)))
+            (setq context (gkroam--process-link-in-references context))
+            (setq references
+                  (concat references
+                          (format "** %s\n%s" (gkroam--format-backlink page) context)))
+            (setq beg end))))
       (cons num references))))
 
 (defun gkroam--search-linked-pages (process callback)
@@ -379,7 +389,7 @@ With optional argument ALIASE, format also with aliase."
   "Update gkroam PAGE's reference."
   (unless (executable-find "rg")
     (user-error "Cannot find program rg"))
-  (let ((linum 10))
+  (let ((linum 9999))
     (gkroam--search-linked-pages
      (gkroam--search-process page linum)
      (lambda (string)
@@ -389,7 +399,7 @@ With optional argument ALIASE, format also with aliase."
          (with-current-buffer file-buf
            (save-excursion
              (goto-char (point-max))
-             (re-search-backward "\n-----\n" nil t)
+             (re-search-backward "\n *-----\n" nil t)
              (delete-region (point) (point-max))
              (unless (string= string "")
                (let* ((processed-str (gkroam-process-searched-string string title))
@@ -443,7 +453,7 @@ With optional argument ALIASE, format also with aliase."
     (save-excursion
       (save-restriction
         (goto-char (point-min))
-        (if (re-search-forward "^-----" nil t)
+        (if (re-search-forward "^ *-----+" nil t)
             (setq end (1- (line-beginning-position)))
           (setq end (point-max)))
         (narrow-to-region (point-min) end)
@@ -915,11 +925,11 @@ Hide brackets when the cursor moves out of the line."
           (remove-overlays (match-beginning 1) (match-end 0)))))))
 
 (defun gkroam-restore-bullet-line-overlays ()
-  "Restore overlays of bullets when the cursor moves out of a line."
+  "Restore overlays of bullets when the cursor move out of a line."
   (gkroam-put-bullet-overlays (line-beginning-position) (line-end-position)))
 
 (defun gkroam-remove-bullet-line-overlays ()
-  "Remove overlays of bullets when the cursor moves onto a line."
+  "Remove overlays of bullets when the cursor move onto a line."
   (remove-overlays (line-beginning-position) (line-end-position)))
 
 (defun gkroam-beautify-page ()
@@ -982,7 +992,7 @@ The region is a begin position and end position cons."
     (goto-char (point-min))
     (while (re-search-forward "^ *#\\+.+?:.*" nil t))
     (setq beg (1+ (match-end 0)))
-    (if (re-search-forward "^-----+" nil t)
+    (if (re-search-forward "^ *-----+" nil t)
         (setq end (1- (match-beginning 0)))
       (setq end (point-max)))
     (cons beg end)))
@@ -1247,6 +1257,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
                         (lambda ()
                           (when (and (eq major-mode 'gkroam-mode)
                                      (eq buffer-read-only nil))
+                            (indent-region (point-min) (point-max))
                             (gkroam-overlay-buffer)
                             (gkroam-build-page-cache))))))
   
