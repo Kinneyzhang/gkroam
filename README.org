@@ -103,7 +103,7 @@
     Smartly create a new file. If in a region, read the text in region as file title. if a word at point, read the text at point as file title. Otherwise, use =gkroam-find=. At last, insert a file link at point or in region.
 
     =gkroam-index=\\
-    Show gkroam index page. Well, it's just a simple site map because I have not get good ideas about it. Feel free to give me an issue or PR.
+    Show gkroam index buffer. Well, it's just a simple site map because I have not get good ideas about it. Feel free to give me an issue or PR.
 
     =gkroam-update=\\
     Update current buffer's references. Actually, references are updated automatically.
@@ -124,6 +124,7 @@
    - =v2.3.0=: Implement headline references, add a new minor mode =gkroam-dynamic-brackets-mode= and rename =gkroam-edit= to =gkroam-capture=.
    - =v2.3.1=: A more resonable way to insert link. Press "C-p RET" or "C-M-j" directly to skip headline completion for ivy user or just press "RET" for vanilla user.
    - =v2.3.2=: Beautify page: unify org list bullet and beautify org checkbox. Better to turn it off when editing the page. Function `gkroam-toggle-beautify'.
+   - =v2.3.3=: Make page filename customizable, delete index file and show index in buffer.
 
 ** TodoList
    
@@ -139,7 +140,7 @@
    * [X] Implement roam research like sidebar, named 'gkroam-edit' function.
    * [X] Implement org headline references, add a new minor mode =gkroam-dynamic-brackets-mode=.
    * [X] Beautify gkroam page: set window margin, unify bullet style and so on.
-   * [ ] Make page filename customizable.
+   * [X] Make page filename customizable.
    * [ ] Implement 'block reference' and 'block embed'.
 
    More in future!

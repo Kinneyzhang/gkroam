@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Kinney Zhang
 ;;
-;; Version: 2.3.2
+;; Version: 2.3.3
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: https://github.com/Kinneyzhang/gkroam.el
@@ -60,6 +60,8 @@
 ;; 2.3.1 - A more resonable way to insert link. Press "C-p RET" or "C-M-j" to skip headline completion for ivy user or just press "RET" for vanilla user.
 
 ;; 2.3.2 - Beautify page: unify org list bullet and beautify org checkbox. Better to turn it off when editing the page. Function `gkroam-toggle-beautify'.
+
+;; 2.3.3 - Make page filename customizable, delete index file and show index in buffer.
 
 ;;; Code:
 
@@ -260,7 +262,7 @@ If BUFFER is non-nil, check the buffer visited file."
 
 (defun gkroam--all-pages ()
   "Get all gkroam pages."
-  (directory-files gkroam-root-dir nil (rx bol (+ (in num)) ".org" eol)))
+  (directory-files gkroam-root-dir nil "^[^.#].+\\.org$"))
 
 (defun gkroam--all-titles ()
   "Get all gkroam titles."
@@ -273,7 +275,10 @@ If BUFFER is non-nil, check the buffer visited file."
 
 (defun gkroam--gen-page ()
   "Generate new gkroam page filename, without directory prefix."
-  (format "%s.org" (format-time-string "%Y%m%d%H%M%S")))
+  (let* ((slug (completing-read "Input filename slug or press \"RET\" to use default: "
+                                nil nil nil (format-time-string "%Y%m%d%H%M%S")))
+         (slug-format (string-join (split-string slug) "-")))
+    (format "%s.org" slug-format)))
 
 (defun gkroam--format-link (title &optional headline aliase)
   "Format TITLE into a gkroam page link.
@@ -332,7 +337,7 @@ With optional argument ALIASE, format also with aliase."
   (with-temp-buffer
     (insert string)
     (goto-char (point-min))
-    (let ((gkroam-file-re (expand-file-name "[0-9]\\{14\\}\\.org" gkroam-root-dir))
+    (let ((gkroam-file-re (expand-file-name ".+\\.org" gkroam-root-dir))
           (beg (point-min)) (end (point)) (num 0) references)
       (while (not (= end (point-max)))
         (save-excursion
@@ -342,7 +347,6 @@ With optional argument ALIASE, format also with aliase."
                 (forward-line -1)
                 (setq end (point)))
             (setq end (point-max))))
-        (message "end: %s" end)
         (save-restriction
           (narrow-to-region beg end)
           (goto-char beg)
@@ -421,18 +425,6 @@ With optional argument ALIASE, format also with aliase."
       (save-buffer))
     (push title gkroam-pages)
     file))
-
-(defun gkroam-update-index ()
-  "Update gkroam index page."
-  (let* ((index-org (expand-file-name "index.org" gkroam-root-dir))
-         (index-buf (find-file-noselect index-org t)))
-    (with-current-buffer index-buf
-      (erase-buffer)
-      (insert (format "#+TITLE: %s\n\n" gkroam-index-title))
-      (dolist (page (gkroam--all-pages))
-        (insert (format "+ [[file:%s][%s]]\n" page (gkroam--get-title page))))
-      (save-buffer))
-    index-buf))
 
 ;; ----------------------------------------
 ;; headline linked references
@@ -581,10 +573,18 @@ With optional arguments, use TITLE or HEADLINE or ALIASE to format link."
 
 ;;;###autoload
 (defun gkroam-index ()
-  "Show gkroam index page."
+  "Show gkroam index buffer."
   (interactive)
-  (switch-to-buffer (gkroam-update-index))
-  (gkroam-mode))
+  (let* ((index-buf "*Gkroam Index*"))
+    (with-current-buffer (get-buffer-create index-buf)
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert (format "#+TITLE: %s\n\n" gkroam-index-title))
+      (dolist (page (gkroam--all-pages))
+        (insert (format "+ [[file:%s][%s]]\n" (gkroam--get-file page) (gkroam--get-title page)))))
+    (switch-to-buffer index-buf)
+    (read-only-mode 1)
+    (gkroam-mode)))
 
 ;;;###autoload
 (defun gkroam-update ()
