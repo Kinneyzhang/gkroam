@@ -296,7 +296,7 @@ With optional argument ALIASE, format also with aliase."
 (defvar gkroam-link-re-format
   "\\(\\(-\\|+\\|*\\|[0-9]+\\.\\|[0-9]+)\\) .*?{\\[%s.*?\\]}.*\\(\n+ +.*\\)*
 \\|\\(.*{\\[%s.*?\\]}.*\\\\\n\\(.+\\\\\n\\)*.+\\|\\(.+\\\\\n\\)+.*{\\[%s.*?\\]}.*\\\\\n\\(.+\\\\\n\\)*.+\\|\\(.+\\\\\n\\)+.*{\\[%s.*?\\]}.*\\)
-\\|.*#\\+begin_verse.*\n+\\(.+\n+\\|.*{\\[%s.*?\\]}.*\n+\\)*.*{\\[%s.*?\\]}.*\n+\\(\\)+\\(.+\n+\\|.*{\\[%s.*?\\]}.*\n+\\)*.*#\\+end_verse.*
+\\| *#\\+begin_.+\n+\\(.+\n+\\|.*{\\[%s.*?\\]}.*\n+\\)*.*{\\[%s.*?\\]}.*\n+\\(\\)+\\(.+\n+\\|.*{\\[%s.*?\\]}.*\n+\\)* *#\\+end_.+
 \\|.*{\\[%s.*?\\]}.*\n\\)"
   "Gkroam link regexp format used for searching link context.")
 
@@ -320,11 +320,11 @@ With optional argument ALIASE, format also with aliase."
       (if (string= (ignore-errors (char-to-string (char-before (match-beginning 0)))) "#")
           (replace-match (match-string-no-properties 2))
         (if (gkroam--link-has-aliase)
-            (replace-match (concat "*" (match-string-no-properties 9) "*"))
+            (replace-match (match-string-no-properties 9))
           (if (gkroam--link-has-headline)
-              (replace-match (concat "*" (match-string-no-properties 2)
-                                     " » " (match-string-no-properties 5)  "*"))
-            (replace-match (concat "*" (match-string-no-properties 2) "*"))))))
+              (replace-match (concat (match-string-no-properties 2)
+                                     " » " (match-string-no-properties 5)))
+            (replace-match (match-string-no-properties 2))))))
     (buffer-string)))
 
 (defun gkroam-process-searched-string (string title)

@@ -139,8 +139,6 @@
    * [X] Implement roam research like sidebar, named 'gkroam-edit' function.
    * [X] Implement org headline references, add a new minor mode =gkroam-dynamic-brackets-mode=.
    * [X] Beautify gkroam page: set window margin, unify bullet style and so on.
-   * [ ] Use ripgrep multi-line partten to match all occasions.
-   * [ ] Change org-mode backlink to gkroam link style.
    * [ ] Make page filename customizable.
    * [ ] Implement 'block reference' and 'block embed'.
 
