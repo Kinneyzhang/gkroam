@@ -59,10 +59,8 @@
 
 ** Dependency
 
-   * [[https://github.com/skeeto/emacs-web-server][simple-httpd]] is used to preview html.
    * [[https://github.com/nicferrier/emacs-db][db]] is used to cache page and headline id.
    * [[https://github.com/company-mode/company-mode][company]] is used to complete double brackets link and hashtags.
-   * [[https://github.com/tarsiiformes/undo-tree][undo-tree]] is used to restore gkroam formatted link after publishing.
    * [[https://github.com/BurntSushi/ripgrep][ripgrep(rg)]] is used to search reference link.
 
 ** Tips (important)

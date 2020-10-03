@@ -26,7 +26,7 @@
 
 ;;; Commentary:
 
-;; Gkroam is a light-weight roam repica, built on top of Org-mode.
+;; Gkroam is a lightweight roam repica, built on top of Org-mode.
 
 ;;; ChangeLog:
 
@@ -338,7 +338,7 @@ With optional argument ALIASE, format also with aliase."
   "Update gkroam PAGE's reference."
   (unless (executable-find "rg")
     (user-error "Cannot find program rg"))
-  (let ((linum 9999))
+  (let ((linum 9999) beg)
     (gkroam--search-linked-pages
      (gkroam--search-process page linum)
      (lambda (string)
@@ -350,13 +350,21 @@ With optional argument ALIASE, format also with aliase."
              (goto-char (point-max))
              (unless (re-search-backward "^* [0-9]+ Linked References\n" nil t)
                (newline 1))
+             (setq beg (point))
              (delete-region (point) (point-max))
              (unless (string= string "")
                (let* ((processed-str (gkroam-process-searched-string string title))
                       (num (car processed-str))
                       (references (cdr processed-str)))
                  (insert (format "* %d Linked References\n" num))
-                 (insert references))
+                 (insert references)
+                 ;; use overlay to hide part of reference. (filter)
+                 ;; make ".. Linked References" uneditable
+                 ;; put overlay onto each reference and click to jump page
+                 ;; how to realize accurate jumping?
+                 ;; change mouse style when on hover and display help-echo
+                 ;; (gkroam-overlay-region beg (point-max) 'invisible t)
+                 )
                (save-buffer))))))))
   (message "%s reference updated" page))
 
@@ -683,10 +691,10 @@ The overlays has a PROP and VALUE."
     (save-excursion
       (goto-char beg)
       (when (re-search-forward "\\(^ *#\\+TITLE: \\)\\(.*\\)" bound t)
-        (overlay-put (make-overlay (match-beginning 1) (match-beginning 2))
-                     'display "")
-        (overlay-put (make-overlay (match-beginning 2) (match-end 0))
-                     'face '(:height 300)))
+        (gkroam-overlay-region (match-beginning 1) (match-beginning 2)
+                               'display "")
+        (gkroam-overlay-region (match-beginning 2) (match-end 0)
+                               'face '(:height 300)))
       (while (re-search-forward gkroam-link-regexp bound t)
         (if (string= (char-to-string (char-before (match-beginning 0))) "#")
             (gkroam-overlay-hashtag)
@@ -753,10 +761,10 @@ Hide brackets when the cursor moves out of the line."
   (when (match-string-no-properties 3)
     (if (string= (match-string-no-properties 3) "[ ] ")
         (progn
-          (overlay-put (make-overlay (match-beginning 3) (1- (match-end 0)))
-                       'display "☐"))
-      (overlay-put (make-overlay (match-beginning 3) (1- (match-end 0)))
-                   'display "☑"))))
+          (gkroam-overlay-region (match-beginning 3) (1- (match-end 0))
+                                 'display "☐"))
+      (gkroam-overlay-region (match-beginning 3) (1- (match-end 0))
+                             'display "☑"))))
 
 (defun gkroam-put-bullet-overlays (beg &optional bound)
   "Put overlay to org list bullets between BEG and BOUND."
@@ -767,16 +775,16 @@ Hide brackets when the cursor moves out of the line."
               "^ *\\(\\+\\|-\\|[0-9]+\\.\\|[0-9]+)\\)\\( \\)\\(\\[X\\] \\|\\[ \\] \\)?" bound t)
         (if gkroam-beautify-pages-p
             (progn
-              (overlay-put (make-overlay (match-beginning 1) (match-beginning 2))
-                           'display "•")
+              (gkroam-overlay-region (match-beginning 1) (match-beginning 2)
+                                     'display "•")
               (gkroam--beautify-checkbox))
           (remove-overlays (match-beginning 1) (match-end 0))))
       (goto-char beg)
       (while (re-search-forward "^ +\\(\\*\\)\\( \\)\\(\\[X\\] \\|\\[ \\] \\)?" bound t)
         (if gkroam-beautify-pages-p
             (progn
-              (overlay-put (make-overlay (match-beginning 1) (match-beginning 2))
-                           'display "•")
+              (gkroam-overlay-region (match-beginning 1) (match-beginning 2)
+                                     'display "•")
               (gkroam--beautify-checkbox))
           (remove-overlays (match-beginning 1) (match-end 0)))))))
 
