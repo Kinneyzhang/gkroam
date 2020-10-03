@@ -6,7 +6,7 @@
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: https://github.com/Kinneyzhang/gkroam.el
-;; Package-Requires: ((emacs "26.3") (db "0.0.6") (company "0.9.10") (simple-httpd "1.5.1") (undo-tree "0.7.5"))
+;; Package-Requires: ((emacs "26.3") (db "0.0.6") (company "0.9.10"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -67,16 +67,11 @@
 
 (require 'cl-lib)
 (require 'org-id)
-(require 'ox-publish)
 (require 'db)
-(require 'simple-httpd)
 (require 'company)
-(require 'undo-tree)
 
 ;;;; Declarations
-(declare-function org-publish-project "ox-publish")
 (defvar org-link-frame-setup)
-(defvar org-publish-project-alist)
 
 ;;;; Variables
 (defgroup gkroam nil
@@ -86,26 +81,6 @@
 
 (defcustom gkroam-root-dir "~/gkroam/org/"
   "Gkroam's root directory, with org files in it."
-  :type 'string
-  :group 'gkroam)
-
-(defcustom gkroam-pub-dir "~/gkroam/site/"
-  "Gkroam's publish directory, with html files in it."
-  :type 'string
-  :group 'gkroam)
-
-(defcustom gkroam-static-dir "~/gkroam/static/"
-  "Gkroam's static files directory."
-  :type 'string
-  :group 'gkroam)
-
-(defcustom gkroam-static-pub-dir "~/gkroam/site/static/"
-  "Gkroam's static files publish directory."
-  :type 'string
-  :group 'gkroam)
-
-(defcustom gkroam-pub-css "<link rel=\"stylesheet\" href=\"https://gongzhitaao.org/orgcss/org.css\">"
-  "Gkroam publish css style."
   :type 'string
   :group 'gkroam)
 
@@ -122,30 +97,6 @@
    `(db-hash
      :filename ,(concat gkroam-cache-dir "gkroam-db")))
   "Gkroam's cache database.")
-
-(defvar gkroam-publish-project-alist
-  `(("gkroam-page"
-     :base-extension "org"
-     :recursive nil
-     :base-directory ,(expand-file-name gkroam-root-dir)
-     :publishing-directory ,(expand-file-name gkroam-pub-dir)
-     :publishing-function org-html-publish-to-html
-     :html-head ,gkroam-pub-css
-     :html-home/up-format
-     "<div id=\"org-div-header\"><a href=\"/index.html\">INDEX</a></div?"
-     :html-link-home "/"
-     :html-link-up "/"
-     :with-toc nil
-     :section-numbers 0
-     :body-only nil)
-    ("gkroam-static"
-     :base-directory ,(expand-file-name gkroam-static-dir)
-     :base-extension "css\\|js\\|png\\|jpg\\|gif\\|pdf\\|mp3\\|ogg\\|swf"
-     :publishing-directory ,(expand-file-name gkroam-static-pub-dir)
-     :recursive t
-     :publishing-function org-publish-attachment)
-    ("gkroam" :components ("gkroam-page" "gkroam-static")))
-  "Gkroam project alist for `org-publish-project-alist'.")
 
 (defvar gkroam-window-margin 2
   "Gkroam window's left and right margin.")
@@ -167,9 +118,6 @@
 
 (defvar gkroam-has-link-p nil
   "Judge if has link or hashtag in gkroam buffer.")
-
-(defvar gkroam-update-index-timer nil
-  "Gkroam indexing timer.")
 
 (defvar gkroam-link-regexp
   (rx (seq (group "{[")
@@ -208,9 +156,6 @@
 (defvar gkroam-capture-pages nil
   "Pages that have been capturing in gkroam capture buffer.
 The value is a list of page's title.")
-
-(defvar gkroam-slash-magics nil
-  "Gkroam slash commands.")
 
 ;;;; Functions
 (defun gkroam-link-frame-setup ()
@@ -599,93 +544,6 @@ With optional arguments, use TITLE or HEADLINE or ALIASE to format link."
   (gkroam-update-index)
   (let ((pages (gkroam--all-pages)))
     (mapcar #'gkroam-update-reference pages)))
-
-(defun gkroam-resolve-link (orig-fun file &rest args)
-  "Convert gkroam link to org link.
-This is an advice for ORIG-FUN with argument FILE and other ARGS."
-  (with-current-buffer (find-file-noselect file t)
-    (goto-char (point-min))
-    (setq gkroam-has-link-p nil)
-    (while (re-search-forward gkroam-link-regexp nil t)
-      (setq gkroam-has-link-p t)
-      (let (beg end title hashtag-p)
-        (setq beg (match-beginning 0))
-        (setq end (match-end 0))
-        (setq title (match-string-no-properties 2))
-        (save-excursion
-          (goto-char (1- beg))
-          (when (string= (thing-at-point 'char t) "#")
-            (setq hashtag-p t)))
-        (delete-region beg end)
-        (when hashtag-p (delete-region (1- beg) beg))
-        (insert (format (if hashtag-p
-                            "[[file:%s][#%s]]"
-                          "[[file:%s][%s]]")
-                        (gkroam--get-page title) title))))
-    (save-buffer)
-    (apply orig-fun file args)
-    (when gkroam-has-link-p
-      ;; if possible, use original undo function.
-      (undo-tree-undo))))
-
-(defun gkroam-set-project-alist ()
-  "Add gkroam project to `org-publish-project-alist'."
-  (setq org-publish-project-alist
-        (cl-remove-if (lambda (lst)
-                        (string-match "gkroam.*" (car lst)))
-                      org-publish-project-alist))
-  (dolist (lst gkroam-publish-project-alist)
-    (add-to-list 'org-publish-project-alist lst)))
-
-;;;###autoload
-(defun gkroam-publish-current-file ()
-  "Publish current file."
-  (interactive)
-  (if (gkroam-at-root-p)
-      (progn
-        (gkroam-update-index)
-        (gkroam-set-project-alist)
-        (if undo-tree-mode
-            (org-publish-file (buffer-file-name))
-          (message "please enable 'undo-tree-mode' in this buffer!")))
-    (message "Not in the gkroam directory!")))
-
-;;;###autoload
-(defun gkroam-preview-current ()
-  "Preview current file."
-  (interactive)
-  (if (gkroam-at-root-p)
-      (let ((current-file (concat (file-name-base (buffer-file-name)) ".html")))
-        (httpd-serve-directory gkroam-pub-dir)
-        (unless (httpd-running-p) (httpd-start))
-        (gkroam-publish-current-file)
-        (if undo-tree-mode
-            (browse-url (format "http://%s:%d/%s" "127.0.0.1" 8080 current-file))
-          (message "please enable 'undo-tree-mode' in this buffer!")))
-    (message "Not in the gkroam directory!")))
-
-;;;###autoload
-(defun gkroam-publish-site (&optional force async)
-  "Publish gkroam project to html site.
-If FORCE is non-nil, force to publish all pages.
-If ASYNC is non-nil, publish pages in an async process."
-  (interactive)
-  (gkroam-update-index)
-  (gkroam-set-project-alist)
-  (if global-undo-tree-mode
-      (org-publish-project "gkroam" force async)
-    (message "please enable 'global-undo-tree-mode'!")))
-
-;;;###autoload
-(defun gkroam-preview ()
-  "Preview gkroam site."
-  (interactive)
-  (httpd-serve-directory gkroam-pub-dir)
-  (unless (httpd-running-p) (httpd-start))
-  (gkroam-publish-site nil nil)
-  (if global-undo-tree-mode
-      (browse-url (format "http://%s:%d" "127.0.0.1" 8080))
-    (message "please enable 'global-undo-tree-mode'!")))
 
 ;;; ----------------------------------------
 ;; minor mode: gkroam-link-mode
@@ -1079,7 +937,7 @@ Except mata infomation and page references."
             (goto-char beg2)
             (insert (format "\n%s\n" content))
             (save-buffer)
-            (gkroam-overlay-buffer)))))))
+            (gkroam-mode)))))))
 
 (defun gkroam-reset-variables ()
   "Reset all variables gkroam capture relays on."
@@ -1181,13 +1039,6 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
     (and (not (= (line-beginning-position) (point)))
          (thing-at-point 'word t))))
 
-(defun gkroam-company-slash-p ()
-  "Judge if need to company slash."
-  (save-excursion
-    (skip-chars-backward "^/" (line-beginning-position))
-    (and (not (= (line-beginning-position) (point)))
-         (thing-at-point 'word t))))
-
 (defun gkroam--complete-hashtag (title)
   "Complete hashtag with brackets for TITLE."
   (let (len)
@@ -1220,12 +1071,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
       (setq bds (bounds-of-thing-at-point 'symbol))
       (setq beg (car bds))
       (setq end (cdr bds))
-      (list beg end gkroam-pages . nil))
-     ((gkroam-company-slash-p)
-      (setq bds (bounds-of-thing-at-point 'symbol))
-      (setq beg (car bds))
-      (setq end (cdr bds))
-      (list beg end gkroam-slash-magics . nil)))))
+      (list beg end gkroam-pages . nil)))))
 
 ;;;###autoload
 (defun gkroam-set-major-mode ()
@@ -1246,7 +1092,6 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
   (add-hook 'company-completion-finished-hook #'gkroam-completion-finish nil 'local)
   
   (add-hook 'gkroam-mode-hook #'gkroam-link-frame-setup)
-  (add-hook 'gkroam-mode-hook #'gkroam-set-project-alist)
   (add-hook 'gkroam-mode-hook #'toggle-truncate-lines)
   (add-hook 'gkroam-mode-hook #'gkroam-overlay-buffer)
   (add-hook 'gkroam-mode-hook
@@ -1256,10 +1101,8 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
                           (when (and (eq major-mode 'gkroam-mode)
                                      (eq buffer-read-only nil))
                             (indent-region (point-min) (point-max))
-                            (gkroam-overlay-buffer)
+                            ;; (gkroam-overlay-buffer)
                             (gkroam-build-page-cache))))))
-  
-  (advice-add 'org-publish-file :around #'gkroam-resolve-link)
 
   (when (require 'ivy nil t)
     (unless (null ivy-mode)
