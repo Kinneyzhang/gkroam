@@ -275,7 +275,7 @@ If BUFFER is non-nil, check the buffer visited file."
 
 (defun gkroam--gen-page ()
   "Generate new gkroam page filename, without directory prefix."
-  (let* ((slug (completing-read "Input filename slug or press \"RET\" to use default: "
+  (let* ((slug (completing-read "Input filename or press \"RET\" to use default: "
                                 nil nil nil (format-time-string "%Y%m%d%H%M%S")))
          (slug-format (string-join (split-string slug) "-")))
     (format "%s.org" slug-format)))
@@ -403,15 +403,13 @@ With optional argument ALIASE, format also with aliase."
          (with-current-buffer file-buf
            (save-excursion
              (goto-char (point-max))
-             (re-search-backward "\n *-----\n" nil t)
+             (unless (re-search-backward "^* [0-9]+ Linked References\n" nil t)
+               (newline 1))
              (delete-region (point) (point-max))
              (unless (string= string "")
                (let* ((processed-str (gkroam-process-searched-string string title))
                       (num (car processed-str))
                       (references (cdr processed-str)))
-                 (insert "\n-----\n")
-                 (goto-char (point-min))
-                 (re-search-forward "-----\n" nil t)
                  (insert (format "* %d Linked References\n" num))
                  (insert references))
                (save-buffer))))))))
@@ -445,7 +443,7 @@ With optional argument ALIASE, format also with aliase."
     (save-excursion
       (save-restriction
         (goto-char (point-min))
-        (if (re-search-forward "^ *-----+" nil t)
+        (if (re-search-forward "^* [0-9]+ Linked References$" nil t)
             (setq end (1- (line-beginning-position)))
           (setq end (point-max)))
         (narrow-to-region (point-min) end)
@@ -992,7 +990,7 @@ The region is a begin position and end position cons."
     (goto-char (point-min))
     (while (re-search-forward "^ *#\\+.+?:.*" nil t))
     (setq beg (1+ (match-end 0)))
-    (if (re-search-forward "^ *-----+" nil t)
+    (if (re-search-forward "^* [0-9]+ Linked References$" nil t)
         (setq end (1- (match-beginning 0)))
       (setq end (point-max)))
     (cons beg end)))
