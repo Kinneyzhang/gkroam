@@ -347,7 +347,7 @@ With optional argument ALIASE, format also with aliase."
   "Update gkroam PAGE's reference."
   (unless (executable-find "rg")
     (user-error "Cannot find program rg"))
-  (let ((linum 9999) beg)
+  (let ((linum 9999))
     (gkroam--search-linked-pages
      (gkroam--search-process page linum)
      (lambda (string)
@@ -359,7 +359,7 @@ With optional argument ALIASE, format also with aliase."
              (goto-char (point-max))
              (unless (re-search-backward "^* [0-9]+ Linked References\n" nil t)
                (newline 1))
-             (setq beg (point))
+             ;; (setq beg (point))
              (delete-region (point) (point-max))
              (unless (string= string "")
                (let* ((processed-str (gkroam-process-searched-string string title))
@@ -558,7 +558,6 @@ With optional arguments, use TITLE or HEADLINE or ALIASE to format link."
 (defun gkroam-update-all ()
   "Update all gkroam files' reference."
   (interactive)
-  (gkroam-update-index)
   (let ((pages (gkroam--all-pages)))
     (mapcar #'gkroam-update-reference pages)))
 
