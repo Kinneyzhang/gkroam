@@ -101,6 +101,10 @@
 (defvar gkroam-window-margin 2
   "Gkroam window's left and right margin.")
 
+(defvar gkroam-use-default-filename nil
+  "Non-nil means use default filename for gkroam page.
+The default format is '%Y%m%d%H%M%S' time string.")
+
 (defvar gkroam-dynamic-brackets nil
   "Non-nil means to show brackets dynamically.")
 
@@ -220,9 +224,12 @@ If BUFFER is non-nil, check the buffer visited file."
 
 (defun gkroam--gen-page ()
   "Generate new gkroam page filename, without directory prefix."
-  (let* ((slug (completing-read "Input filename or press \"RET\" to use default: "
-                                nil nil nil (format-time-string "%Y%m%d%H%M%S")))
-         (slug-format (string-join (split-string slug) "-")))
+  (let* (slug slug-format)
+    (if gkroam-use-default-filename
+        (setq slug-format (format-time-string "%Y%m%d%H%M%S"))
+      (setq slug (completing-read "Input filename or press \"RET\" to use default: "
+                                  nil nil nil (format-time-string "%Y%m%d%H%M%S")))
+      (setq slug-format (string-join (split-string slug) "-")))
     (format "%s.org" slug-format)))
 
 (defun gkroam--format-link (title &optional headline aliase)
