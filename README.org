@@ -50,11 +50,9 @@
       ("C-c r n" . gkroam-smart-new)
       ("C-c r b" . gkroam-toggle-beautify)
       ("C-c r t" . gkroam-toggle-brackets)
+      ("C-c r D" . gkroam-toggle-dynamic)
       ("C-c r g" . gkroam-update)
-      ("C-c r G" . gkroam-update-all))
-     :config
-     ;; when this minor mode is on, show and hide brackets dynamically.
-     (gkroam-dynamic-brackets-mode -1))
+      ("C-c r G" . gkroam-update-all)))
    #+END_SRC
 
 ** Dependency
@@ -94,6 +92,12 @@
     =gkroam-toggle-brackets=\\
     Hide and show brackets of link and hashtag.
 
+    =gkroam-toggle-beautify=\\
+    Whether to beautify gkroam page.
+
+    =gkroam-toggle-dynamic=\\
+    Whether to show gkroam page in dynamic mode.
+
     =gkroam-insert=\\
     Insert a page bracket link at point.
 
@@ -119,10 +123,11 @@
    - =v2.1.0=: A more powerful linked references system.
    - =v2.1.1=: Change package name to 'gkroam'.
    - =v2.2.0=: Implement =gkroam-edit= .
-   - =v2.3.0=: Implement headline references, add a new minor mode =gkroam-dynamic-brackets-mode= and rename =gkroam-edit= to =gkroam-capture=.
+   - =v2.3.0=: Implement headline references, add a new minor mode =gkroam-dynamic-mode= and rename =gkroam-edit= to =gkroam-capture=.
    - =v2.3.1=: A more resonable way to insert link. Press "C-p RET" or "C-M-j" directly to skip headline completion for ivy user or just press "RET" for vanilla user.
    - =v2.3.2=: Beautify page: unify org list bullet and beautify org checkbox. Better to turn it off when editing the page. Function `gkroam-toggle-beautify'.
    - =v2.3.3=: Make page filename customizable, delete index file and show index in buffer.
+   - =v2.3.4=: Delete 'gkroam-dynamic-brackets-mode' and add =gkroam-toggle-dynamic= function.
 
 ** TodoList
    
@@ -136,7 +141,7 @@
    * [X] Convert gkroam link to org file link before publish and convert back when published.
    * [X] A more reasonable linked references form.
    * [X] Implement roam research like sidebar, named 'gkroam-edit' function.
-   * [X] Implement org headline references, add a new minor mode =gkroam-dynamic-brackets-mode=.
+   * [X] Implement org headline references, add a new minor mode =gkroam-dynamic-mode=.
    * [X] Beautify gkroam page: set window margin, unify bullet style and so on.
    * [X] Make page filename customizable.
    * [ ] Implement 'block reference' and 'block embed'.
