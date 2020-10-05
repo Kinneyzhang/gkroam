@@ -1123,7 +1123,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
                           (when (and (eq major-mode 'gkroam-mode)
                                      (eq buffer-read-only nil))
                             (gkroam-overlay-buffer)
-                            (indent-region (point-min) (point-max))
+                            ;; (indent-region (point-min) (point-max))
                             (gkroam-build-page-cache))))))
 
   (when (require 'ivy nil t)
