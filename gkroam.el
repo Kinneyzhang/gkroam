@@ -357,9 +357,7 @@ With optional argument ALIASE, format also with aliase."
          (with-current-buffer file-buf
            (save-excursion
              (goto-char (point-max))
-             (unless (re-search-backward "^* [0-9]+ Linked References\n" nil t)
-               (newline 1))
-             ;; (setq beg (point))
+             (re-search-backward "^* [0-9]+ Linked References\n" nil t)
              (delete-region (point) (point-max))
              (unless (string= string "")
                (let* ((processed-str (gkroam-process-searched-string string title))
