@@ -29,7 +29,7 @@
    
 ** Installation
    
-   Clone this repo and add gkroam to your emacs load-path. My configurations are as follows. Feel free to modify them as you like.
+   Clone this repo and add gkroam to your emacs load-path. My configurations are as follows. Feel free to modify them as your preference.
 
    Now, you can also install gkroam from Melpa with =package-install=.
 
@@ -63,9 +63,9 @@
 
 ** Tips (important)
 
-   - Install the command line search tool ripgrep(rg) first and make sure it is in the exec-path list.
+   - Install the command line search tool *ripgrep(rg)* first and make sure it is in the exec-path list.
    - Do not set the =company-idle-delay= variable to zero, it will causes an error. See [[https://github.com/company-mode/company-mode/issues/455][issue#455]].
-   - Use =gkroam-build-caches= to generate all headlines ids and cache them in db manually.
+   - Use =gkroam-build-caches= to generate all headlines ids and cache them in db manually when you put your org files in gkroam directory at the very first time..
 
 ** Usage
 *** Link format
@@ -105,7 +105,7 @@
     Smartly create a new file. If in a region, read the text in region as file title. If a word at point, read the text at point as file title. Otherwise, use =gkroam-find=. Finally, insert a file link at point or in region.
 
     =gkroam-index=\\
-    Show gkroam index buffer. Well, it's just a simple site map because I have not yet had a better idea about this yet. Feel free to contribute by opening an [[issue][https://github.com/Kinneyzhang/gkroam.el/issues]] or [[PR][https://github.com/Kinneyzhang/gkroam.el/pulls]].
+    Show gkroam index buffer. Well, it's just a simple site map because I have not yet had a better idea about this yet. Feel free to contribute by opening an [[https://github.com/Kinneyzhang/gkroam.el/issues][issue]] or [[https://github.com/Kinneyzhang/gkroam.el/pulls][PR]].
 
     =gkroam-update=\\
     Update current buffer's references. Actually, references are updated automatically.
@@ -150,4 +150,4 @@
 
 ** Acknowledgements
 
-   Thanks to the cool guys from [[https://emacs-china.org][emacs-china.org]] who answered some key questions. Also special thanks to [[https://github.com/casouri][casouri]]; his [[https://github.com/casouri/lunarymacs/blob/master/site-lisp/bklink.el][bklink.el]] gave me a lot of ideas.
+   Thanks to the cool guys from [[https://emacs-china.org][emacs-china.org]] who answered some key questions. Also special thanks to [[https://github.com/casouri][casouri]], his [[https://github.com/casouri/lunarymacs/blob/master/site-lisp/bklink.el][bklink.el]] gave me a lot of ideas.
