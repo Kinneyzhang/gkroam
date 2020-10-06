@@ -65,15 +65,15 @@
 
    - Install the command line search tool ripgrep(rg) first and make sure it is in the exec-path list.
    - Do not set the =company-idle-delay= variable to zero, it will causes an error. See [[https://github.com/company-mode/company-mode/issues/455][issue#455]].
-   - Use =gkroam-build-caches= to generate all healines' id and cache them in db manually.
+   - Use =gkroam-build-caches= to generate all headlines ids and cache them in db manually.
 
 ** Usage
 *** Link format
 
     - page link: ={[<title>]}=
     - headline link: ={[<title> » <headline>]}=
-    - page link with aliase: ={[<title>][<aliase>]}=
-    - headline link with aliase: ={[<title> » <headline>][<aliase>]}=
+    - page link with alias: ={[<title>][<alias>]}=
+    - headline link with alias: ={[<title> » <headline>][<alias>]}=
 
 *** Main functions
 
