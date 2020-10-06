@@ -234,16 +234,16 @@ If BUFFER is non-nil, check the buffer visited file."
       (setq slug-format (string-join (split-string slug) "-")))
     (format "%s.org" slug-format)))
 
-(defun gkroam--format-link (title &optional headline aliase)
+(defun gkroam--format-link (title &optional headline alias)
   "Format TITLE into a gkroam page link.
 With optional argument HEADLINE, format also with headline.
-With optional argument ALIASE, format also with aliase."
+With optional argument ALIAS, format also with alias."
   (if headline
-      (if aliase
-          (format "{[%s » %s][%s]}" title headline aliase)
+      (if alias
+          (format "{[%s » %s][%s]}" title headline alias)
         (format "{[%s » %s]}" title headline))
-    (if aliase
-        (format "{[%s][%s]}" title aliase)
+    (if alias
+        (format "{[%s][%s]}" title alias)
       (format "{[%s]}" title))))
 
 (defun gkroam--format-backlink (page)
@@ -278,7 +278,7 @@ With optional argument ALIASE, format also with aliase."
     (while (re-search-forward gkroam-link-regexp nil t)
       (if (string= (ignore-errors (char-to-string (char-before (match-beginning 0)))) "#")
           (replace-match (match-string-no-properties 2))
-        (if (gkroam--link-has-aliase)
+        (if (gkroam--link-has-alias)
             (replace-match (match-string-no-properties 9))
           (if (gkroam--link-has-headline)
               (replace-match (concat (match-string-no-properties 2)
@@ -457,9 +457,9 @@ With optional argument ALIASE, format also with aliase."
     (gkroam-find title)))
 
 ;;;###autoload
-(defun gkroam-insert (&optional title headline aliase)
+(defun gkroam-insert (&optional title headline alias)
   "Insert a gkroam page link at point.
-With optional arguments, use TITLE or HEADLINE or ALIASE to format link."
+With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
   (interactive)
   (if (gkroam-at-root-p)
       (let* ((title (or title (completing-read
@@ -471,15 +471,15 @@ With optional arguments, use TITLE or HEADLINE or ALIASE to format link."
                   (when headlines (completing-read
                                    "Choose a headline, directly press \"C-p RET\" or \"RET\" to skip: "
                                    headlines nil nil))))
-             (aliase (or aliase
-                         (completing-read
-                          "Give an aliase, directly press \"RET\" to skip: "
-                          nil nil nil))))
+             (alias (or alias
+                        (completing-read
+                         "Give an alias, directly press \"RET\" to skip: "
+                         nil nil nil))))
         (if (string= headline "")
             (setq headline nil))
-        (if (string= aliase "")
-            (setq aliase nil))
-        (insert (gkroam--format-link title headline aliase))
+        (if (string= alias "")
+            (setq alias nil))
+        (insert (gkroam--format-link title headline alias))
         (save-buffer))
     (message "Not in the gkroam directory!")))
 
@@ -567,7 +567,7 @@ With optional arguments, use TITLE or HEADLINE or ALIASE to format link."
   'face '(:underline nil)
   'title nil
   'headline nil
-  'aliase nil
+  'alias nil
   'follow-link t
   'help-echo "Jump to page")
 
@@ -594,8 +594,8 @@ With optional arguments, use TITLE or HEADLINE or ALIASE to format link."
     (let* ((title (match-string-no-properties 2))
            (headline (when (gkroam--link-has-headline)
                        (match-string-no-properties 5)))
-           (aliase (when (gkroam--link-has-aliase)
-                     (match-string-no-properties 9)))
+           (alias (when (gkroam--link-has-alias)
+                    (match-string-no-properties 9)))
            (echo (if headline
                      (concat title " » " headline)
                    title)))
@@ -604,7 +604,7 @@ With optional arguments, use TITLE or HEADLINE or ALIASE to format link."
                         :type 'gkroam-link
                         'title title
                         'headline headline
-                        'aliase aliase
+                        'alias alias
                         'help-echo echo))))
 
 (defun gkroam-hashtag-fontify(beg end)
@@ -645,14 +645,14 @@ The overlays has a PROP and VALUE."
   "Judge if a gkroam link has headline after `re-search-forward'."
   (not (string-empty-p (match-string-no-properties 3))))
 
-(defun gkroam--link-has-aliase ()
-  "Judge if a gkroam link has aliase after `re-search-forward'."
+(defun gkroam--link-has-alias ()
+  "Judge if a gkroam link has alias after `re-search-forward'."
   (not (string-empty-p (match-string-no-properties 7))))
 
 (defun gkroam-overlay-link ()
   "Set overlays to gkroam page link."
   (with-silent-modifications
-    (if (gkroam--link-has-aliase)
+    (if (gkroam--link-has-alias)
         (progn
           (gkroam-overlay-region (match-beginning 9) (match-beginning 10) 'face 'warning)
           (gkroam-overlay-region (match-beginning 0) (match-beginning 9) 'display "")
@@ -669,7 +669,7 @@ The overlays has a PROP and VALUE."
 (defun gkroam-show-entire-link ()
   "Show entire page link."
   (with-silent-modifications
-    (if (gkroam--link-has-aliase)
+    (if (gkroam--link-has-alias)
         (progn
           (gkroam-overlay-region (match-beginning 0) (match-beginning 2) 'face 'shadow)
           (gkroam-overlay-region (match-beginning 6) (match-beginning 9) 'face 'shadow)
@@ -705,7 +705,7 @@ The overlays has a PROP and VALUE."
 
 ;;;###autoload
 (defun gkroam-link-edit ()
-  "Edit gkroam link aliase when 'dynamic edit' is off"
+  "Edit gkroam link alias when 'dynamic edit' is off"
   (interactive)
   (if-let ((btn (button-at (point))))
       (let* ((btn-label (button-label btn))
