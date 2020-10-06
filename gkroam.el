@@ -229,7 +229,7 @@ If BUFFER is non-nil, check the buffer visited file."
   (let* (slug slug-format)
     (if gkroam-use-default-filename
         (setq slug-format (format-time-string "%Y%m%d%H%M%S"))
-      (setq slug (completing-read "Input filename or press \"RET\" to use default: "
+      (setq slug (completing-read "Input filename or press \"RET\" to use the default: "
                                   nil nil nil (format-time-string "%Y%m%d%H%M%S")))
       (setq slug-format (string-join (split-string slug) "-")))
     (format "%s.org" slug-format)))
@@ -705,7 +705,7 @@ The overlays has a PROP and VALUE."
 
 ;;;###autoload
 (defun gkroam-link-edit ()
-  "Edit gkroam link alias when 'dynamic edit' is off"
+  "Edit gkroam link alias when 'dynamic edit' is off."
   (interactive)
   (if-let ((btn (button-at (point))))
       (let* ((btn-label (button-label btn))
@@ -734,7 +734,7 @@ The overlays has a PROP and VALUE."
                              'display "☑"))))
 
 (defun gkroam-put-title-overlays (beg &optional bound)
-  "Put overlay to org title."
+  "Put overlay to org title between BEG and BOUND."
   (save-excursion
     (goto-char beg)
     (when (re-search-forward "\\(^ *#\\+TITLE: \\)\\(.*\\)" bound t)
