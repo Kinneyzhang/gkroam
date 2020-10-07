@@ -144,7 +144,7 @@
    * [X] Implement org headline references, add a new minor mode =gkroam-dynamic-mode=.
    * [X] Beautify gkroam page: set window margin, unify bullet style and so on.
    * [X] Make page filename customizable.
-   * [ ] Impletement linked references filter function.
+   * [ ] Implement linked references filter function.
    * [ ] Implement 'block reference' and 'block embed'.
 
    More in future!
