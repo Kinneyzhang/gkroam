@@ -29,7 +29,7 @@
    
 ** Installation
    
-   Clone this repo and add gkroam to your emacs load-path. My configurations are as follows. Feel free to modify them as your preference.
+   Clone this repo and add gkroam to your emacs load-path. My configurations are as follows. Feel free to modify them as to however you prefer.
 
    Now, you can also install gkroam from Melpa with =package-install=.
 
@@ -65,7 +65,7 @@
 
    - Install the command line search tool *ripgrep(rg)* first and make sure it is in the exec-path list.
    - Do not set the =company-idle-delay= variable to zero, it will causes an error. See [[https://github.com/company-mode/company-mode/issues/455][issue#455]].
-   - Use =gkroam-build-caches= to generate all headlines ids and cache them in db manually when you put your org files in gkroam directory at the very first time..
+   - Use =gkroam-build-caches= to generate all headlines ids and cache them in db manually when you put your org files in the gkroam directory the very first time.
 
 ** Usage
 *** Link format
@@ -144,6 +144,7 @@
    * [X] Implement org headline references, add a new minor mode =gkroam-dynamic-mode=.
    * [X] Beautify gkroam page: set window margin, unify bullet style and so on.
    * [X] Make page filename customizable.
+   * [ ] Impletement linked references filter function.
    * [ ] Implement 'block reference' and 'block embed'.
 
    More in future!
