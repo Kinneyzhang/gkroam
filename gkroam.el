@@ -263,7 +263,7 @@ With optional argument ALIAS, format also with alias."
   "Return a rg process to search PAGE's link and output LINUM lines before and after matched string."
   (let ((title (gkroam--get-title page))
         (name (generate-new-buffer-name " *gkroam-rg*")))
-    (start-process name name "rg" "--ignore-case"
+    (start-process name name "rg" "--ignore-case" "--sortr" "path"
                    (format "\\{\\[%s.*?\\](\\[.+?\\])*\\}" title)
                    "-C" (number-to-string linum)
                    "-N" "--heading"
