@@ -230,7 +230,7 @@ If BUFFER is non-nil, check the buffer visited file."
     (if gkroam-use-default-filename
         (setq slug-format (format-time-string "%Y%m%d%H%M%S"))
       (setq slug (completing-read "Input filename or press \"RET\" to use the default: "
-                                  nil nil nil (format-time-string "%Y%m%d%H%M%S")))
+                                  nil nil nil nil nil (format-time-string "%Y%m%d%H%M%S")))
       (setq slug-format (string-join (split-string slug) "-")))
     (format "%s.org" slug-format)))
 
@@ -711,7 +711,7 @@ The overlays has a PROP and VALUE."
       (let* ((btn-label (button-label btn))
              (btn-start (button-start btn))
              (btn-end (button-end btn))
-             (new-link (completing-read "Edit link: " nil nil nil btn-label)))
+             (new-link (completing-read "Edit link: " nil nil nil nil nil btn-label)))
         (delete-region btn-start btn-end)
         (insert new-link))
     (message "no link at point")))
