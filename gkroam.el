@@ -711,7 +711,7 @@ The overlays has a PROP and VALUE."
       (let* ((btn-label (button-label btn))
              (btn-start (button-start btn))
              (btn-end (button-end btn))
-             (new-link (completing-read "Edit link: " nil nil nil nil nil btn-label)))
+             (new-link (completing-read "Edit link: " nil nil nil btn-label nil btn-label)))
         (delete-region btn-start btn-end)
         (insert new-link))
     (message "no link at point")))
