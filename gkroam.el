@@ -1118,7 +1118,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
   
   (add-hook 'gkroam-mode-hook
             (lambda ()
-              (add-hook 'before-save-hook
+              (add-hook 'after-save-hook
                         (lambda ()
                           (when (and (eq major-mode 'gkroam-mode)
                                      (eq buffer-read-only nil))
