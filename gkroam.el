@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Kinney Zhang
 ;;
-;; Version: 2.3.4
+;; Version: 2.3.5
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: https://github.com/Kinneyzhang/gkroam.el
@@ -59,11 +59,13 @@
 
 ;; 2.3.1 - A more resonable way to insert link. Press "C-p RET" or "C-M-j" to skip headline completion for ivy user or just press "RET" for vanilla user.
 
-;; 2.3.2 - Beautify page: unify org list bullet and beautify org checkbox. Better to turn it off when editing the page. Function `gkroam-toggle-beautify'.
+;; 2.3.2 - Beautify page: unify org list bullet and beautify org checkbox. Better to turn it off when editing the page. Function 'gkroam-toggle-beautify'.
 
 ;; 2.3.3 - Make page filename customizable, delete index file and show index in buffer.
 
 ;; 2.3.4 - Delete 'gkroam-dynamic-brackets-mode' and add `gkroam-toggle-dynamic' function.
+
+;; 2.3.5 - Optimize gkroam page prettification, change 'gkroam-toggle-beautify' to `gkroam-toggle-prettify'.
 
 ;;; Code:
 
@@ -113,8 +115,15 @@ The default format is '%Y%m%d%H%M%S' time string.")
 (defvar gkroam-show-brackets-p nil
   "Non-nil means to show brackets in page link.")
 
-(defvar gkroam-beautify-pages-p nil
-  "Non-nil means to beautify gkroam page.")
+(defvar gkroam-prettify-p nil
+  "Non-nil means to prettify gkroam page.")
+
+(defvar gkroam-title-height 300
+  "Height of gkroam page title when prettifying.")
+
+(defvar gkroam-org-list-re
+  "^ *\\([0-9]+[).]\\|[*+-]\\) \\(\\[[ X-]\\] \\)?"
+  "Org list bullet and checkbox regexp.")
 
 (defvar gkroam-pages nil
   "Page candidates for completion.")
@@ -395,7 +404,7 @@ With optional argument ALIAS, format also with alias."
   "Goto headline with id ID."
   (org-id-goto id)
   (gkroam-update)
-  (gkroam-overlay-buffer))
+  (gkroam-overlay-link (point-min)))
 
 (defun gkroam-heading-id-pairs ()
   "Return all heading and id pairs of current page."
@@ -649,8 +658,8 @@ The overlays has a PROP and VALUE."
   "Judge if a gkroam link has alias after `re-search-forward'."
   (not (string-empty-p (match-string-no-properties 7))))
 
-(defun gkroam-overlay-link ()
-  "Set overlays to gkroam page link."
+(defun gkroam-overlay-brackets ()
+  "Set overlays to gkroam brackets link."
   (with-silent-modifications
     (if (gkroam--link-has-alias)
         (progn
@@ -691,7 +700,7 @@ The overlays has a PROP and VALUE."
         (remove-overlays (match-beginning 0) (match-beginning 2) 'display "")
         (remove-overlays (match-end 3) (match-end 0) 'display "")))))
 
-(defun gkroam-put-link-overlays (beg &optional bound)
+(defun gkroam-overlay-link (beg &optional bound)
   "Put overlays to links between BEG and BOUND."
   (when (eq major-mode 'gkroam-mode)
     (save-excursion
@@ -701,7 +710,7 @@ The overlays has a PROP and VALUE."
             (gkroam-overlay-hashtag)
           (if gkroam-show-brackets-p
               (gkroam-show-entire-link)
-            (gkroam-overlay-link)))))))
+            (gkroam-overlay-brackets)))))))
 
 ;;;###autoload
 (defun gkroam-link-edit ()
@@ -718,71 +727,76 @@ The overlays has a PROP and VALUE."
 
 ;; page beautify
 
-(defun gkroam--window-margin (margin)
-  "Set gkroam window margin to MARGIN."
-  (when (eq major-mode 'gkroam-mode)
-    (set-window-margins (selected-window) margin margin)))
+(defun gkroam--fontify-org-checkbox (notation)
+  "Fontify org checkbox with NOTATION."
+  (add-text-properties
+   (match-beginning 2) (1- (match-end 2)) `(display ,notation)))
 
-(defun gkroam--beautify-checkbox ()
-  "Beautify org checkbox."
-  (when (match-string-no-properties 3)
-    (if (string= (match-string-no-properties 3) "[ ] ")
-        (progn
-          (gkroam-overlay-region (match-beginning 3) (1- (match-end 0))
-                                 'display "☐"))
-      (gkroam-overlay-region (match-beginning 3) (1- (match-end 0))
-                             'display "☑"))))
+(defun gkroam--fontify-org-list ()
+  "Fontify org list, including bullet and checkbox."
+  (with-silent-modifications
+    (add-text-properties
+     (match-beginning 1) (match-end 1)
+     '(display "•"))
+    (when (match-beginning 2)
+      (pcase (match-string-no-properties 2)
+        ("[-] " (gkroam--fontify-org-checkbox "☐"))
+        ("[ ] " (gkroam--fontify-org-checkbox "☐"))
+        ("[X] " (gkroam--fontify-org-checkbox "☑"))))))
 
-(defun gkroam-put-title-overlays (beg &optional bound)
-  "Put overlay to org title between BEG and BOUND."
+(defun gkroam--org-list-fontify (beg end)
+  "Fontify org list bullet between BEG and END."
+  (goto-char beg)
+  (while (re-search-forward gkroam-org-list-re end t)
+    (if (string= (match-string-no-properties 1) "*")
+        (unless (= (match-beginning 0) (match-beginning 1))
+          (gkroam--fontify-org-list))
+      (gkroam--fontify-org-list))))
+
+(defun gkroam-prettify-org-symbols ()
+  "Prettify org list."
+  (if gkroam-prettify-p
+      (progn
+        (jit-lock-register #'gkroam--org-list-fontify))
+    (jit-lock-unregister #'gkroam--org-list-fontify)
+    (with-silent-modifications
+      (remove-text-properties (point-min) (point-max)
+                              '(display nil))))
+  (jit-lock-refontify))
+
+(defun gkroam-org-title-overlay (beg &optional bound)
+  "Overlay org title, search between BEG and BOUND."
   (save-excursion
     (goto-char beg)
-    (when (re-search-forward "\\(^ *#\\+TITLE: \\)\\(.*\\)" bound t)
-      (if gkroam-beautify-pages-p
+    (when (re-search-forward "\\(^ *#\\+TITLE: *\\)\\(.+\\)$" bound t)
+      (if gkroam-prettify-p
           (progn
-            (gkroam-overlay-region (match-beginning 1) (match-beginning 2)
+            (gkroam-overlay-region (match-beginning 1) (match-end 1)
                                    'display "")
-            (gkroam-overlay-region (match-beginning 2) (match-end 0)
-                                   'face '(:height 300)))
+            (gkroam-overlay-region (match-beginning 2) (match-end 2)
+                                   'face `(:height ,gkroam-title-height)))
         (remove-overlays (line-beginning-position) (line-end-position))))))
 
-(defun gkroam-put-bullet-overlays (beg &optional bound)
-  "Put overlay to org list bullets between BEG and BOUND."
-  (when (eq major-mode 'gkroam-mode)
-    (save-excursion
-      (goto-char beg)
-      (while (re-search-forward
-              "^ *\\(\\+\\|-\\|[0-9]+\\.\\|[0-9]+)\\)\\( \\)\\(\\[X\\] \\|\\[ \\] \\)?" bound t)
-        (if gkroam-beautify-pages-p
-            (progn
-              (gkroam-overlay-region (match-beginning 1) (match-beginning 2)
-                                     'display "•")
-              (gkroam--beautify-checkbox))
-          (remove-overlays (match-beginning 1) (match-end 0))))
-      (goto-char beg)
-      (while (re-search-forward "^ +\\(\\*\\)\\( \\)\\(\\[X\\] \\|\\[ \\] \\)?" bound t)
-        (if gkroam-beautify-pages-p
-            (progn
-              (gkroam-overlay-region (match-beginning 1) (match-beginning 2)
-                                     'display "•")
-              (gkroam--beautify-checkbox))
-          (remove-overlays (match-beginning 1) (match-end 0)))))))
+(defun gkroam-set-window-margin ()
+  "Set gkroam window margin when `gkroam-prettify-mode' is on."
+  (if gkroam-prettify-p
+      (set-window-margins (selected-window)
+                          gkroam-window-margin gkroam-window-margin)
+    (set-window-margins (selected-window) 0 0)))
 
-(defun gkroam-beautify-page ()
-  "Beautify gkroam page."
-  (if gkroam-beautify-pages-p
-      (gkroam--window-margin gkroam-window-margin)
-    (gkroam--window-margin 0))
-  (gkroam-put-title-overlays (point-min))
-  (gkroam-put-bullet-overlays (point-min)))
+(defun gkroam-prettify-page ()
+  "Prettify gkroam page."
+  (gkroam-set-window-margin)
+  (save-excursion
+    (gkroam-org-title-overlay (point-min))
+    (gkroam-prettify-org-symbols)))
 
 ;; show page dynamically
 
 (defun gkroam-restore-line-overlays ()
   "Restore overlays of bullets when the cursor move out of a line."
-  (gkroam-put-title-overlays (line-beginning-position) (line-end-position))
-  (gkroam-put-link-overlays (line-beginning-position) (line-end-position))
-  (gkroam-put-bullet-overlays (line-beginning-position) (line-end-position)))
+  (gkroam-org-title-overlay (line-beginning-position) (line-end-position))
+  (gkroam-overlay-link (line-beginning-position) (line-end-position)))
 
 (defun gkroam-remove-line-overlays ()
   "Remove overlays of bullets when the cursor move onto a line."
@@ -792,18 +806,12 @@ The overlays has a PROP and VALUE."
   "Make elements in gkroam page hide and show dynamically."
   (if gkroam-dynamic-p
       (progn
-        (add-hook 'pre-command-hook #'gkroam-restore-line-overlays)
-        (add-hook 'post-command-hook #'gkroam-remove-line-overlays))
-    (remove-hook 'pre-command-hook #'gkroam-restore-line-overlays)
-    (remove-hook 'post-command-hook #'gkroam-remove-line-overlays)))
+        (add-hook 'pre-command-hook #'gkroam-restore-line-overlays nil t)
+        (add-hook 'post-command-hook #'gkroam-remove-line-overlays nil t))
+    (remove-hook 'pre-command-hook #'gkroam-restore-line-overlays t)
+    (remove-hook 'post-command-hook #'gkroam-remove-line-overlays t)))
 
 ;;;; commands
-
-;;;###autoload
-(defun gkroam-overlay-buffer ()
-  "Put overlay in currnt gkroam buffer."
-  (gkroam-put-link-overlays (point-min))
-  (gkroam-beautify-page))
 
 ;;;###autoload
 (defun gkroam-toggle-brackets ()
@@ -815,7 +823,19 @@ The overlays has a PROP and VALUE."
         (message "Hide gkroam link brackets"))
     (setq gkroam-show-brackets-p t)
     (message "Show gkroam link brackets"))
-  (gkroam-overlay-buffer))
+  (gkroam-overlay-link (point-min)))
+
+;;;###autoload
+(defun gkroam-toggle-prettify ()
+  "Toggle gkroam page prettification."
+  (interactive)
+  (if gkroam-prettify-p
+      (progn
+        (setq gkroam-prettify-p nil)
+        (message "Page prettification is turned off"))
+    (setq gkroam-prettify-p t)
+    (message "Page prettification is turned on"))
+  (gkroam-prettify-page))
 
 ;;;###autoload
 (defun gkroam-toggle-dynamic ()
@@ -828,18 +848,6 @@ The overlays has a PROP and VALUE."
     (setq gkroam-dynamic-p t)
     (message "Gkroam dynamic is on"))
   (gkroam-dynamic-elements))
-
-;;;###autoload
-(defun gkroam-toggle-beautify ()
-  "Determine whether to beautify gkroam page."
-  (interactive)
-  (if gkroam-beautify-pages-p
-      (progn
-        (setq gkroam-beautify-pages-p nil)
-        (message "Back to normal gkroam page"))
-    (setq gkroam-beautify-pages-p t)
-    (message "Beautify gkroam page"))
-  (gkroam-overlay-buffer))
 
 ;;; ----------------------------------------
 ;; minor mode: gkroam-capture-mode
@@ -1095,10 +1103,12 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
       (setq end (cdr bds))
       (list beg end gkroam-pages . nil)))))
 
-;;;###autoload
+(defun gkroam-set-window-fringe ()
+  "Set gkroam window fringe to zero."
+  (fringe-mode 0))
+
 (defun gkroam-set-major-mode ()
   "Set major mode to `gkroam-mode' after find file in `gkroam-root-dir'."
-  (interactive)
   (when (file-equal-p
          (file-name-directory (buffer-file-name))
          (expand-file-name gkroam-root-dir))
@@ -1108,13 +1118,17 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
 
 (define-derived-mode gkroam-mode org-mode "gkroam"
   "Major mode for gkroam."
+  
   (add-hook 'completion-at-point-functions #'gkroam-completion-at-point nil 'local)
   (add-hook 'company-completion-finished-hook #'gkroam-completion-finish nil 'local)
 
   (add-hook 'gkroam-mode-hook #'gkroam-link-mode)
   (add-hook 'gkroam-mode-hook #'gkroam-link-frame-setup)
   (add-hook 'gkroam-mode-hook #'toggle-truncate-lines)
-  (add-hook 'gkroam-mode-hook #'gkroam-overlay-buffer)
+  (add-hook 'gkroam-mode-hook #'gkroam-prettify-page)
+  (add-hook 'gkroam-mode-hook (lambda ()
+                                (gkroam-overlay-link (point-min))))
+  (add-hook 'gkroam-mode-hook #'gkroam-set-window-fringe)
   
   (add-hook 'gkroam-mode-hook
             (lambda ()
@@ -1122,8 +1136,9 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
                         (lambda ()
                           (when (and (eq major-mode 'gkroam-mode)
                                      (eq buffer-read-only nil))
-                            (gkroam-overlay-buffer)
-                            ;; (indent-region (point-min) (point-max))
+                            (gkroam-prettify-page)
+                            (gkroam-overlay-link (point-min))
+                            (indent-region (point-min) (point-max))
                             (gkroam-build-page-cache))))))
 
   (when (require 'ivy nil t)

@@ -17,15 +17,6 @@
    Gkroam is a lightweight [[https://roamresearch.com][Roam Research]] replica, built on top of emacs org-mode. It uses 'ripgrep' to search links on pages and insert references at the bottom of org pages automatically. Gkroam imitates roam research in as many aspects as possible.
 
 ** Demos
-   *Beautify page*
-
-   [[./demos/page-beautify.gif]]
-   
-   [[./demos/headline-reference.gif]]
-   
-   *have changed the way (above) to insert page link:*
-
-   [[./demos/better-headline-insert.gif]]
    
 ** Installation
    
@@ -48,7 +39,7 @@
       ("C-c r c" . gkroam-capture)
       ("C-c r e" . gkroam-link-edit)
       ("C-c r n" . gkroam-smart-new)
-      ("C-c r b" . gkroam-toggle-beautify)
+      ("C-c r p" . gkroam-toggle-prettify)
       ("C-c r t" . gkroam-toggle-brackets)
       ("C-c r D" . gkroam-toggle-dynamic)
       ("C-c r g" . gkroam-update)
@@ -92,8 +83,8 @@
     =gkroam-toggle-brackets=\\
     Hide and show brackets of link and hashtag.
 
-    =gkroam-toggle-beautify=\\
-    Whether to beautify gkroam page.
+    =gkroam-toggle-prettify=\\
+    Whether to prettify gkroam page.
 
     =gkroam-toggle-dynamic=\\
     Whether to show gkroam page in dynamic mode.
@@ -128,6 +119,7 @@
    - =v2.3.2=: Beautify page: unify org list bullet and beautify org checkbox. Better to turn it off when editing the page. Function `gkroam-toggle-beautify'.
    - =v2.3.3=: Make page filename customizable, delete index file and show index in buffer.
    - =v2.3.4=: Delete 'gkroam-dynamic-brackets-mode' and add =gkroam-toggle-dynamic= function.
+   - =v2.3.5=: Optimize gkroam page prettification, change 'gkroam-toggle-beautify' to `gkroam-toggle-prettify'.
 
 ** TodoList
    
