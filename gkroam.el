@@ -780,10 +780,12 @@ The overlays has a PROP and VALUE."
 
 (defun gkroam-set-window-margin ()
   "Set gkroam window margin when `gkroam-prettify-mode' is on."
-  (if gkroam-prettify-p
-      (set-window-margins (selected-window)
-                          gkroam-window-margin gkroam-window-margin)
-    (set-window-margins (selected-window) 0 0)))
+  (when (eq major-mode 'gkroam-mode)
+    (if gkroam-prettify-p
+        (set-window-margins (selected-window)
+                            gkroam-window-margin
+                            gkroam-window-margin)
+      (set-window-margins (selected-window) 0 0))))
 
 (defun gkroam-prettify-page ()
   "Prettify gkroam page."
@@ -1122,6 +1124,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
   
   (add-hook 'completion-at-point-functions #'gkroam-completion-at-point nil 'local)
   (add-hook 'company-completion-finished-hook #'gkroam-completion-finish nil 'local)
+  (add-hook 'window-configuration-change-hook #'gkroam-set-window-margin)
 
   (add-hook 'gkroam-mode-hook #'gkroam-link-mode)
   (add-hook 'gkroam-mode-hook #'gkroam-link-frame-setup)
