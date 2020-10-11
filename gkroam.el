@@ -404,6 +404,7 @@ With optional argument ALIAS, format also with alias."
   "Goto headline with id ID."
   (org-id-goto id)
   (gkroam-update)
+  (gkroam-prettify-page)
   (gkroam-overlay-link (point-min)))
 
 (defun gkroam-heading-id-pairs ()
