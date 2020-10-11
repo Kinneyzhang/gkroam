@@ -1124,7 +1124,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
   
   (add-hook 'completion-at-point-functions #'gkroam-completion-at-point nil 'local)
   (add-hook 'company-completion-finished-hook #'gkroam-completion-finish nil 'local)
-  (add-hook 'window-configuration-change-hook #'gkroam-set-window-margin)
+  (add-hook 'window-state-change-hook #'gkroam-set-window-margin)
 
   (add-hook 'gkroam-mode-hook #'gkroam-link-mode)
   (add-hook 'gkroam-mode-hook #'gkroam-link-frame-setup)
