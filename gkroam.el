@@ -32,18 +32,19 @@
 
 ;; v1.0 - Auto update link references at the buttom of page buffer.
 
-;; v2.0 - Use overlay to hide and show gkroam brackets accordingly and fix some bugs.
+;; v2.0 - Use overlay to hide and show gkroam brackets accordingly
+;; and fix some bugs.
 
 ;; v2.0.1 - Fix 'hide and show brackets' problems in some main occasion.
 ;; Such as newline, etc.
 
 ;; v2.0.2 - Fix `gkroam-publish-current-file' and `gkroam-preview-current',
-;; automatically convert gkroam link to org link and convert it back
-;; after published (use 'undo', not reliable). But it has problem with publishing
+;; automatically convert gkroam link to org link and convert it back after
+;; published (use 'undo', not reliable). But it has problem with publishing
 ;; the whole project.
 
-;; v2.0.3 - Fix `gkroam-publish-site' and `gkroam-preview'. Now you can publish and
-;; preview the whole roam site.
+;; v2.0.3 - Fix `gkroam-publish-site' and `gkroam-preview'.
+;; Now you can publish and preview the whole roam site.
 
 ;; v2.0.4 - Many bugs fixed and code improvement.
 
@@ -55,17 +56,24 @@
 
 ;; v2.2.1 - Many bug fixed and misc code optimization.
 
-;; v2.3.0 - Implement headline references, add a new minor mode 'gkroam-dynamic-brackets-mode' and rename 'gkroam-edit' to `gkroam-capture'.
+;; v2.3.0 - Implement headline references, add a new minor mode
+;; 'gkroam-dynamic-brackets-mode' and rename 'gkroam-edit' to `gkroam-capture'.
 
-;; 2.3.1 - A more resonable way to insert link. Press "C-p RET" or "C-M-j" to skip headline completion for ivy user or just press "RET" for vanilla user.
+;; v2.3.1 - A more resonable way to insert link.
+;; Press "C-p RET" or "C-M-j" to skip headline completion for ivy user
+;; or just press "RET" for vanilla user.
 
-;; 2.3.2 - Beautify page: unify org list bullet and beautify org checkbox. Better to turn it off when editing the page. Function 'gkroam-toggle-beautify'.
+;; v2.3.2 - Beautify page: unify org list bullet and beautify org checkbox.
+;; Better to turn it off when editing the page.
 
-;; 2.3.3 - Make page filename customizable, delete index file and show index in buffer.
+;; v2.3.3 - Make page filename customizable, delete index file
+;; and show index in buffer.
 
-;; 2.3.4 - Delete 'gkroam-dynamic-brackets-mode' and add `gkroam-toggle-dynamic' function.
+;; v2.3.4 - Delete 'gkroam-dynamic-brackets-mode'
+;; and add `gkroam-toggle-dynamic' function.
 
-;; 2.3.5 - Optimize gkroam page prettification, change 'gkroam-toggle-beautify' to `gkroam-toggle-prettify'.
+;; v2.3.5 - Optimize gkroam page prettification, change 'gkroam-toggle-beautify'
+;; to `gkroam-toggle-prettify' for precise semanteme.
 
 ;;; Code:
 
