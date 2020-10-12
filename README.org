@@ -42,8 +42,7 @@
       ("C-c r p" . gkroam-toggle-prettify)
       ("C-c r t" . gkroam-toggle-brackets)
       ("C-c r D" . gkroam-toggle-dynamic)
-      ("C-c r g" . gkroam-update)
-      ("C-c r G" . gkroam-update-all)))
+      ("C-c r g" . gkroam-update)))
    #+END_SRC
 
 ** Dependencies
@@ -120,6 +119,9 @@
    - =v2.3.3=: Make page filename customizable, delete index file and show index in buffer.
    - =v2.3.4=: Delete 'gkroam-dynamic-brackets-mode' and add =gkroam-toggle-dynamic= function.
    - =v2.3.5=: Optimize gkroam page prettification, change 'gkroam-toggle-beautify' to `gkroam-toggle-prettify'.
+
+   - =v2.3.6=: Implement a perfect linked references workflow. When a link is the item of org plain list, the whole list structure will be shown. The same as any source block, verse block, etc.
+
 
 ** TodoList
    

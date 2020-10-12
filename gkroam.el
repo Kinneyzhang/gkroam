@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Kinney Zhang
 ;;
-;; Version: 2.3.5
+;; Version: 2.3.6
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: https://github.com/Kinneyzhang/gkroam.el
@@ -74,6 +74,9 @@
 
 ;; v2.3.5 - Optimize gkroam page prettification, change 'gkroam-toggle-beautify'
 ;; to `gkroam-toggle-prettify' for precise semanteme.
+
+;; v2.3.6 - Implement a perfect linked references workflow.
+;; When a link is the item of org plain list, the whole list structure will be shown.
 
 ;;; Code:
 
@@ -269,11 +272,8 @@ With optional argument ALIAS, format also with alias."
     (format "[[file:%s][%s ➦]]" page title)))
 
 ;; ----------------------------------------
-(defvar gkroam-link-re-format
-  "\\(\\(-\\|+\\|*\\|[0-9]+\\.\\|[0-9]+)\\) .*?{\\[%s.*?\\]}.*\\(\n+ +.*\\)*
-\\|\\(.*{\\[%s.*?\\]}.*\\\\\n\\(.+\\\\\n\\)*.+\\|\\(.+\\\\\n\\)+.*{\\[%s.*?\\]}.*\\\\\n\\(.+\\\\\n\\)*.+\\|\\(.+\\\\\n\\)+.*{\\[%s.*?\\]}.*\\)
-\\| *#\\+begin_.+\n+\\(.+\n+\\|.*{\\[%s.*?\\]}.*\n+\\)*.*{\\[%s.*?\\]}.*\n+\\(\\)+\\(.+\n+\\|.*{\\[%s.*?\\]}.*\n+\\)* *#\\+end_.+
-\\|.*{\\[%s.*?\\]}.*\n\\)"
+
+(defvar gkroam-link-re-format "{\\[%s.*?\\]}"
   "Gkroam link regexp format used for searching link context.")
 
 (defun gkroam--search-process (page linum)
@@ -294,14 +294,37 @@ With optional argument ALIAS, format also with alias."
     (goto-char (point-min))
     (while (re-search-forward gkroam-link-regexp nil t)
       (if (string= (ignore-errors (char-to-string (char-before (match-beginning 0)))) "#")
-          (replace-match (match-string-no-properties 2))
+          (replace-match (concat "*" (match-string-no-properties 2) "*"))
         (if (gkroam--link-has-alias)
-            (replace-match (match-string-no-properties 9))
+            (replace-match (concat "*" (match-string-no-properties 9) "*"))
           (if (gkroam--link-has-headline)
-              (replace-match (concat (match-string-no-properties 2)
-                                     " » " (match-string-no-properties 5)))
-            (replace-match (match-string-no-properties 2))))))
+              (replace-match (concat "*" (match-string-no-properties 2)
+                                     " » " (match-string-no-properties 5) "*"))
+            (replace-match (concat "*" (match-string-no-properties 2) "*"))))))
     (buffer-string)))
+
+(defun gkroam-get-reference-content ()
+  "Get the content of linked reference."
+  (save-excursion
+    (goto-char (line-beginning-position))
+    (skip-chars-forward "[ ]")
+    (let* ((elem (org-element-at-point))
+           (elem-type (org-element-type elem))
+           elem-start elem-end)
+      (if (string= elem-type "item")
+          (let* ((level-1-blank-num
+                  (cadr (car (org-element-property :structure elem))))
+                 (structure
+                  (cl-find-if
+                   (lambda (lst)
+                     (and (= (cadr lst) level-1-blank-num)
+                          (< (point) (car (last lst)))))
+                   (org-element-property :structure (org-element-at-point)))))
+            (setq elem-start (car structure))
+            (setq elem-end (car (last structure))))
+        (setq elem-start (org-element-property :begin elem))
+        (setq elem-end (org-element-property :end elem)))
+      (buffer-substring-no-properties elem-start elem-end))))
 
 (defun gkroam-process-searched-string (string title)
   "Process searched STRING by 'rg', get page LINUM*2+1 lines of TITLE and context."
@@ -315,8 +338,7 @@ With optional argument ALIAS, format also with alias."
           (goto-char beg)
           (if (re-search-forward gkroam-file-re nil t 2)
               (progn
-                (forward-line -1)
-                (setq end (point)))
+                (setq end (line-beginning-position)))
             (setq end (point-max))))
         (save-restriction
           (narrow-to-region beg end)
@@ -329,14 +351,15 @@ With optional argument ALIAS, format also with alias."
                     (replace-regexp-in-string "%s" title gkroam-link-re-format)
                     nil t)
               (let ((headline "")
-                    (content (match-string-no-properties 0)))
+                    (content (string-trim
+                              (gkroam-get-reference-content) nil "[ \t\n\r]+")))
                 (setq num (1+ num))
                 (save-excursion
                   (when (re-search-backward "^*+ .+\n" nil t)
                     (setq headline (concat "**" (match-string-no-properties 0)))))
                 (if (string= headline last-headline)
-                    (setq context (concat context content "\n"))
-                  (setq context (concat context headline content "\n")))
+                    (setq context (concat context content "\n\n"))
+                  (setq context (concat context headline content "\n\n")))
                 (setq last-headline headline)))
             (setq context (gkroam--process-link-in-references context))
             (setq references
