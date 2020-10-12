@@ -780,12 +780,16 @@ The overlays has a PROP and VALUE."
 
 (defun gkroam-set-window-margin ()
   "Set gkroam window margin when `gkroam-prettify-mode' is on."
-  (when (eq major-mode 'gkroam-mode)
-    (if gkroam-prettify-p
-        (set-window-margins (selected-window)
-                            gkroam-window-margin
-                            gkroam-window-margin)
-      (set-window-margins (selected-window) 0 0))))
+  (let ((windows (window-list)))
+    (save-selected-window
+      (dolist (window windows)
+        (select-window window)
+        (when (eq major-mode 'gkroam-mode)
+          (if gkroam-prettify-p
+              (set-window-margins window
+                                  gkroam-window-margin
+                                  gkroam-window-margin)
+            (set-window-margins window 0 0)))))))
 
 (defun gkroam-prettify-page ()
   "Prettify gkroam page."
@@ -1084,7 +1088,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
     title))
 
 (defun gkroam-completion-finish (title)
-  "Function binded to `company-completion-finish-hook' after finishing complete TITLE."
+  "Function binded to `company-completion-finished-hook' after finishing complete TITLE."
   (when (gkroam-company-hashtag-p)
     (gkroam--complete-hashtag title))
   (unless (string= (buffer-name) gkroam-capture-buf)
