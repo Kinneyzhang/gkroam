@@ -393,11 +393,15 @@ With optional argument ALIAS, format also with alias."
      (lambda (string)
        (let* ((title (gkroam--get-title page))
               (file (gkroam--get-file page))
-              (file-buf (find-file-noselect file t)))
+              (file-buf (find-file-noselect file t))
+              reference-start)
          (with-current-buffer file-buf
            (save-excursion
              (goto-char (point-max))
              (re-search-backward "^* [0-9]+ Linked References\n" nil t)
+             (setq reference-start (point))
+             (let ((inhibit-read-only t))
+               (remove-text-properties reference-start (point-max) '(read-only nil)))
              (delete-region (point) (point-max))
              (unless (string= string "")
                (let* ((processed-str (gkroam-process-searched-string string title))
@@ -406,12 +410,10 @@ With optional argument ALIAS, format also with alias."
                  (insert (format "* %d Linked References\n" num))
                  (insert references)
                  ;; use overlay to hide part of reference. (filter)
-                 ;; make ".. Linked References" uneditable
-                 ;; put overlay onto each reference and click to jump page
-                 ;; how to realize accurate jumping?
-                 ;; change mouse style when on hover and display help-echo
                  ;; (gkroam-overlay-region beg (point-max) 'invisible t)
-                 )
+                 (indent-region reference-start (point-max))
+                 (put-text-property reference-start (point-max)
+                                    'read-only "Linked references region is uneditable."))
                (save-buffer))))))))
   (message "%s reference updated" page))
 
@@ -809,25 +811,34 @@ The overlays has a PROP and VALUE."
                                    'face `(:height ,gkroam-title-height)))
         (remove-overlays (line-beginning-position) (line-end-position))))))
 
+(defun gkroam-set-curr-window-margin ()
+  "Set current gkroam window's margin when `gkroam-prettify-mode' is on."
+  (if gkroam-prettify-p
+      (set-window-margins (selected-window)
+                          gkroam-window-margin
+                          gkroam-window-margin)
+    (set-window-margins (selected-window) 0 0)))
+
 (defun gkroam-set-window-margin ()
-  "Set gkroam window margin when `gkroam-prettify-mode' is on."
+  "Set all gkroam windows' margin when `gkroam-prettify-mode' is on."
   (let ((windows (window-list)))
     (save-selected-window
       (dolist (window windows)
         (select-window window)
         (when (eq major-mode 'gkroam-mode)
-          (if gkroam-prettify-p
-              (set-window-margins window
-                                  gkroam-window-margin
-                                  gkroam-window-margin)
-            (set-window-margins window 0 0)))))))
+          (gkroam-set-curr-window-margin))))))
 
 (defun gkroam-prettify-page ()
   "Prettify gkroam page."
-  (gkroam-set-window-margin)
-  (save-excursion
-    (gkroam-org-title-overlay (point-min))
-    (gkroam-prettify-org-symbols)))
+  (let ((windows (window-list)))
+    (save-selected-window
+      (dolist (window windows)
+        (select-window window)
+        (when (eq major-mode 'gkroam-mode)
+          (gkroam-set-curr-window-margin)
+          (save-excursion
+            (gkroam-org-title-overlay (point-min))
+            (gkroam-prettify-org-symbols)))))))
 
 ;; show page dynamically
 
