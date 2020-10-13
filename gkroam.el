@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Kinney Zhang
 ;;
-;; Version: 2.3.6
+;; Version: 2.3.7
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: https://github.com/Kinneyzhang/gkroam.el
@@ -77,6 +77,9 @@
 
 ;; v2.3.6 - Implement a perfect linked references workflow.
 ;; When a link is the item of org plain list, the whole list structure will be shown.
+
+;; v2.3.7 - Add headline id only when you insert a gkroam link.
+;; Use `gkroam-rebuild-caches' command to rebuild headline and id caches.
 
 ;;; Code:
 
@@ -276,16 +279,16 @@ With optional argument ALIAS, format also with alias."
 (defvar gkroam-link-re-format "{\\[%s.*?\\]}"
   "Gkroam link regexp format used for searching link context.")
 
-(defun gkroam--search-process (page linum)
-  "Return a rg process to search PAGE's link and output LINUM lines before and after matched string."
+(defun gkroam--search-process (page)
+  "Return a rg process to search PAGE's link."
   (let ((title (gkroam--get-title page))
         (name (generate-new-buffer-name " *gkroam-rg*")))
     (start-process name name "rg" "--ignore-case" "--sortr" "path"
                    (format "\\{\\[%s.*?\\](\\[.+?\\])*\\}" title)
-                   "-C" (number-to-string linum)
+                   "-C" (number-to-string 9999)
                    "-N" "--heading"
                    (expand-file-name gkroam-root-dir) ;; must be absolute path.
-                   "-g" "!index.org*")))
+                   "-g" "!index.org*"))  )
 
 (defun gkroam--process-link-in-references (string)
   "Remove links in reference's STRING."
@@ -387,34 +390,33 @@ With optional argument ALIAS, format also with alias."
   "Update gkroam PAGE's reference."
   (unless (executable-find "rg")
     (user-error "Cannot find program rg"))
-  (let ((linum 9999))
-    (gkroam--search-linked-pages
-     (gkroam--search-process page linum)
-     (lambda (string)
-       (let* ((title (gkroam--get-title page))
-              (file (gkroam--get-file page))
-              (file-buf (find-file-noselect file t))
-              reference-start)
-         (with-current-buffer file-buf
-           (save-excursion
-             (goto-char (point-max))
-             (re-search-backward "^* [0-9]+ Linked References\n" nil t)
-             (setq reference-start (point))
-             (let ((inhibit-read-only t))
-               (remove-text-properties reference-start (point-max) '(read-only nil)))
-             (delete-region (point) (point-max))
-             (unless (string= string "")
-               (let* ((processed-str (gkroam-process-searched-string string title))
-                      (num (car processed-str))
-                      (references (cdr processed-str)))
-                 (insert (format "* %d Linked References\n" num))
-                 (insert references)
-                 ;; use overlay to hide part of reference. (filter)
-                 ;; (gkroam-overlay-region beg (point-max) 'invisible t)
-                 (indent-region reference-start (point-max))
-                 (put-text-property reference-start (point-max)
-                                    'read-only "Linked references region is uneditable."))
-               (save-buffer))))))))
+  (gkroam--search-linked-pages
+   (gkroam--search-process page)
+   (lambda (string)
+     (let* ((title (gkroam--get-title page))
+            (file (gkroam--get-file page))
+            (file-buf (find-file-noselect file t))
+            reference-start)
+       (with-current-buffer file-buf
+         (save-excursion
+           (goto-char (point-max))
+           (re-search-backward "^* [0-9]+ Linked References\n" nil t)
+           (setq reference-start (point))
+           (let ((inhibit-read-only t))
+             (remove-text-properties reference-start (point-max) '(read-only nil)))
+           (delete-region (point) (point-max))
+           (unless (string= string "")
+             (let* ((processed-str (gkroam-process-searched-string string title))
+                    (num (car processed-str))
+                    (references (cdr processed-str)))
+               (insert (format "* %d Linked References\n" num))
+               (insert references)
+               ;; use overlay to hide part of reference. (filter)
+               ;; (gkroam-overlay-region beg (point-max) 'invisible t)
+               (indent-region reference-start (point-max))
+               (put-text-property reference-start (point-max)
+                                  'read-only "Linked references region is uneditable."))
+             (save-buffer)))))))
   (message "%s reference updated" page))
 
 (defun gkroam-new (title)
@@ -429,9 +431,25 @@ With optional argument ALIAS, format also with alias."
 ;; ----------------------------------------
 ;; headline linked references
 
+(defun gkroam--narrow-to-region ()
+  "Narrow region to gkroam page content, exclude linked references region."
+  (let (content-end)
+    (goto-char (point-min))
+    (if (re-search-forward "^* [0-9]+ Linked References$" nil t)
+        (setq content-end (1- (line-beginning-position)))
+      (setq content-end (point-max)))
+    (narrow-to-region (point-min) content-end)))
+
 (defun gkroam--get-headlines (title)
-  "Get page title with TITLE headlines."
-  (mapcar #'car (db-get title gkroam-db)))
+  "Get page's headline list, the page is titled with TITLE."
+  (with-temp-buffer
+    (insert-file-contents-literally
+     (gkroam--get-file (gkroam--get-page title)))
+    (save-restriction
+      (gkroam--narrow-to-region)
+      (org-element-map (org-element-parse-buffer) 'headline
+        (lambda (headline)
+          (org-element-property :raw-value headline))))))
 
 (defun gkroam-goto-headline (id)
   "Goto headline with id ID."
@@ -440,41 +458,64 @@ With optional argument ALIAS, format also with alias."
   (gkroam-prettify-page)
   (gkroam-overlay-link (point-min)))
 
-(defun gkroam-heading-id-pairs ()
-  "Return all heading and id pairs of current page."
-  (let (end)
-    (save-excursion
-      (save-restriction
+(defun gkroam-set-headline-id (title headline)
+  "Set the HEADLINE's id of page titled with TITLE."
+  (let* ((file (gkroam--get-file (gkroam--get-page title)))
+         (page-buf (find-file-noselect file))
+         headline-id)
+    (with-current-buffer page-buf
+      (save-excursion
         (goto-char (point-min))
-        (if (re-search-forward "^* [0-9]+ Linked References$" nil t)
-            (setq end (1- (line-beginning-position)))
-          (setq end (point-max)))
-        (narrow-to-region (point-min) end)
-        (org-map-entries
-         (lambda ()
-           (cons (org-entry-get (point) "ITEM") (org-id-get-create))))))))
+        (re-search-forward (concat "^*+ " headline " *$") nil t)
+        (let ((alist (db-get title gkroam-db)))
+          (if alist
+              (let ((kv (assoc headline alist)))
+                (setq headline-id (org-id-get-create))
+                (if kv
+                    (unless (string= headline-id (cdr kv))
+                      (setq alist (assoc-delete-all headline alist))
+                      (push (cons headline headline-id) alist))
+                  (push (cons headline (org-id-get-create)) alist))
+                (db-put title alist gkroam-db))
+            (db-put title `(,(cons headline (org-id-get-create))) gkroam-db)))
+        (save-buffer)))
+    headline-id))
+
+(defun gkroam-cache-curr-headline-links ()
+  "Cache current page's gkroam headline links."
+  (save-excursion
+    (goto-char (point-min))
+    (while (re-search-forward gkroam-link-regexp nil t)
+      (when (gkroam--link-has-headline)
+        (let* ((btn (button-at (1- (point))))
+               (title (button-get btn 'title))
+               (headline (button-get btn 'headline)))
+          (gkroam-set-headline-id title headline))))))
+
+(defun gkroam--search-headline-link-process ()
+  "Return a rg process to search gkroam headline link."
+  (let ((name (generate-new-buffer-name " *gkroam-rg-headline*")))
+    (start-process name name "rg"
+                   "\\{\\[.+? » .+?\\].*\\}" "-l"
+                   (expand-file-name gkroam-root-dir))))
+
+(defun gkroam-cache-all-headline-links ()
+  "Cache all pages's gkroam headline links."
+  (unless (executable-find "rg")
+    (user-error "Cannot find program rg"))
+  (gkroam--search-linked-pages
+   (gkroam--search-headline-link-process)
+   (lambda (string)
+     (dolist (file (split-string string))
+       (with-current-buffer (find-file-noselect file)
+         (gkroam-cache-curr-headline-links))))))
 
 ;;;###autoload
-(defun gkroam-build-page-cache ()
-  "Build current page's (heading . id) cache."
-  (let (title)
-    (save-excursion
-      (goto-char (point-min))
-      (re-search-forward "^ *#\\+TITLE:" nil t)
-      (setq title (string-trim (buffer-substring-no-properties
-                                (match-end 0) (line-end-position)))))
-    (db-put title (gkroam-heading-id-pairs) gkroam-db)))
-
-;;;###autoload
-(defun gkroam-build-caches ()
-  "Build all pages' caches manually."
+(defun gkroam-rebuild-caches ()
+  "Clear gkroam headline-id cache."
   (interactive)
-  (let (file)
-    (dolist (page (gkroam--all-pages))
-      (setq file (gkroam--get-file page))
-      (with-current-buffer (find-file-noselect file)
-        (gkroam-build-page-cache)
-        (save-buffer)))))
+  (db-hash-clear gkroam-db)
+  (gkroam-cache-all-headline-links))
 
 ;; ----------------------------------------
 
@@ -518,10 +559,10 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
                         (completing-read
                          "Give an alias, directly press \"RET\" to skip: "
                          nil nil nil))))
-        (if (string= headline "")
-            (setq headline nil))
-        (if (string= alias "")
-            (setq alias nil))
+        (when (string= headline "") (setq headline nil))
+        (when (string= alias "") (setq alias nil))
+        (when headline
+          (gkroam-set-headline-id title headline))
         (insert (gkroam--format-link title headline alias))
         (save-buffer))
     (message "Not in the gkroam directory!")))
@@ -619,7 +660,11 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
   (with-demoted-errors "Error when following the link: %s"
     (let* ((title (button-get button 'title))
            (headline (button-get button 'headline))
-           (headline-id (cdr (assoc headline (db-get title gkroam-db)))))
+           headline-id-p headline-id)
+      ;; When have cleared caches, have to wait for gkroam-db byte compile. After that, gkroam-goto-headline will be OK.
+      (when headline
+        (setq headline-id-p (cdr (assoc headline (db-get title gkroam-db))))
+        (setq headline-id (or headline-id-p (gkroam-set-headline-id title headline))))
       (if (string= (buffer-name) gkroam-capture-buf)
           (progn
             (other-window 1)
@@ -746,6 +791,14 @@ The overlays has a PROP and VALUE."
               (gkroam-show-entire-link)
             (gkroam-overlay-brackets)))))))
 
+(defun gkroam-hide-and-show-brackets ()
+  "Overlay links for in all gkroam live windows."
+  (let ((windows (window-list)))
+    (save-selected-window
+      (dolist (window windows)
+        (select-window window)
+        (gkroam-overlay-link (point-min))))))
+
 ;;;###autoload
 (defun gkroam-link-edit ()
   "Edit gkroam link alias when 'dynamic edit' is off."
@@ -829,7 +882,7 @@ The overlays has a PROP and VALUE."
           (gkroam-set-curr-window-margin))))))
 
 (defun gkroam-prettify-page ()
-  "Prettify gkroam page."
+  "Prettify gkroam page for all gkroam live windows."
   (let ((windows (window-list)))
     (save-selected-window
       (dolist (window windows)
@@ -872,7 +925,7 @@ The overlays has a PROP and VALUE."
         (message "Hide gkroam link brackets"))
     (setq gkroam-show-brackets-p t)
     (message "Show gkroam link brackets"))
-  (gkroam-overlay-link (point-min)))
+  (gkroam-hide-and-show-brackets))
 
 ;;;###autoload
 (defun gkroam-toggle-prettify ()
@@ -1189,7 +1242,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
                             (gkroam-prettify-page)
                             (gkroam-overlay-link (point-min))
                             ;; (indent-region (point-min) (point-max))
-                            (gkroam-build-page-cache))))))
+                            )))))
 
   (when (require 'ivy nil t)
     (unless (null ivy-mode)

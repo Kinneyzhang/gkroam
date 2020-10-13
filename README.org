@@ -105,6 +105,9 @@
     =gkroam-update-all=\\
     Update all files' references.
 
+    =gkroam-rebuild-caches=\\
+    Rebuild headline and headline id caches.
+
 ** ChangeLog
    - =v1.0=: Auto update link references at the bottom of page buffer.
    - =v2.0=: Use overlay to hide and show gkroam brackets accordingly and fix some bugs.
@@ -124,6 +127,7 @@
 
    - =v2.3.6=: Implement a perfect linked references workflow. When a link is the item of org plain list, the whole list structure will be shown. The same as any source block, verse block, etc.
 
+   - =v2.3.7=: Add headline id only when you insert a gkroam link. Use `gkroam-rebuild-caches' command to rebuild headline and id caches.
 
 ** TodoList
    
@@ -140,6 +144,7 @@
    * [X] Implement org headline references, add a new minor mode =gkroam-dynamic-mode=.
    * [X] Beautify gkroam page: set window margin, unify bullet style and so on.
    * [X] Make page filename customizable.
+   * [X] Generate headline id only when you insert a gkroam link.
    * [ ] Implement linked references filter function.
    * [ ] Implement 'block reference' and 'block embed'.
 
