@@ -57,7 +57,7 @@
 
    - Install the command line search tool *ripgrep(rg)* first and make sure it is in the exec-path list.
    - Do not set the =company-idle-delay= variable to zero, it will causes an error. See [[https://github.com/company-mode/company-mode/issues/455][issue#455]].
-   - Use =gkroam-build-caches= to generate all headlines ids and cache them in db manually when you put your org files in the gkroam directory the very first time.
+   - Use =gkroam-rebuild-caches= to generate all headline ids and caches according to headline links.
 
 ** Usage
 *** Link format
