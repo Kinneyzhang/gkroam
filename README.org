@@ -29,8 +29,10 @@
      :ensure t
      :init
      (setq gkroam-root-dir "~/gkroam/org/")
-     (setq gkroam-window-margin 4)
-     (setq org-startup-folded nil)
+     (setq gkroam-prettify-p t
+           gkroam-show-brackets-p t
+           gkroam-use-default-filename t
+           gkroam-window-margin 4)
      :bind
      (("C-c r I" . gkroam-index)
       ("C-c r d" . gkroam-daily)
