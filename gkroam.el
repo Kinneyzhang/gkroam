@@ -174,7 +174,7 @@ The default format is '%Y%m%d%H%M%S' time string.")
   "Regular expression that matches a gkroam hashtag.")
 
 (defvar gkroam-reference-delimiter-re
-  "^* [0-9]+ Linked References"
+  "^* [0-9]+ Linked References to \".+\".*"
   "Delimiter string regexp to separate page contents from references region.")
 
 (defvar gkroam-return-wconf nil
@@ -429,7 +429,7 @@ Output matched files' path and context."
              (let* ((processed-str (gkroam--process-searched-string string title))
                     (num (car processed-str))
                     (references (cdr processed-str)))
-               (insert (format "* %d Linked References to \"%s\"\n" num title))
+               (insert (format "* %d Linked References\n" num title))
                (insert references)
                ;; use overlay to hide part of reference. (filter)
                ;; (gkroam-overlay-region beg (point-max) 'invisible t)
@@ -1258,6 +1258,65 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
   (setq-local org-startup-folded nil)
   (setq-local org-return-follows-link t)
   (use-local-map gkroam-mode-map))
+
+;;; ----------------------------------------
+;;; Gkroam helper functions.
+
+;; Gkroam helper functions are used to process
+;; incompatible bugs between different versions.
+
+;; v2.3.8 helper
+
+(defun gkroam-search-all-links ()
+  "Return a rg process to search all gkroam links.
+Output matched links."
+  (gkroam-start-process "*gkroam-rg-links*"
+                        '("\\{\\[.+\\](\\[.+?\\])?\\}"
+                          "-oN" "--no-filename")))
+
+(defun gkroam-v2-3-8-helper--get-region ()
+  "Get the old references region needed to be deleted."
+  (car (org-element-map (org-element-parse-buffer) 'headline
+         (lambda (headline)
+           (let (begin end)
+             (when (string-match "^[0-9]+ Linked References$"
+                                 (org-element-property :raw-value headline))
+               (setq begin (org-element-property :begin headline))
+               (setq end (org-element-property :end headline))
+               (cons begin end)))))))
+
+;;;###autoload
+(defun gkroam-v2-3-8-helper ()
+  "Fix incompatible bugs for version before version 2.3.8.
+
+In version 2.3.8, gkroam has changed the 'references delimiter regexp' from
+'^ [0-9]+ Linked References' to '^ [0-9]+ Linked References to \".+\".*',
+so it will causes a result that all pages with references have two references region.
+
+This helper function is to delete the old references region."
+  (interactive)
+  (gkroam-search-process
+   (gkroam-search-all-links)
+   (lambda (string)
+     (with-temp-buffer
+       (let (title-lst)
+         (insert string)
+         (goto-char (point-min))
+         (while (re-search-forward gkroam-link-regexp nil t)
+           (push (match-string-no-properties 2) title-lst))
+         (setq title-lst (delete-dups title-lst))
+         (dolist (title title-lst)
+           (let ((file (gkroam--get-file (gkroam--get-page title))))
+             (with-current-buffer (find-file-noselect file)
+               (gkroam-update)
+               (let* ((region (gkroam-v2-3-8-helper--get-region))
+                      start end)
+                 (when region
+                   (setq start (car region))
+                   (setq end (cdr region))
+                   (save-excursion
+                     (delete-region start end)
+                     (save-buffer))))))))))))
 
 (provide 'gkroam)
 ;;; gkroam.el ends here
