@@ -173,6 +173,10 @@ The default format is '%Y%m%d%H%M%S' time string.")
            (group "}")))
   "Regular expression that matches a gkroam hashtag.")
 
+(defvar gkroam-reference-delimiter-re
+  "^* [0-9]+ Linked References"
+  "Delimiter string regexp to separate page contents from references region.")
+
 (defvar gkroam-return-wconf nil
   "Saved window configuration before goto gkroam capture.")
 
@@ -274,21 +278,43 @@ With optional argument ALIAS, format also with alias."
   (let* ((title (gkroam--get-title page)))
     (format "[[file:%s][%s ➦]]" page title)))
 
+(defun gkroam-new (title)
+  "Just create a new gkroam page titled with TITLE."
+  (let* ((file (gkroam--gen-file)))
+    (with-current-buffer (find-file-noselect file t)
+      (insert (format "#+TITLE: %s\n\n" title))
+      (save-buffer))
+    (push title gkroam-pages)
+    file))
+
 ;; ----------------------------------------
 
 (defvar gkroam-link-re-format "{\\[%s.*?\\]}"
   "Gkroam link regexp format used for searching link context.")
 
-(defun gkroam--search-process (page)
-  "Return a rg process to search PAGE's link."
-  (let ((title (gkroam--get-title page))
-        (name (generate-new-buffer-name " *gkroam-rg*")))
-    (start-process name name "rg" "--ignore-case" "--sortr" "path"
-                   (format "\\{\\[%s.*?\\](\\[.+?\\])*\\}" title)
-                   "-C" (number-to-string 9999)
-                   "-N" "--heading"
-                   (expand-file-name gkroam-root-dir) ;; must be absolute path.
-                   "-g" "!index.org*"))  )
+(defun gkroam-start-process (buf-name args)
+  "Start a rg process with output buffer named BUF-NAME,
+ARGS are the arguments of rg process."
+  (let ((name (generate-new-buffer-name buf-name)))
+    (eval `(start-process ,name ,name "rg" ,@args
+                          ,(expand-file-name gkroam-root-dir)))))
+
+(defun gkroam-search-process (process callback)
+  "Call CALLBACK After the PROCESS finished."
+  (unless (executable-find "rg")
+    (user-error "Cannot find program rg"))
+  (let (sentinel)
+    (setq sentinel
+          (lambda (process event)
+            (if (string-match-p (rx (or "finished" "exited"))
+                                event)
+                (if-let ((buf (process-buffer process)))
+                    (with-current-buffer buf
+                      (funcall callback (buffer-string)))
+                  (error "Gkroam’s rg process’ buffer is killed"))
+              (error "Gkroam’s rg process failed with signal: %s"
+                     event))))
+    (set-process-sentinel process sentinel)))
 
 (defun gkroam--process-link-in-references (string)
   "Remove links in reference's STRING."
@@ -306,7 +332,7 @@ With optional argument ALIAS, format also with alias."
             (replace-match (concat "*" (match-string-no-properties 2) "*"))))))
     (buffer-string)))
 
-(defun gkroam-get-reference-content ()
+(defun gkroam--get-reference-content ()
   "Get the content of linked reference."
   (save-excursion
     (goto-char (line-beginning-position))
@@ -329,8 +355,8 @@ With optional argument ALIAS, format also with alias."
         (setq elem-end (org-element-property :end elem)))
       (buffer-substring-no-properties elem-start elem-end))))
 
-(defun gkroam-process-searched-string (string title)
-  "Process searched STRING by 'rg', get page LINUM*2+1 lines of TITLE and context."
+(defun gkroam--process-searched-string (string title)
+  "Process searched STRING by 'rg', get the whole contents of TITLE page"
   (with-temp-buffer
     (insert string)
     (goto-char (point-min))
@@ -355,7 +381,7 @@ With optional argument ALIAS, format also with alias."
                     nil t)
               (let ((headline "")
                     (content (string-trim
-                              (gkroam-get-reference-content) nil "[ \t\n\r]+")))
+                              (gkroam--get-reference-content) nil "[ \t\n\r]+")))
                 (setq num (1+ num))
                 (save-excursion
                   (when (re-search-backward "^*+ .+\n" nil t)
@@ -371,27 +397,21 @@ With optional argument ALIAS, format also with alias."
             (setq beg end))))
       (cons num references))))
 
-(defun gkroam--search-linked-pages (process callback)
-  "Call CALLBACK After the PROCESS finished."
-  (let (sentinel)
-    (setq sentinel
-          (lambda (process event)
-            (if (string-match-p (rx (or "finished" "exited"))
-                                event)
-                (if-let ((buf (process-buffer process)))
-                    (with-current-buffer buf
-                      (funcall callback (buffer-string)))
-                  (error "Gkroam’s rg process’ buffer is killed"))
-              (error "Gkroam’s rg process failed with signal: %s"
-                     event))))
-    (set-process-sentinel process sentinel)))
+(defun gkroam-search-page-link (page)
+  "Return a rg process to search a specific PAGE's link.
+Output matched files' path and context."
+  (let ((title (gkroam--get-title page)))
+    (gkroam-start-process " *gkroam-rg*"
+                          `(,(format "\\{\\[%s.*?\\](\\[.+?\\])?\\}" title)
+                            "--ignore-case" "--sortr" "path"
+                            "-C" ,(number-to-string 9999)
+                            "-N" "--heading"
+                            "-g" "!index.org*"))))
 
 (defun gkroam-update-reference (page)
   "Update gkroam PAGE's reference."
-  (unless (executable-find "rg")
-    (user-error "Cannot find program rg"))
-  (gkroam--search-linked-pages
-   (gkroam--search-process page)
+  (gkroam-search-process
+   (gkroam-search-page-link page)
    (lambda (string)
      (let* ((title (gkroam--get-title page))
             (file (gkroam--get-file page))
@@ -400,16 +420,16 @@ With optional argument ALIAS, format also with alias."
        (with-current-buffer file-buf
          (save-excursion
            (goto-char (point-max))
-           (re-search-backward "^* [0-9]+ Linked References\n" nil t)
+           (re-search-backward gkroam-reference-delimiter-re nil t)
            (setq reference-start (point))
            (let ((inhibit-read-only t))
              (remove-text-properties reference-start (point-max) '(read-only nil)))
            (delete-region (point) (point-max))
            (unless (string= string "")
-             (let* ((processed-str (gkroam-process-searched-string string title))
+             (let* ((processed-str (gkroam--process-searched-string string title))
                     (num (car processed-str))
                     (references (cdr processed-str)))
-               (insert (format "* %d Linked References\n" num))
+               (insert (format "* %d Linked References to \"%s\"\n" num title))
                (insert references)
                ;; use overlay to hide part of reference. (filter)
                ;; (gkroam-overlay-region beg (point-max) 'invisible t)
@@ -419,15 +439,6 @@ With optional argument ALIAS, format also with alias."
              (save-buffer)))))))
   (message "%s reference updated" page))
 
-(defun gkroam-new (title)
-  "Just create a new gkroam page titled with TITLE."
-  (let* ((file (gkroam--gen-file)))
-    (with-current-buffer (find-file-noselect file t)
-      (insert (format "#+TITLE: %s\n\n" title))
-      (save-buffer))
-    (push title gkroam-pages)
-    file))
-
 ;; ----------------------------------------
 ;; headline linked references
 
@@ -435,7 +446,7 @@ With optional argument ALIAS, format also with alias."
   "Narrow region to gkroam page content, exclude linked references region."
   (let (content-end)
     (goto-char (point-min))
-    (if (re-search-forward "^* [0-9]+ Linked References$" nil t)
+    (if (re-search-forward gkroam-reference-delimiter-re nil t)
         (setq content-end (1- (line-beginning-position)))
       (setq content-end (point-max)))
     (narrow-to-region (point-min) content-end)))
@@ -493,19 +504,16 @@ With optional argument ALIAS, format also with alias."
                (headline (button-get btn 'headline)))
           (gkroam-set-headline-id title headline))))))
 
-(defun gkroam--search-headline-link-process ()
-  "Return a rg process to search gkroam headline link."
-  (let ((name (generate-new-buffer-name " *gkroam-rg-headline*")))
-    (start-process name name "rg"
-                   "\\{\\[.+? » .+?\\].*\\}" "-l"
-                   (expand-file-name gkroam-root-dir))))
+(defun gkroam-search-all-headline-links ()
+  "Return a rg process to search all gkroam headline links.
+Output matched files' path."
+  (gkroam-start-process " *gkroam-rg-headlines*"
+                        '("\\{\\[.+? » .+?\\].*\\}" "-l")))
 
 (defun gkroam-cache-all-headline-links ()
   "Cache all pages's gkroam headline links."
-  (unless (executable-find "rg")
-    (user-error "Cannot find program rg"))
-  (gkroam--search-linked-pages
-   (gkroam--search-headline-link-process)
+  (gkroam-search-process
+   (gkroam-search-all-headline-links)
    (lambda (string)
      (dolist (file (split-string string))
        (with-current-buffer (find-file-noselect file)
@@ -552,10 +560,11 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
                          "Choose a page or create a new: "
                          (gkroam--all-titles) nil nil)))
              (title-exist-p (gkroam--get-page title))
-             (headline (when title-exist-p
+             (headlines-exist-p (gkroam--get-headlines title))
+             (headline (when (and title-exist-p headlines-exist-p)
                          (completing-read
                           "Choose a headline or press \"C-p RET\" (\"RET\") to skip: "
-                          (gkroam--get-headlines title) nil nil)))
+                          headlines-exist-p nil nil)))
              (alias (or alias
                         (completing-read
                          "Give an alias or press \"RET\" to skip: "
@@ -983,7 +992,7 @@ The region is a begin position and end position cons."
     (goto-char (point-min))
     (while (re-search-forward "^ *#\\+.+?:.*" nil t))
     (setq beg (1+ (match-end 0)))
-    (if (re-search-forward "^* [0-9]+ Linked References$" nil t)
+    (if (re-search-forward gkroam-reference-delimiter-re nil t)
         (setq end (1- (match-beginning 0)))
       (setq end (point-max)))
     (cons beg end)))
@@ -1219,7 +1228,6 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
 
 (define-derived-mode gkroam-mode org-mode "gkroam"
   "Major mode for gkroam."
-  
   (add-hook 'completion-at-point-functions #'gkroam-completion-at-point nil 'local)
   (add-hook 'company-completion-finished-hook #'gkroam-completion-finish nil 'local)
   (add-hook 'window-state-change-hook #'gkroam-set-window-margin)
@@ -1251,6 +1259,5 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
   (setq-local org-return-follows-link t)
   (use-local-map gkroam-mode-map))
 
-;; ---------------------------------
 (provide 'gkroam)
 ;;; gkroam.el ends here
