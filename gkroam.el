@@ -759,6 +759,8 @@ The overlays has a PROP and VALUE."
   (with-silent-modifications
     (if (gkroam--link-has-alias)
         (progn
+          (when (gkroam--link-has-headline)
+            (gkroam-overlay-region (match-beginning 4) (match-end 4) 'face 'shadow))
           (gkroam-overlay-region (match-beginning 0) (match-beginning 2) 'face 'shadow)
           (gkroam-overlay-region (match-beginning 6) (match-beginning 9) 'face 'shadow)
           (gkroam-overlay-region (match-beginning 10) (match-end 0) 'face 'shadow)
@@ -770,6 +772,7 @@ The overlays has a PROP and VALUE."
           (progn
             (gkroam-overlay-region (match-beginning 0) (match-beginning 2) 'face 'shadow)
             (gkroam-overlay-region (match-end 3) (match-end 0) 'face 'shadow)
+            (gkroam-overlay-region (match-beginning 4) (match-end 4) 'face 'shadow)
             (gkroam-overlay-region (match-beginning 2) (match-end 3) 'face 'warning)
             (remove-overlays (match-beginning 0) (match-beginning 5) 'display "")
             (remove-overlays (match-end 3) (match-end 0) 'display ""))

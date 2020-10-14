@@ -63,8 +63,9 @@
 *** Link format
 
     - page link: ={[<title>]}=
-    - headline link: ={[<title> » <headline>]}=
     - page link with alias: ={[<title>][<alias>]}=
+
+    - headline link: ={[<title> » <headline>]}=
     - headline link with alias: ={[<title> » <headline>][<alias>]}=
 
 *** Main functions
