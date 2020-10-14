@@ -174,7 +174,7 @@ The default format is '%Y%m%d%H%M%S' time string.")
   "Regular expression that matches a gkroam hashtag.")
 
 (defvar gkroam-reference-delimiter-re
-  "^* [0-9]+ Linked References"
+  "^* [0-9]+ Linked References.*"
   "Delimiter string regexp to separate page contents from references region.")
 
 (defvar gkroam-return-wconf nil
@@ -429,7 +429,7 @@ Output matched files' path and context."
              (let* ((processed-str (gkroam--process-searched-string string title))
                     (num (car processed-str))
                     (references (cdr processed-str)))
-               (insert (format "* %d Linked References\n" num))
+               (insert (format "* %d Linked References to \"%s\"\n" num title))
                (insert references)
                ;; use overlay to hide part of reference. (filter)
                ;; (gkroam-overlay-region beg (point-max) 'invisible t)
