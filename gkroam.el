@@ -314,7 +314,7 @@ With optional argument ALIAS, format also with alias."
     (let* ((elem (org-element-at-point))
            (elem-type (org-element-type elem))
            elem-start elem-end)
-      (if (string= elem-type "item")
+      (if (member elem-type '(item plain-list))
           (let* ((level-1-blank-num
                   (cadr (car (org-element-property :structure elem))))
                  (structure
