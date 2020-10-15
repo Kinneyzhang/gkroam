@@ -287,7 +287,8 @@ With optional argument ALIAS, format also with alias."
     (push title gkroam-pages)
     file))
 
-;; ----------------------------------------
+;;; ----------------------------------------
+;; linked references
 
 (defvar gkroam-link-re-format "{\\[%s.*?\\]}"
   "Gkroam link regexp format used for searching link context.")
@@ -845,12 +846,14 @@ The overlays has a PROP and VALUE."
 
 (defun gkroam--org-list-fontify (beg end)
   "Fontify org list bullet between BEG and END."
-  (goto-char beg)
-  (while (re-search-forward gkroam-org-list-re end t)
-    (if (string= (match-string-no-properties 1) "*")
-        (unless (= (match-beginning 0) (match-beginning 1))
-          (gkroam--fontify-org-list))
-      (gkroam--fontify-org-list))))
+  (save-excursion
+    (goto-char (or (point-min) beg))
+    (while (and (re-search-forward gkroam-org-list-re nil t)
+                (< (point) (or (point-max) end)))
+      (if (string= (match-string-no-properties 1) "*")
+          (unless (= (match-beginning 0) (match-beginning 1))
+            (gkroam--fontify-org-list))
+        (gkroam--fontify-org-list)))))
 
 (defun gkroam-prettify-org-symbols ()
   "Prettify org list."
