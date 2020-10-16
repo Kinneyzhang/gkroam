@@ -278,33 +278,9 @@ With optional argument ALIAS, format also with alias."
   (let* ((title (gkroam--get-title page)))
     (format "[[file:%s][%s ➦]]" page title)))
 
-(defun gkroam--process-date-string (str)
-  "Plus one second to date string when many pages
-are created in one second."
-  (let ((standard-date
-         ;; eg: "2020-10-16 15:44:51"
-         (format "%s-%s-%s %s:%s:%s"
-                 (substring str 0 4)
-                 (substring str 4 6)
-                 (substring str 6 8)
-                 (substring str 8 10)
-                 (substring str 10 12)
-                 (substring str 12 14))))
-    (format-time-string
-     "%Y%m%d%H%M%S"
-     (1+ (time-to-seconds
-          (safe-date-to-time standard-date))))))
-
 (defun gkroam-new (title)
   "Just create a new gkroam page titled with TITLE."
-  (let* ((file (gkroam--gen-file))
-         (page (file-name-nondirectory file))
-         date-string)
-    (when (member page (gkroam--all-pages))
-      (setq date-string (string-trim page nil "\\.org"))
-      (setq page
-            (concat (gkroam--process-date-string date-string) ".org"))
-      (setq file (gkroam--get-file page)))
+  (let ((file (gkroam--gen-file)))
     (with-current-buffer (find-file-noselect file t)
       (insert (format "#+TITLE: %s\n\n" title))
       (save-buffer))
@@ -1101,7 +1077,8 @@ Except mata infomation and page references."
       (setq page (gkroam--get-page title))
       (if page
           (setq file (gkroam--get-file page))
-        (setq file (gkroam-new title)))
+        (let ((gkroam-use-default-filename nil))
+          (setq file (gkroam-new title))))
       (goto-char (line-beginning-position))
       (setq plist (cadr (org-element-headline-parser (point-max))))
       (setq beg (plist-get plist :contents-begin))
@@ -1118,9 +1095,7 @@ Except mata infomation and page references."
             (delete-region beg2 end2)
             (goto-char beg2)
             (insert (format "\n%s\n" content))
-            (save-buffer)
-            ;; (gkroam-mode)
-            ))))))
+            (save-buffer)))))))
 
 (defun gkroam-reset-variables ()
   "Reset all variables gkroam capture relays on."
