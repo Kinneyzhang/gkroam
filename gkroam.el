@@ -278,9 +278,33 @@ With optional argument ALIAS, format also with alias."
   (let* ((title (gkroam--get-title page)))
     (format "[[file:%s][%s ➦]]" page title)))
 
+(defun gkroam--process-date-string (str)
+  "Plus one second to date string when many pages
+are created in one second."
+  (let ((standard-date
+         ;; eg: "2020-10-16 15:44:51"
+         (format "%s-%s-%s %s:%s:%s"
+                 (substring str 0 4)
+                 (substring str 4 6)
+                 (substring str 6 8)
+                 (substring str 8 10)
+                 (substring str 10 12)
+                 (substring str 12 14))))
+    (format-time-string
+     "%Y%m%d%H%M%S"
+     (1+ (time-to-seconds
+          (safe-date-to-time standard-date))))))
+
 (defun gkroam-new (title)
   "Just create a new gkroam page titled with TITLE."
-  (let* ((file (gkroam--gen-file)))
+  (let* ((file (gkroam--gen-file))
+         (page (file-name-nondirectory file))
+         date-string)
+    (when (member page (gkroam--all-pages))
+      (setq date-string (string-trim page nil "\\.org"))
+      (setq page
+            (concat (gkroam--process-date-string date-string) ".org"))
+      (setq file (gkroam--get-file page)))
     (with-current-buffer (find-file-noselect file t)
       (insert (format "#+TITLE: %s\n\n" title))
       (save-buffer))
@@ -482,7 +506,7 @@ Output matched files' path and context."
 (defun gkroam-set-headline-id (title headline)
   "Set the HEADLINE's id of page titled with TITLE."
   (let* ((file (gkroam--get-file (gkroam--get-page title)))
-         (page-buf (find-file-noselect file))
+         (page-buf (find-file-noselect file t))
          headline-id)
     (with-current-buffer page-buf
       (save-excursion
@@ -525,7 +549,7 @@ Output matched files' path."
    (gkroam-search-all-headline-links)
    (lambda (string)
      (dolist (file (split-string string))
-       (with-current-buffer (find-file-noselect file)
+       (with-current-buffer (find-file-noselect file t)
          (gkroam-cache-curr-headline-links))))))
 
 ;;;###autoload
@@ -1070,7 +1094,7 @@ Except mata infomation and page references."
 (defun gkroam-capture-write-pages ()
   "Write the gkroam capture buffer contents to pages separately."
   (interactive)
-  (let (title content page file plist region beg end)
+  (let (title content page file plist beg end)
     (goto-char (point-min))
     (while (re-search-forward "^* .+" nil t)
       (setq title (string-trim-left (match-string-no-properties 0) "* "))
@@ -1086,8 +1110,8 @@ Except mata infomation and page references."
       (setq content (gkroam-capture-write--process content))
       (goto-char end)
       (save-excursion
-        (with-current-buffer (find-file-noselect file)
-          (let (beg2 end2)
+        (with-current-buffer (find-file-noselect file t)
+          (let (region beg2 end2)
             (setq region (gkroam--get-content-region))
             (setq beg2 (car region))
             (setq end2 (cdr region))
@@ -1095,7 +1119,8 @@ Except mata infomation and page references."
             (goto-char beg2)
             (insert (format "\n%s\n" content))
             (save-buffer)
-            (gkroam-mode)))))))
+            ;; (gkroam-mode)
+            ))))))
 
 (defun gkroam-reset-variables ()
   "Reset all variables gkroam capture relays on."
