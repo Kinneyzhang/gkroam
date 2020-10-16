@@ -563,8 +563,9 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
                          "Choose a page or create a new: "
                          (gkroam--all-titles) nil nil)))
              (title-exist-p (gkroam--get-page title))
-             (headlines-exist-p (gkroam--get-headlines title))
-             (headline (when (and title-exist-p headlines-exist-p)
+             (headlines-exist-p (when title-exist-p
+                                  (gkroam--get-headlines title)))
+             (headline (when headlines-exist-p
                          (completing-read
                           "Choose a headline or press \"C-p RET\" (\"RET\") to skip: "
                           headlines-exist-p nil nil)))
