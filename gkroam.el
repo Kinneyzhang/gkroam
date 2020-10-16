@@ -1083,7 +1083,8 @@ Except mata infomation and page references."
       (setq plist (cadr (org-element-headline-parser (point-max))))
       (setq beg (plist-get plist :contents-begin))
       (setq end (plist-get plist :contents-end))
-      (setq content (string-trim (buffer-substring beg end)))
+      (when (and beg end)
+        (setq content (string-trim (buffer-substring beg end))))
       (setq content (gkroam-capture-write--process content))
       (goto-char end)
       (save-excursion
