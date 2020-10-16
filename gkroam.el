@@ -323,8 +323,14 @@ ARGS are the arguments of rg process."
     (insert string)
     (goto-char (point-min))
     (while (re-search-forward gkroam-link-regexp nil t)
-      (if (string= (ignore-errors (char-to-string (char-before (match-beginning 0)))) "#")
-          (replace-match (concat "*" (match-string-no-properties 2) "*"))
+      (if (string= (ignore-errors
+                     (char-to-string (char-before (match-beginning 0)))) "#")
+          (let* ((match-str (match-string-no-properties 2))
+                 (match-len (length match-str)))
+            (replace-match (concat "*#" match-str "*"))
+            (save-excursion
+              (backward-char (+ 3 match-len))
+              (delete-char -1)))
         (if (gkroam--link-has-alias)
             (replace-match (concat "*" (match-string-no-properties 9) "*"))
           (if (gkroam--link-has-headline)
@@ -996,14 +1002,14 @@ The overlays has a PROP and VALUE."
 (defun gkroam--get-content-region ()
   "Get the region of real contents.
 The region is a begin position and end position cons."
-  (let (beg end)
+  (let (content-beg content-end)
     (goto-char (point-min))
     (while (re-search-forward "^ *#\\+.+?:.*" nil t))
-    (setq beg (1+ (match-end 0)))
+    (setq content-beg (1+ (match-end 0)))
     (if (re-search-forward gkroam-reference-delimiter-re nil t)
-        (setq end (1- (match-beginning 0)))
-      (setq end (point-max)))
-    (cons beg end)))
+        (setq content-end (1- (match-beginning 0)))
+      (setq content-end (point-max)))
+    (cons content-beg content-end)))
 
 (defun gkroam--get-content (page)
   "Get the real contents in PAGE.
@@ -1080,7 +1086,7 @@ Except mata infomation and page references."
       (setq content (gkroam-capture-write--process content))
       (goto-char end)
       (save-excursion
-        (with-current-buffer (find-file-noselect file t)
+        (with-current-buffer (find-file-noselect file)
           (let (beg2 end2)
             (setq region (gkroam--get-content-region))
             (setq beg2 (car region))
