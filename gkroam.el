@@ -376,7 +376,7 @@ ARGS are the arguments of rg process."
           (re-search-forward gkroam-file-re nil t)
           (let* ((path (match-string-no-properties 0))
                  (page (file-name-nondirectory path))
-                 context (last-headline ""))
+                 context (last-headline "") (last-content ""))
             (while (re-search-forward
                     (replace-regexp-in-string "%s" title gkroam-link-re-format)
                     nil t)
@@ -388,9 +388,11 @@ ARGS are the arguments of rg process."
                   (when (re-search-backward "^*+ .+\n" nil t)
                     (setq headline (concat "**" (match-string-no-properties 0)))))
                 (if (string= headline last-headline)
-                    (setq context (concat context content "\n\n"))
+                    (unless (string= content last-content)
+                      (setq context (concat context content "\n\n")))
                   (setq context (concat context headline content "\n\n")))
-                (setq last-headline headline)))
+                (setq last-headline headline)
+                (setq last-content content)))
             (setq context (gkroam--process-link-in-references context))
             (setq references
                   (concat references
@@ -686,8 +688,9 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
 
 (defun gkroam-link-fontify (beg end)
   "Put gkroam link between BEG and END."
-  (goto-char beg)
-  (while (re-search-forward gkroam-link-regexp end t)
+  (goto-char (or (point-min) beg))
+  (while (and (re-search-forward gkroam-link-regexp nil t)
+              (< (point) (or (point-max) end)))
     (let* ((title (match-string-no-properties 2))
            (headline (when (gkroam--link-has-headline)
                        (match-string-no-properties 5)))
@@ -706,8 +709,9 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
 
 (defun gkroam-hashtag-fontify(beg end)
   "Put gkroam link between BEG and END."
-  (goto-char beg)
-  (while (re-search-forward gkroam-hashtag-regexp end t)
+  (goto-char (or (point-min) beg))
+  (while (and (re-search-forward gkroam-hashtag-regexp nil t)
+              (< (point) (or (point-max) end)))
     (make-text-button (match-beginning 0)
                       (match-end 0)
                       :type 'gkroam-link
