@@ -173,6 +173,9 @@ The default format is '%Y%m%d%H%M%S' time string.")
            (group "}")))
   "Regular expression that matches a gkroam hashtag.")
 
+(defvar gkroam-link-with-headline-re "{\\[\\(.+?\\) » \\(.+?\\)\\].*}"
+  "Gkroam headline link regexp.")
+
 (defvar gkroam-reference-delimiter-re
   "^* [0-9]+ Linked References.*"
   "Delimiter string regexp to separate page contents from references region.")
@@ -506,12 +509,10 @@ Output matched files' path and context."
   "Cache current page's gkroam headline links."
   (save-excursion
     (goto-char (point-min))
-    (while (re-search-forward gkroam-link-regexp nil t)
-      (when (gkroam--link-has-headline)
-        (let* ((btn (button-at (1- (point))))
-               (title (button-get btn 'title))
-               (headline (button-get btn 'headline)))
-          (gkroam-set-headline-id title headline))))))
+    (while (re-search-forward gkroam-link-with-headline-re nil t)
+      (gkroam-set-headline-id
+       (match-string-no-properties 1)
+       (match-string-no-properties 2)))))
 
 (defun gkroam-search-all-headline-links ()
   "Return a rg process to search all gkroam headline links.
