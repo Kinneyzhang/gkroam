@@ -29,6 +29,7 @@
    #+BEGIN_SRC emacs-lisp
    (use-package gkroam
      :ensure t
+     :hook (after-init . gkroam-mode)
      :init
      (setq gkroam-root-dir "~/gkroam/org/")
      (setq gkroam-prettify-p t
@@ -36,17 +37,18 @@
            gkroam-use-default-filename t
            gkroam-window-margin 4)
      :bind
-     (("C-c r I" . gkroam-index)
-      ("C-c r d" . gkroam-daily)
-      ("C-c r f" . gkroam-find)
-      ("C-c r i" . gkroam-insert)
-      ("C-c r c" . gkroam-capture)
-      ("C-c r e" . gkroam-link-edit)
-      ("C-c r n" . gkroam-smart-new)
-      ("C-c r p" . gkroam-toggle-prettify)
-      ("C-c r t" . gkroam-toggle-brackets)
-      ("C-c r D" . gkroam-toggle-dynamic)
-      ("C-c r g" . gkroam-update)))
+     (:map gkroam-mode-map
+           (("C-c r I" . gkroam-index)
+            ("C-c r d" . gkroam-daily)
+            ("C-c r f" . gkroam-find)
+            ("C-c r i" . gkroam-insert)
+            ("C-c r c" . gkroam-capture)
+            ("C-c r e" . gkroam-link-edit)
+            ("C-c r n" . gkroam-smart-new)
+            ("C-c r p" . gkroam-toggle-prettify)
+            ("C-c r t" . gkroam-toggle-brackets)
+            ("C-c r D" . gkroam-toggle-dynamic)
+            ("C-c r g" . gkroam-update))))
    #+END_SRC
 
 ** Dependencies
