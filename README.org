@@ -47,7 +47,6 @@
             ("C-c r n" . gkroam-smart-new)
             ("C-c r p" . gkroam-toggle-prettify)
             ("C-c r t" . gkroam-toggle-brackets)
-            ("C-c r D" . gkroam-toggle-dynamic)
             ("C-c r g" . gkroam-update))))
    #+END_SRC
 
