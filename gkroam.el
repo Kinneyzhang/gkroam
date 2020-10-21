@@ -99,7 +99,12 @@
 
 (defcustom gkroam-root-dir "~/gkroam/org/"
   "Gkroam's root directory, with org files in it."
-  :type 'string
+  :type '(choice directory sexp)
+  :group 'gkroam)
+
+(defcustom gkroam-cache-dir (concat user-emacs-directory "gkroam/")
+  "Gkroam's cache directory."
+  :type 'directory
   :group 'gkroam)
 
 (defcustom gkroam-index-title "GKROAM"
@@ -107,33 +112,37 @@
   :type 'string
   :group 'gkroam)
 
-(defvar gkroam-cache-dir (concat user-emacs-directory "gkroam/")
-  "Gkroam's cache directory.")
+(defcustom gkroam-window-margin 2
+  "Gkroam window's left and right margin."
+  :type 'integer
+  :group 'gkroam)
+
+(defcustom gkroam-use-default-filename nil
+  "Non-nil means use default filename for gkroam page.
+The default format is '%Y%m%d%H%M%S' time string."
+  :type 'boolean
+  :group 'gkroam)
+
+(defcustom gkroam-show-brackets-p nil
+  "Non-nil means to show brackets in page link."
+  :type 'boolean
+  :group 'gkroam)
+
+(defcustom gkroam-prettify-p nil
+  "Non-nil means to prettify gkroam page."
+  :type 'boolean
+  :group 'gkroam)
+
+(defcustom gkroam-title-height 300
+  "Height of gkroam page title when prettifying."
+  :type 'integer
+  :group 'gkroam)
 
 (defvar gkroam-db
   (db-make
    `(db-hash
      :filename ,(concat gkroam-cache-dir "gkroam-db")))
   "Gkroam's cache database.")
-
-(defvar gkroam-window-margin 2
-  "Gkroam window's left and right margin.")
-
-(defvar gkroam-use-default-filename nil
-  "Non-nil means use default filename for gkroam page.
-The default format is '%Y%m%d%H%M%S' time string.")
-
-(defvar gkroam-dynamic-p nil
-  "Non-nil means show gkroam brackets, bullets and title dynamically.")
-
-(defvar gkroam-show-brackets-p nil
-  "Non-nil means to show brackets in page link.")
-
-(defvar gkroam-prettify-p nil
-  "Non-nil means to prettify gkroam page.")
-
-(defvar gkroam-title-height 300
-  "Height of gkroam page title when prettifying.")
 
 (defvar gkroam-org-list-re
   "^ *\\([0-9]+[).]\\|[*+-]\\) \\(\\[[ X-]\\] \\)?"
@@ -161,13 +170,7 @@ The default format is '%Y%m%d%H%M%S' time string.")
   (rx (seq (group "#")
            (group "{[")
            (group (+? not-newline))
-           (group (?? (seq (group " » ")
-                           (group (+? not-newline)))))
-           (group "]")
-           (group (?? (seq (group "[")
-                           (group (+? not-newline))
-                           (group "]"))))
-           (group "}")))
+           (group "]}")))
   "Regular expression that matches a gkroam hashtag.")
 
 (defvar gkroam-link-with-headline-re "{\\[\\(.+?\\) » \\(.+?\\)\\].*}"
@@ -488,8 +491,7 @@ Output matched files' path and context."
   "Goto headline with id ID."
   (org-id-goto id)
   (gkroam-update)
-  (gkroam-prettify-page)
-  (gkroam-overlay-link (point-min)))
+  (gkroam-prettify-page))
 
 (defun gkroam-set-headline-id (title headline)
   "Set the HEADLINE's id of page titled with TITLE."
@@ -596,8 +598,7 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
         (unless (gkroam-at-capture-buf)
           (save-buffer)
           (when title-exist-p
-            (gkroam-update-reference title-exist-p)))
-        (gkroam-overlay-link (point-min)))
+            (gkroam-update-reference title-exist-p))))
     (message "Not in the gkroam directory!")))
 
 ;;;###autoload
@@ -711,11 +712,90 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
             (gkroam-goto-headline headline-id)
           (gkroam-find title))))))
 
-(defun gkroam-link-fontify (beg end)
+(defun gkroam--link-has-headline ()
+  "Judge if a gkroam link has headline after `re-search-forward'."
+  (not (string-empty-p (match-string-no-properties 3))))
+
+(defun gkroam--link-has-alias ()
+  "Judge if a gkroam link has alias after `re-search-forward'."
+  (not (string-empty-p (match-string-no-properties 7))))
+
+(defun gkroam-fontify-all ()
+  "Highlight links and org symbols in all gkroam live windows."
+  (let ((windows (window-list)))
+    (save-selected-window
+      (dolist (window windows)
+        (select-window window)
+        (jit-lock-refontify)))))
+
+(defun gkroam--fontify-hashtag ()
+  "Highlight gkroam hashtag using text properties."
+  (with-silent-modifications
+    (add-text-properties (match-beginning 0) (match-end 0) '(face shadow))
+    (add-text-properties (match-beginning 2) (match-end 2) '(display ""))
+    (add-text-properties (match-beginning 4) (match-end 4) '(display ""))))
+
+(defun gkroam-hashtag-fontify(beg end)
   "Put gkroam link between BEG and END."
   (goto-char (or (point-min) beg))
-  (while (and (re-search-forward gkroam-link-regexp nil t)
+  (while (and (re-search-forward gkroam-hashtag-regexp nil t)
               (< (point) (or (point-max) end)))
+    (gkroam--fontify-hashtag)
+    (make-text-button (match-beginning 0)
+                      (match-end 0)
+                      :type 'gkroam-link
+                      'title (match-string-no-properties 3))))
+
+(defun gkroam--fontify-hide-brackets ()
+  "Hide gkroam link brackets using text properties."
+  (with-silent-modifications
+    (if (gkroam--link-has-alias)
+        (progn
+          (add-text-properties (match-beginning 9) (match-beginning 10) '(face warning))
+          (add-text-properties (match-beginning 0) (match-beginning 9) '(display ""))
+          (add-text-properties (match-beginning 10) (match-end 0) '(display "")))
+      (if (gkroam--link-has-headline)
+          (progn
+            (add-text-properties (match-beginning 2) (match-end 3) '(face warning))
+            (add-text-properties (match-beginning 0) (match-beginning 5) '(display ""))
+            (add-text-properties (match-end 3) (match-end 0) '(display "")))
+        (add-text-properties (match-beginning 2) (match-end 3)  '(face warning))
+        (add-text-properties (match-beginning 0) (match-beginning 2) '(display ""))
+        (add-text-properties (match-end 3) (match-end 0) '(display ""))))))
+
+(defun gkroam--fontify-show-brackets ()
+  "Show gkroam link brackets using text properties."
+  (with-silent-modifications
+    (if (gkroam--link-has-alias)
+        (progn
+          (when (gkroam--link-has-headline)
+            (add-text-properties (match-beginning 4) (match-end 4) '(face shadow)))
+          (remove-text-properties (match-beginning 0) (match-beginning 9) '(display nil))
+          (remove-text-properties (match-beginning 10) (match-end 0) '(display nil))
+          (add-text-properties (match-beginning 0) (match-beginning 2) '(face shadow))
+          (add-text-properties (match-beginning 6) (match-beginning 9) '(face shadow))
+          (add-text-properties (match-beginning 10) (match-end 0) '(face shadow))
+          (add-text-properties (match-beginning 2) (match-beginning 6) '(face warning))
+          (add-text-properties (match-beginning 9) (match-beginning 10) '(face warning)))
+      (if (gkroam--link-has-headline)
+          (progn
+            (remove-text-properties (match-beginning 0) (match-beginning 5) '(display nil))
+            (remove-text-properties (match-end 3) (match-end 0)'(display nil))
+            (add-text-properties (match-beginning 0) (match-beginning 2) '(face shadow))
+            (add-text-properties (match-end 3) (match-end 0)'(face shadow))
+            (add-text-properties (match-beginning 4) (match-end 4) '(face shadow))
+            (add-text-properties (match-beginning 2) (match-end 3) '(face warning)))
+        (remove-text-properties (match-beginning 0) (match-beginning 2) '(display nil))
+        (remove-text-properties (match-end 3) (match-end 0) '(display nil))
+        (add-text-properties (match-beginning 0) (match-beginning 2) '(face shadow))
+        (add-text-properties (match-end 3) (match-end 0) '(face shadow))
+        (add-text-properties (match-beginning 2) (match-end 3) '(face warning))))))
+
+(defun gkroam-link-fontify (beg end)
+  "Put gkroam link between BEG and END."
+  (goto-char beg)
+  (while (and (re-search-forward gkroam-link-regexp nil t)
+              (< (point) end))
     (let* ((title (match-string-no-properties 2))
            (headline (when (gkroam--link-has-headline)
                        (match-string-no-properties 5)))
@@ -724,6 +804,10 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
            (echo (if headline
                      (concat title " » " headline)
                    title)))
+      (unless (string= (char-to-string (char-before (match-beginning 0))) "#")
+        (if gkroam-show-brackets-p
+            (gkroam--fontify-show-brackets)
+          (gkroam--fontify-hide-brackets)))
       (make-text-button (match-beginning 0)
                         (match-end 0)
                         :type 'gkroam-link
@@ -731,16 +815,6 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
                         'headline headline
                         'alias alias
                         'help-echo echo))))
-
-(defun gkroam-hashtag-fontify(beg end)
-  "Put gkroam link between BEG and END."
-  (goto-char (or (point-min) beg))
-  (while (and (re-search-forward gkroam-hashtag-regexp nil t)
-              (< (point) (or (point-max) end)))
-    (make-text-button (match-beginning 0)
-                      (match-end 0)
-                      :type 'gkroam-link
-                      'title (match-string-no-properties 3))))
 
 (define-minor-mode gkroam-link-mode
   "Recognize gkroam link."
@@ -754,96 +828,9 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
       (jit-lock-unregister #'gkroam-link-fontify)))
   (jit-lock-refontify))
 
-;; gkroam overlays
-
-(defun gkroam-overlay-region (beg end prop value)
-  "Put overlays in region started by BEG and ended with END.
-The overlays has a PROP and VALUE."
-  (overlay-put (make-overlay beg end) prop value))
-
-(defun gkroam-overlay-hashtag ()
-  "Set overlays to gkroam hashtag."
-  (with-silent-modifications
-    (gkroam-overlay-region (1- (match-beginning 0)) (match-end 0) 'face 'shadow)
-    (gkroam-overlay-region (match-beginning 0) (match-beginning 2) 'display "")
-    (gkroam-overlay-region (match-end 3) (match-end 0) 'display "")))
-
-(defun gkroam--link-has-headline ()
-  "Judge if a gkroam link has headline after `re-search-forward'."
-  (not (string-empty-p (match-string-no-properties 3))))
-
-(defun gkroam--link-has-alias ()
-  "Judge if a gkroam link has alias after `re-search-forward'."
-  (not (string-empty-p (match-string-no-properties 7))))
-
-(defun gkroam-overlay-brackets ()
-  "Set overlays to gkroam brackets link."
-  (with-silent-modifications
-    (if (gkroam--link-has-alias)
-        (progn
-          (gkroam-overlay-region (match-beginning 9) (match-beginning 10) 'face 'warning)
-          (gkroam-overlay-region (match-beginning 0) (match-beginning 9) 'display "")
-          (gkroam-overlay-region (match-beginning 10) (match-end 0) 'display ""))
-      (if (gkroam--link-has-headline)
-          (progn
-            (gkroam-overlay-region (match-beginning 2) (match-end 3) 'face 'warning)
-            (gkroam-overlay-region (match-beginning 0) (match-beginning 5) 'display "")
-            (gkroam-overlay-region (match-end 3) (match-end 0) 'display ""))
-        (gkroam-overlay-region (match-beginning 2) (match-end 3) 'face 'warning)
-        (gkroam-overlay-region (match-beginning 0) (match-beginning 2) 'display "")
-        (gkroam-overlay-region (match-end 3) (match-end 0) 'display "")))))
-
-(defun gkroam-show-entire-link ()
-  "Show entire page link."
-  (with-silent-modifications
-    (if (gkroam--link-has-alias)
-        (progn
-          (when (gkroam--link-has-headline)
-            (gkroam-overlay-region (match-beginning 4) (match-end 4) 'face 'shadow))
-          (gkroam-overlay-region (match-beginning 0) (match-beginning 2) 'face 'shadow)
-          (gkroam-overlay-region (match-beginning 6) (match-beginning 9) 'face 'shadow)
-          (gkroam-overlay-region (match-beginning 10) (match-end 0) 'face 'shadow)
-          (gkroam-overlay-region (match-beginning 2) (match-beginning 6) 'face 'warning)
-          (gkroam-overlay-region (match-beginning 9) (match-beginning 10) 'face 'warning)
-          (remove-overlays (match-beginning 0) (match-beginning 9) 'display "")
-          (remove-overlays (match-beginning 10) (match-end 0) 'display ""))
-      (if (gkroam--link-has-headline)
-          (progn
-            (gkroam-overlay-region (match-beginning 0) (match-beginning 2) 'face 'shadow)
-            (gkroam-overlay-region (match-end 3) (match-end 0) 'face 'shadow)
-            (gkroam-overlay-region (match-beginning 4) (match-end 4) 'face 'shadow)
-            (gkroam-overlay-region (match-beginning 2) (match-end 3) 'face 'warning)
-            (remove-overlays (match-beginning 0) (match-beginning 5) 'display "")
-            (remove-overlays (match-end 3) (match-end 0) 'display ""))
-        (gkroam-overlay-region (match-beginning 0) (match-beginning 2) 'face 'shadow)
-        (gkroam-overlay-region (match-end 3) (match-end 0) 'face 'shadow)
-        (gkroam-overlay-region (match-beginning 2) (match-end 3) 'face 'warning)
-        (remove-overlays (match-beginning 0) (match-beginning 2) 'display "")
-        (remove-overlays (match-end 3) (match-end 0) 'display "")))))
-
-(defun gkroam-overlay-link (beg &optional bound)
-  "Put overlays to links between BEG and BOUND."
-  (when (gkroam-work-p)
-    (save-excursion
-      (goto-char beg)
-      (while (re-search-forward gkroam-link-regexp bound t)
-        (if (string= (char-to-string (char-before (match-beginning 0))) "#")
-            (gkroam-overlay-hashtag)
-          (if gkroam-show-brackets-p
-              (gkroam-show-entire-link)
-            (gkroam-overlay-brackets)))))))
-
-(defun gkroam-hide-and-show-brackets ()
-  "Overlay links for in all gkroam live windows."
-  (let ((windows (window-list)))
-    (save-selected-window
-      (dolist (window windows)
-        (select-window window)
-        (gkroam-overlay-link (point-min))))))
-
 ;;;###autoload
 (defun gkroam-link-edit ()
-  "Edit gkroam link alias when 'dynamic edit' is off."
+  "Edit gkroam link in minibuffer."
   (interactive)
   (if-let ((btn (button-at (point))))
       (let* ((btn-label (button-label btn))
@@ -888,16 +875,10 @@ The overlays has a PROP and VALUE."
             (gkroam--fontify-org-list))
         (gkroam--fontify-org-list)))))
 
-(defun gkroam-prettify-org-symbols ()
-  "Prettify org list."
-  (if (and gkroam-prettify-p gkroam-mode)
-      (progn
-        (jit-lock-register #'gkroam-org-list-fontify))
-    (jit-lock-unregister #'gkroam-org-list-fontify)
-    (with-silent-modifications
-      (remove-text-properties (point-min) (point-max)
-                              '(display nil))))
-  (jit-lock-refontify))
+(defun gkroam-overlay-region (beg end prop value)
+  "Put overlays in region started by BEG and ended with END.
+The overlays has a PROP and VALUE."
+  (overlay-put (make-overlay beg end) prop value))
 
 (defun gkroam-org-title-overlay (beg &optional bound)
   "Overlay org title, search between BEG and BOUND."
@@ -906,11 +887,19 @@ The overlays has a PROP and VALUE."
     (when (re-search-forward "\\(^ *#\\+TITLE: *\\)\\(.+\\)$" bound t)
       (if (and gkroam-prettify-p gkroam-mode)
           (progn
-            (gkroam-overlay-region (match-beginning 1) (match-end 1)
-                                   'display "")
+            (gkroam-overlay-region (match-beginning 1) (match-end 1) 'display "")
             (gkroam-overlay-region (match-beginning 2) (match-end 2)
                                    'face `(:height ,gkroam-title-height)))
         (remove-overlays (line-beginning-position) (line-end-position))))))
+
+(defun gkroam-prettify-org-symbols ()
+  "Prettify org list."
+  (if (and gkroam-prettify-p gkroam-mode)
+      (jit-lock-register #'gkroam-org-list-fontify)
+    (jit-lock-unregister #'gkroam-org-list-fontify)
+    (with-silent-modifications
+      (remove-text-properties (point-min) (point-max) '(display nil))))
+  (jit-lock-refontify))
 
 (defun gkroam-set-curr-window-margin ()
   "Set current gkroam window's margin when `gkroam-prettify-mode' is on."
@@ -920,8 +909,6 @@ The overlays has a PROP and VALUE."
                           gkroam-window-margin)
     (set-window-margins (selected-window) 0 0)))
 
-;; gkroam-prettify-mode
-
 (defun gkroam-prettify-page ()
   "Prettify gkroam page for all gkroam live windows."
   (let ((windows (window-list)))
@@ -930,29 +917,8 @@ The overlays has a PROP and VALUE."
         (select-window window)
         (when (gkroam-work-p)
           (gkroam-set-curr-window-margin)
-          (save-excursion
-            (gkroam-org-title-overlay (point-min))
-            (gkroam-prettify-org-symbols)))))))
-
-;; show page dynamically
-
-(defun gkroam-restore-line-overlays ()
-  "Restore overlays of bullets when the cursor move out of a line."
-  (gkroam-org-title-overlay (line-beginning-position) (line-end-position))
-  (gkroam-overlay-link (line-beginning-position) (line-end-position)))
-
-(defun gkroam-remove-line-overlays ()
-  "Remove overlays of bullets when the cursor move onto a line."
-  (remove-overlays (line-beginning-position) (line-end-position)))
-
-(defun gkroam-dynamic-elements ()
-  "Make elements in gkroam page hide and show dynamically."
-  (if gkroam-dynamic-p
-      (progn
-        (add-hook 'pre-command-hook #'gkroam-restore-line-overlays nil t)
-        (add-hook 'post-command-hook #'gkroam-remove-line-overlays nil t))
-    (remove-hook 'pre-command-hook #'gkroam-restore-line-overlays t)
-    (remove-hook 'post-command-hook #'gkroam-remove-line-overlays t)))
+          (gkroam-org-title-overlay (point-min))
+          (gkroam-prettify-org-symbols))))))
 
 ;;;; commands
 
@@ -966,7 +932,7 @@ The overlays has a PROP and VALUE."
         (message "Hide gkroam link brackets"))
     (setq gkroam-show-brackets-p t)
     (message "Show gkroam link brackets"))
-  (gkroam-hide-and-show-brackets))
+  (gkroam-fontify-all))
 
 ;;;###autoload
 (defun gkroam-toggle-prettify ()
@@ -979,18 +945,6 @@ The overlays has a PROP and VALUE."
     (setq gkroam-prettify-p t)
     (message "Page prettification is turned on"))
   (gkroam-prettify-page))
-
-;;;###autoload
-(defun gkroam-toggle-dynamic ()
-  "Determine whether to show elements dynamically."
-  (interactive)
-  (if gkroam-dynamic-p
-      (progn
-        (setq gkroam-dynamic-p nil)
-        (message "Gkroam dynamic mode is off"))
-    (setq gkroam-dynamic-p t)
-    (message "Gkroam dynamic is on"))
-  (gkroam-dynamic-elements))
 
 ;;; ----------------------------------------
 ;; minor mode: gkroam-capture-mode
@@ -1273,7 +1227,6 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
         (add-hook 'org-mode-hook #'gkroam-link-mode)
         (add-hook 'org-mode-hook (lambda ()
                                    (when (gkroam-work-p)
-                                     (gkroam-overlay-link (point-min))
                                      (toggle-truncate-lines)
                                      (gkroam-link-frame-setup 'find-file)
                                      (gkroam-ivy-use-selectable-prompt t)
@@ -1288,7 +1241,6 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
     (remove-hook 'org-mode-hook #'gkroam-link-mode)
     (remove-hook 'org-mode-hook (lambda ()
                                   (when (gkroam-work-p)
-                                    (gkroam-overlay-link (point-min))
                                     (toggle-truncate-lines)
                                     (gkroam-link-frame-setup 'find-file)
                                     (gkroam-ivy-use-selectable-prompt t)
