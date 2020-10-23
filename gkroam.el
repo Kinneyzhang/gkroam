@@ -234,39 +234,23 @@ If BUFFER is non-nil, check the buffer visited file."
       (gkroam-at-index-buf)
       (gkroam-at-capture-buf)))
 
-(defun gkroam--get-title (page)
-  "Get PAGE's title."
-  (with-temp-buffer
-    (insert-file-contents (gkroam--get-file page) nil 0 2000 t)
-    (goto-char (point-min))
-    (re-search-forward "^ *#\\+TITLE:" nil t)
-    (string-trim (buffer-substring (match-end 0) (line-end-position)))))
+(defun gkroam-retrive-page (title)
+  "Retrive page's filename from database, 
+the page has a title named TITLE"
+  (cdar (db-get title gkroam-page-db)))
 
-(defun gkroam--get-page (title)
-  "Get gkroam page from TITLE."
-  (let ((pages (gkroam--all-pages))
-        file)
-    (catch 'break
-      (dolist (page pages)
-        (setq file (gkroam--get-file page))
-        (with-temp-buffer
-          (insert-file-contents file nil 0 2000 t)
-          (goto-char (point-min))
-          (when (re-search-forward (format "^ *#\\+TITLE: *%s *$" title) nil t)
-            (throw 'break page)))))))
+(defun gkroam-retrive-title (page)
+  "Retrive page's title from database, 
+the page has a filename named PAGE"
+  (caar (db-query gkroam-page-db `(= "page" ,page))))
+
+(defun gkroam-retrive-all-titles ()
+  "Retrive all gkroam pages' titles from database."
+  (mapcar #'car (db-query gkroam-page-db nil)))
 
 (defun gkroam--get-file (page)
   "Get gkroam file accroding to PAGE."
   (expand-file-name page gkroam-root-dir))
-
-(defun gkroam--all-pages ()
-  "Get all gkroam pages."
-  (directory-files gkroam-root-dir nil "^[^.#].+\\.org$"))
-
-(defun gkroam--all-titles ()
-  "Get all gkroam titles."
-  (let* ((pages (gkroam--all-pages)))
-    (mapcar (lambda (page) (gkroam--get-title page)) pages)))
 
 (defun gkroam--gen-file ()
   "Generate new gkroam file path."
@@ -294,12 +278,6 @@ With optional argument ALIAS, format also with alias."
         (format "{[%s][%s]}" title alias)
       (format "{[%s]}" title))))
 
-(defun gkroam--format-backlink (page &optional alias)
-  "Format gkroam backlink for PAGE.
-If ALIAS is non-nil, use it as link description, or use page title."
-  (let ((description (or alias (gkroam--get-title page))))
-    (format "[[file:%s][%s ➦]]" page description)))
-
 (defun gkroam-new (title)
   "Just create a new gkroam page titled with TITLE."
   (let ((file (gkroam--gen-file)))
@@ -307,6 +285,7 @@ If ALIAS is non-nil, use it as link description, or use page title."
       (insert (format "#+TITLE: %s\n\n" title))
       (save-buffer))
     (push title gkroam-pages)
+    (gkroam-cache-curr-page title)
     file))
 
 ;;; ----------------------------------------
@@ -339,39 +318,26 @@ ARGS are the arguments of rg process."
                      event))))
     (set-process-sentinel process sentinel)))
 
-(defun gkroam-cache-title-and-page (title)
-  "Cache gkroam page's filename, which titled with TITLE."
-  (let* ((page (db-get title gkroam-page-db))
-         (filename (gkroam--get-page title)))
-    (unless (equal page filename)
-      (db-put title filename gkroam-page-db))))
-
-;;;###autoload
-(defun gkroam-cache-all-pages ()
-  "Cache all gkroam pages' title and filename."
-  (interactive)
-  (let ((titles (gkroam--all-titles)))
-    (dolist (title titles)
-      (gkroam-cache-title-and-page title))))
-
-(defun gkroam--process-link-in-references (string)
-  "Remove links in reference's STRING."
+(defun gkroam--process-backlink (string page line-number)
+  "Convert gkroam link to backlink in STRING, 
+the backlink refers to a link in Line-NUMBER line of PAGE."
   (with-temp-buffer
     (insert string)
     (goto-char (point-min))
-    (while (re-search-forward gkroam-link-regexp (point-max) t)
+    (while (re-search-forward gkroam-link-regexp nil t)
       (let* ((title (match-string-no-properties 2))
-             (page (db-get title gkroam-page-db))
              (alias (match-string-no-properties 9))
              (headline (match-string-no-properties 5)))
-        (if (string= (char-to-string (char-before (match-beginning 0))) "#")
-            (progn
-              (replace-match (gkroam--format-backlink page title)))
-          (if alias
-              (replace-match (gkroam--format-backlink page alias))
-            (if headline
-                (replace-match (gkroam--format-backlink page headline))
-              (replace-match (gkroam--format-backlink page title)))))))
+        (if alias
+            (replace-match (gkroam--format-backlink page line-number alias))
+          (if headline
+              (replace-match (gkroam--format-backlink page line-number headline))
+            (replace-match (gkroam--format-backlink page line-number title))))))
+    (goto-char (point-min))
+    (while (re-search-forward gkroam-hashtag-regexp nil t)
+      (replace-match (gkroam--format-backlink
+                      page line-number
+                      (match-string-no-properties 2))))
     (buffer-string)))
 
 (defun gkroam--format-reference-content ()
@@ -380,44 +346,45 @@ ARGS are the arguments of rg process."
     (goto-char (line-beginning-position))
     (let* ((blank-num (skip-chars-forward "[ ]"))
            (elem (org-element-at-point))
+           (level-1-blank-num (cadr (car (org-element-property :structure elem))))
            (elem-type (org-element-type elem))
-           item-start item-end item-str
+           (elem-start (org-element-property :begin elem))
+           (elem-end (org-element-property :end elem))
+           (elem-str (buffer-substring-no-properties elem-start elem-end))
            reference-str)
-      (if (member elem-type '(item plain-list))
-          (let* ((level-1-blank-num
-                  (cadr (car (org-element-property :structure elem))))
-                 (relative-levels (/ (- blank-num level-1-blank-num) 2))
-                 (item-start (org-element-property :begin elem))
-                 (item-end (org-element-property :end elem))
-                 (item-str (buffer-substring-no-properties item-start item-end))
-                 parent parent-beg (parent-strs "") parent-str (relative-level 0))
-            (catch 'break
-              (while (point)
-                (if (= blank-num level-1-blank-num)
-                    (throw 'break nil)
-                  (setq parent (org-element-property :parent (org-element-at-point)))
-                  (setq parent-beg (org-element-property :begin parent))
-                  (setq blank-num
-                        (progn
-                          (goto-char parent-beg)
-                          (forward-line -1)
-                          (skip-chars-forward "[ ]")))
-                  (save-excursion
-                    (goto-char (line-beginning-position))
-                    (re-search-forward gkroam-org-list-re (line-end-position) t)
-                    (incf relative-level)
-                    (setq parent-str
-                          (buffer-substring-no-properties (point)
-                                                          (line-end-position))))
-                  (pcase relative-level
-                    (1 (setq parent-strs (concat parent-str "\n" parent-strs)))
-                    (relative-levels (setq parent-strs (concat parent-str " > " parent-strs)))
-                    (_ (setq parent-strs (concat parent-str " > " parent-strs)))))))
-            (setq reference-str (concat (propertize parent-strs 'face 'shadow)
-                                        item-str)))
-        (setq elem-start (org-element-property :begin elem))
-        (setq elem-end (org-element-property :end elem))
-        (setq reference-str (buffer-substring-no-properties elem-start elem-end)))
+      (pcase elem-type
+        ('item
+         (let* ((relative-levels (/ (- blank-num level-1-blank-num) 2))
+                parent parent-beg (parent-strs "") parent-str (relative-level 0))
+           (catch 'break
+             (while (point)
+               (if (= blank-num level-1-blank-num)
+                   (throw 'break nil)
+                 (setq parent (org-element-property :parent (org-element-at-point)))
+                 (setq parent-beg (org-element-property :begin parent))
+                 (setq blank-num
+                       (progn
+                         (goto-char parent-beg)
+                         (forward-line -1)
+                         (skip-chars-forward "[ ]")))
+                 (save-excursion
+                   (goto-char (line-beginning-position))
+                   (re-search-forward gkroam-org-list-re (line-end-position) t)
+                   (incf relative-level)
+                   (setq parent-str
+                         (buffer-substring-no-properties (point)
+                                                         (line-end-position))))
+                 (pcase relative-level
+                   (1 (setq parent-strs (concat parent-str "\n" parent-strs)))
+                   (relative-levels (setq parent-strs (concat parent-str " > " parent-strs)))))))
+           (setq reference-str (concat parent-strs elem-str))))
+        ('plain-list
+         (let* ((plain-lst (org-element-property :structure (org-element-at-point)))
+                (item (car plain-lst)))
+           (setq elem-start (car item))
+           (setq elem-end (car (last item)))
+           (setq reference-str (buffer-substring-no-properties elem-start elem-end))))
+        (_ (setq reference-str elem-str)))
       reference-str)))
 
 (defun gkroam--process-searched-string (string title)
@@ -444,10 +411,12 @@ ARGS are the arguments of rg process."
             (while (re-search-forward
                     (replace-regexp-in-string "%s" title gkroam-link-re-format)
                     nil t)
-              (let ((headline "")
-                    (content
-                     (string-trim
-                      (gkroam--format-reference-content) nil "[ \t\n\r]+")))
+              (let* ((headline "")
+                     (line-number (current-line))
+                     (raw-content
+                      (string-trim
+                       (gkroam--format-reference-content) nil "[ \t\n\r]+"))
+                     (content (gkroam--process-backlink raw-content page line-number)))
                 (setq num (1+ num))
                 (save-excursion
                   (when (re-search-backward "^*+ .+\n" nil t)
@@ -458,17 +427,19 @@ ARGS are the arguments of rg process."
                     (setq context (concat context content "\n\n"))
                   (setq context (concat context headline "\n" content "\n\n")))
                 (setq last-headline headline)))
-            (setq context (gkroam--process-link-in-references context))
             (setq references
                   (concat references
-                          (format "** %s\n\n%s" (gkroam--format-backlink page) context)))
+                          (format "** %s\n%s"
+                                  (gkroam--format-backlink
+                                   page 1 (gkroam-retrive-title page))
+                                  context)))
             (setq beg end))))
       (cons num references))))
 
 (defun gkroam-search-page-link (page)
   "Return a rg process to search a specific PAGE's link.
 Output matched files' path and context."
-  (let ((title (gkroam--get-title page)))
+  (let ((title (gkroam-retrive-title page)))
     (gkroam-start-process " *gkroam-rg*"
                           `(,(format "\\{\\[%s.*?\\](\\[.+?\\])?\\}" title)
                             "--ignore-case" "--sortr" "path"
@@ -481,7 +452,7 @@ Output matched files' path and context."
   (gkroam-search-process
    (gkroam-search-page-link page)
    (lambda (string)
-     (let* ((title (gkroam--get-title page))
+     (let* ((title (gkroam-retrive-title page))
             (file (gkroam--get-file page))
             (file-buf (find-file-noselect file t))
             reference-start)
@@ -491,7 +462,8 @@ Output matched files' path and context."
            (re-search-backward gkroam-reference-delimiter-re nil t)
            (setq reference-start (point))
            (let ((inhibit-read-only t))
-             (remove-text-properties reference-start (point-max) '(read-only nil)))
+             (remove-text-properties reference-start (point-max)
+                                     '(read-only nil)))
            (delete-region (point) (point-max))
            (unless (string= string "")
              (let* ((processed-str (gkroam--process-searched-string string title))
@@ -502,9 +474,9 @@ Output matched files' path and context."
                ;; use overlay to hide part of reference. (filter)
                ;; (gkroam-overlay-region beg (point-max) 'invisible t)
                (indent-region reference-start (point-max))
+               (gkroam-backlink-fontify reference-start (point-max))
                (put-text-property reference-start (point-max)
-                                  'read-only "Linked references region is uneditable.")
-               )
+                                  'read-only "Linked references region is uneditable."))
              (save-buffer)))))))
   (message "%s reference updated" page))
 
@@ -526,7 +498,7 @@ Output matched files' path and context."
   (with-temp-buffer
     (insert-file-contents
      ;; do not use `insert-file-contents-literally', it cannot show chinese normally.
-     (gkroam--get-file (gkroam--get-page title)))
+     (gkroam--get-file (gkroam-retrive-page title)))
     (save-restriction
       (gkroam--narrow-to-region)
       (org-element-map (org-element-parse-buffer) 'headline
@@ -541,7 +513,7 @@ Output matched files' path and context."
 
 (defun gkroam-set-headline-id (title headline)
   "Cache the HEADLINE's id of page titled with TITLE in db."
-  (let* ((file (gkroam--get-file (gkroam--get-page title)))
+  (let* ((file (gkroam--get-file (gkroam-retrive-page title)))
          (page-buf (find-file-noselect file t))
          headline-id)
     (with-current-buffer page-buf
@@ -562,6 +534,53 @@ Output matched files' path and context."
         (save-buffer)))
     headline-id))
 
+;; cache
+(defun gkroam--get-page (title)
+  "Get gkroam page from TITLE."
+  (let ((pages (gkroam--all-pages))
+        file)
+    (catch 'break
+      (dolist (page pages)
+        (setq file (gkroam--get-file page))
+        (with-temp-buffer
+          (insert-file-contents file nil 0 2000 t)
+          (goto-char (point-min))
+          (when (re-search-forward (format "^ *#\\+TITLE: *%s *$" title) nil t)
+            (throw 'break page)))))))
+
+(defun gkroam--all-pages ()
+  "Get all gkroam pages."
+  (directory-files gkroam-root-dir nil "^[^.#].+\\.org$"))
+
+(defun gkroam--get-title (page)
+  "Get PAGE's title."
+  (with-temp-buffer
+    (insert-file-contents (gkroam--get-file page) nil 0 2000 t)
+    (goto-char (point-min))
+    (re-search-forward "^ *#\\+TITLE:" nil t)
+    (string-trim (buffer-substring (match-end 0) (line-end-position)))))
+
+(defun gkroam--all-titles ()
+  "Get all gkroam titles."
+  (let* ((pages (gkroam--all-pages)))
+    (mapcar (lambda (page) (gkroam--get-title page)) pages)))
+
+(defun gkroam-cache-curr-page (title)
+  "Cache gkroam page's filename, which titled with TITLE."
+  (let* ((page (db-get title gkroam-page-db))
+         (filename (gkroam--get-page title)))
+    (unless (equal page filename)
+      (db-put title `(("page" . ,filename)) gkroam-page-db))))
+
+;;;###autoload
+(defun gkroam-cache-all-pages ()
+  "Cache all gkroam pages' title and filename."
+  (let* ((titles (gkroam--all-titles))
+         (num (length titles)))
+    (dolist (title titles)
+      (gkroam-cache-curr-page title))
+    num))
+
 (defun gkroam-cache-curr-headline-links ()
   "Cache current page's gkroam headline links."
   (save-excursion
@@ -577,6 +596,7 @@ Output matched files' path."
   (gkroam-start-process " *gkroam-rg-headlines*"
                         '("\\{\\[.+? » .+?\\].*\\}" "-l")))
 
+;;;###autoload
 (defun gkroam-cache-all-headline-links ()
   "Cache all pages's gkroam headline links."
   (gkroam-search-process
@@ -590,8 +610,13 @@ Output matched files' path."
 (defun gkroam-rebuild-caches ()
   "Clear gkroam headline-id cache."
   (interactive)
-  (db-hash-clear gkroam-headline-db)
-  (gkroam-cache-all-headline-links))
+  (let (page-num headline-link-num)
+    (db-hash-clear gkroam-page-db)
+    (setq page-num (gkroam-cache-all-pages))
+    (db-hash-clear gkroam-headline-db)
+    (gkroam-cache-all-headline-links)
+    (message "Have cached %d gkroam pages."
+             page-num headline-link-num)))
 
 ;; ----------------------------------------
 
@@ -601,8 +626,8 @@ Output matched files' path."
   "Create a new gkroam page or open an exist one in current window, titled with TITLE."
   (interactive)
   (let* ((title (or title (completing-read "New title or open an exist one: "
-                                           (gkroam--all-titles) nil nil)))
-         (page (gkroam--get-page title)))
+                                           (gkroam-retrive-all-titles) nil nil)))
+         (page (gkroam-retrive-page title)))
     (if page
         (find-file (gkroam--get-file page))
       (find-file (gkroam-new title)))
@@ -624,8 +649,8 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
       (let* ((title (or title
                         (completing-read
                          "Choose a page or create a new: "
-                         (gkroam--all-titles) nil nil)))
-             (title-exist-p (gkroam--get-page title))
+                         (gkroam-retrive-all-titles) nil nil)))
+             (title-exist-p (gkroam-retrive-page title))
              (headlines-exist-p (when title-exist-p
                                   (gkroam--get-headlines title)))
              (headline (when headlines-exist-p
@@ -655,7 +680,7 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
          (bounds (bounds-of-thing-at-point 'word))
          (beg (car bounds))
          (end (cdr bounds))
-         (page-exist-p (gkroam--get-page title)))
+         (page-exist-p (gkroam-retrive-page title)))
     (if (gkroam-work-p)
         (if page-exist-p
             (progn
@@ -675,7 +700,7 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
     (let* ((beg (region-beginning))
            (end (region-end))
            (title (buffer-substring-no-properties beg end))
-           (page-exist-p (gkroam--get-page title)))
+           (page-exist-p (gkroam-retrive-page title)))
       (if (gkroam-work-p)
           (if page-exist-p
               (progn
@@ -706,7 +731,7 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
       (insert (format "#+TITLE: %s\n\n" gkroam-index-title))
       (dolist (page (gkroam--all-pages))
         (insert (format "+ [[file:%s][%s]]\n"
-                        (gkroam--get-file page) (gkroam--get-title page)))))
+                        (gkroam--get-file page) (gkroam-retrive-title page)))))
     (switch-to-buffer gkroam-index-buf)
     (org-mode)
     (read-only-mode 1)))
@@ -731,7 +756,6 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
 
 (define-button-type 'gkroam-link
   'action #'gkroam-follow-link
-  'face '(:underline nil)
   'title nil
   'headline nil
   'alias nil
@@ -850,7 +874,7 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
            (echo (if headline
                      (concat title " » " headline)
                    title)))
-      (unless (string= (char-to-string (char-before (match-beginning 0))) "#")
+      (unless (equal (char-to-string (char-before (match-beginning 0))) "#")
         (if gkroam-show-brackets-p
             (gkroam--fontify-show-brackets)
           (gkroam--fontify-hide-brackets)))
@@ -890,6 +914,64 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
         (insert new-link)
         (save-buffer))
     (message "no link at point")))
+
+;; gkroam backlink
+
+(defvar gkroam-backlink-regexp
+  "{{\\(.+?\\)::\\([0-9]+\\)}{\\(.+?\\)}}"
+  "Regular expression that matches a gkroam backlink")
+
+(defun gkroam--format-backlink (page line-number alias)
+  "Format gkroam backlink for PAGE, refer to a link in LINE-NUMBER line,
+ display a description ALIAS."
+  (format "{{%s::%d}{%s}}" page line-number alias))
+
+(define-button-type 'gkroam-backlink
+  'action #'gkroam-follow-backlink
+  'page nil
+  'line-number nil
+  'follow-link t
+  'help-echo "Jump back to page")
+
+(defun gkroam-follow-backlink (button)
+  "Jump to the page that BUTTON represents."
+  (with-demoted-errors "Error when following the link: %s"
+    (let* ((page (button-get button 'page))
+           (file (gkroam--get-file page))
+           (line-number (string-to-number
+                         (button-get button 'line-number))))
+      (find-file file)
+      (goto-line line-number)
+      (recenter-top-bottom))))
+
+(defun gkroam-backlink-fontify (beg end)
+  "Highlight gkroam backlink."
+  (save-excursion
+    (goto-char beg)
+    (while (re-search-forward gkroam-backlink-regexp end t)
+      (let ((page (match-string-no-properties 1))
+            (line-number (match-string-no-properties 2)))
+        (with-silent-modifications
+          (add-text-properties (match-beginning 0) (match-beginning 3)
+                               '(display ""))
+          (add-text-properties (match-end 3) (match-end 0)
+                               '(display ""))
+          (add-text-properties (match-beginning 3) (match-end 3)
+                               '(face org-link))
+          (make-text-button (match-beginning 3)
+                            (match-end 3)
+                            :type 'gkroam-backlink
+                            'page page
+                            'line-number line-number))))))
+
+(define-minor-mode gkroam-backlink-mode
+  "Recognize gkroam link."
+  t "" nil
+  (when (gkroam-work-p)
+    (if gkroam-backlink-mode
+        (jit-lock-register #'gkroam-backlink-fontify)
+      (jit-lock-unregister #'gkroam-backlink-fontify)))
+  (jit-lock-refontify))
 
 ;; page beautify
 
@@ -955,6 +1037,15 @@ The overlays has a PROP and VALUE."
                           gkroam-window-margin)
     (set-window-margins (selected-window) 0 0)))
 
+(defun gkroam-set-window-margin ()
+  "Set all gkroam windows' margin when prettifying page."
+  (let ((windows (window-list)))
+    (save-selected-window
+      (dolist (window windows)
+        (select-window window)
+        (when (gkroam-work-p)
+          (gkroam-set-curr-window-margin))))))
+
 (defun gkroam-prettify-page ()
   "Prettify gkroam page for all gkroam live windows."
   (let ((windows (window-list)))
@@ -1010,8 +1101,8 @@ The overlays has a PROP and VALUE."
       (setq title (thing-at-point 'word t)))
      (t (setq title "")))
     (unless (string-empty-p title)
-      (if (or page (gkroam--get-page title))
-          (cons (or page (gkroam--get-page title)) 'page)
+      (if (or page (gkroam-retrive-page title))
+          (cons (or page (gkroam-retrive-page title)) 'page)
         (cons title 'title)))))
 
 (defun gkroam--get-content-region ()
@@ -1046,7 +1137,7 @@ Except mata infomation and page references."
       (pcase type
         ('page
          (setq page title-or-page)
-         (setq title (gkroam--get-title page))
+         (setq title (gkroam-retrive-title page))
          (setq content (gkroam--get-content page)))
         (_
          (setq title title-or-page)
@@ -1089,7 +1180,7 @@ Except mata infomation and page references."
     (goto-char (point-min))
     (while (re-search-forward "^* .+" nil t)
       (setq title (string-trim-left (match-string-no-properties 0) "* "))
-      (setq page (gkroam--get-page title))
+      (setq page (gkroam-retrive-page title))
       (if page
           (setq file (gkroam--get-file page))
         (let ((gkroam-use-default-filename nil))
@@ -1166,11 +1257,11 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
     (if (null cons)
         (progn
           (setq title (completing-read "Choose a page to edit or capture a new one: "
-                                       (gkroam--all-titles) nil nil))
-          (setq page (gkroam--get-page title))
+                                       (gkroam-retrive-all-titles) nil nil))
+          (setq page (gkroam-retrive-page title))
           (if page
               (setq content (gkroam-capture-append--process
-                             (gkroam--get-content (gkroam--get-page title))))
+                             (gkroam--get-content page)))
             (setq content "")))
       (setq title (car cons))
       (setq content (gkroam-capture-append--process (cdr cons))))
@@ -1267,10 +1358,13 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
   :global t
   (if gkroam-mode
       (progn
+        (gkroam-rebuild-caches)
         (add-hook 'completion-at-point-functions #'gkroam-completion-at-point nil 'local)
         (add-hook 'company-completion-finished-hook #'gkroam-completion-finish nil 'local)
+        (add-hook 'window-state-change-hook #'gkroam-set-window-margin)
         (add-hook 'window-state-change-hook #'gkroam-prettify-page)
         (add-hook 'org-mode-hook #'gkroam-link-mode)
+        (add-hook 'org-mode-hook #'gkroam-backlink-mode)
         (add-hook 'org-mode-hook (lambda ()
                                    (when (gkroam-work-p)
                                      (toggle-truncate-lines)
@@ -1278,13 +1372,15 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
                                      (gkroam-ivy-use-selectable-prompt t)
                                      (setq org-startup-folded nil)
                                      (setq org-return-follows-link t)
-                                     (setq gkroam-pages (gkroam--all-titles))))))
+                                     (setq gkroam-pages (gkroam-retrive-all-titles))))))
     ;; how to preserve the original variable value?
     (remove-hook 'completion-at-point-functions #'gkroam-completion-at-point 'local)
     (remove-hook 'company-completion-finished-hook #'gkroam-completion-finish 'local)
+    (remove-hook 'window-state-change-hook #'gkroam-set-window-margin)
     (remove-hook 'window-state-change-hook #'gkroam-prettify-page)
     (gkroam-prettify-page)
     (remove-hook 'org-mode-hook #'gkroam-link-mode)
+    (remove-hook 'org-mode-hook #'gkroam-backlink-mode)
     (remove-hook 'org-mode-hook (lambda ()
                                   (when (gkroam-work-p)
                                     (toggle-truncate-lines)
@@ -1292,7 +1388,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
                                     (gkroam-ivy-use-selectable-prompt t)
                                     (setq org-startup-folded nil)
                                     (setq org-return-follows-link t)
-                                    (setq gkroam-pages (gkroam--all-titles)))))))
+                                    (setq gkroam-pages (gkroam-retrive-all-titles)))))))
 
 (provide 'gkroam)
 ;;; gkroam.el ends here
