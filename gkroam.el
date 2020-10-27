@@ -128,11 +128,6 @@ The default format is '%Y%m%d%H%M%S' time string."
   :type 'boolean
   :group 'gkroam)
 
-(defcustom gkroam-prettify-p nil
-  "Non-nil means to prettify gkroam page."
-  :type 'boolean
-  :group 'gkroam)
-
 (defcustom gkroam-title-height 300
   "Height of gkroam page title when prettifying."
   :type 'integer
@@ -185,6 +180,9 @@ The default format is '%Y%m%d%H%M%S' time string."
 (defvar gkroam-reference-delimiter-re
   "^* [0-9]+ Linked References.*"
   "Delimiter string regexp to separate page contents from references region.")
+
+(defvar gkroam-prettify-page-p nil
+  "Non-nil means to prettify gkroam page.")
 
 (defvar gkroam-return-wconf nil
   "Saved window configuration before goto gkroam capture.")
@@ -266,17 +264,19 @@ the page has a filename named PAGE"
       (setq slug-format (string-join (split-string slug) "-")))
     (format "%s.org" slug-format)))
 
-(defun gkroam--format-link (title &optional headline alias)
-  "Format TITLE into a gkroam page link.
-With optional argument HEADLINE, format also with headline.
-With optional argument ALIAS, format also with alias."
-  (if headline
-      (if alias
-          (format "{[%s » %s][%s]}" title headline alias)
-        (format "{[%s » %s]}" title headline))
-    (if alias
-        (format "{[%s][%s]}" title alias)
-      (format "{[%s]}" title))))
+(defun gkroam--narrow-to-content ()
+  "Narrow region to gkroam page contents if there is a reference region."
+  (save-excursion
+    (goto-char (point-min))
+    (when (re-search-forward gkroam-reference-delimiter-re nil t)
+      (narrow-to-region (point-min) (1- (line-beginning-position))))))
+
+(defun gkroam--narrow-to-reference ()
+  "Narrow region to page references if there is a reference region."
+  (save-excursion
+    (goto-char (point-min))
+    (when (re-search-forward gkroam-reference-delimiter-re nil t)
+      (narrow-to-region (line-beginning-position) (point-max)))))
 
 (defun gkroam-new (title)
   "Just create a new gkroam page titled with TITLE."
@@ -312,7 +312,9 @@ ARGS are the arguments of rg process."
                                 event)
                 (if-let ((buf (process-buffer process)))
                     (with-current-buffer buf
-                      (funcall callback (buffer-string)))
+                      (save-excursion
+                        (unless (string-empty-p (buffer-string))
+                          (funcall callback (buffer-string)))))
                   (error "Gkroam’s rg process’ buffer is killed"))
               (error "Gkroam’s rg process failed with signal: %s"
                      event))))
@@ -374,9 +376,10 @@ the backlink refers to a link in Line-NUMBER line of PAGE."
                    (setq parent-str
                          (buffer-substring-no-properties (point)
                                                          (line-end-position))))
-                 (pcase relative-level
-                   (1 (setq parent-strs (concat parent-str "\n" parent-strs)))
-                   (relative-levels (setq parent-strs (concat parent-str " > " parent-strs)))))))
+                 (when (= relative-level 1)
+                   (setq parent-strs (concat parent-str "\n" parent-strs)))
+                 (when (= relative-level relative-levels)
+                   (setq parent-strs (concat parent-str " > " parent-strs))))))
            (setq reference-str (concat parent-strs elem-str))))
         ('plain-list
          (let* ((plain-lst (org-element-property :structure (org-element-at-point)))
@@ -431,7 +434,7 @@ the backlink refers to a link in Line-NUMBER line of PAGE."
                   (concat references
                           (format "** %s\n%s"
                                   (gkroam--format-backlink
-                                   page 1 (gkroam-retrive-title page))
+                                   page nil (gkroam-retrive-title page))
                                   context)))
             (setq beg end))))
       (cons num references))))
@@ -455,6 +458,9 @@ Output matched files' path and context."
      (let* ((title (gkroam-retrive-title page))
             (file (gkroam--get-file page))
             (file-buf (find-file-noselect file t))
+            (processed-str (gkroam--process-searched-string string title))
+            (num (car processed-str))
+            (references (cdr processed-str))
             reference-start)
        (with-current-buffer file-buf
          (save-excursion
@@ -462,36 +468,23 @@ Output matched files' path and context."
            (re-search-backward gkroam-reference-delimiter-re nil t)
            (setq reference-start (point))
            (let ((inhibit-read-only t))
-             (remove-text-properties reference-start (point-max)
-                                     '(read-only nil)))
+             (remove-text-properties reference-start (point-max) '(read-only nil)))
            (delete-region (point) (point-max))
-           (unless (string= string "")
-             (let* ((processed-str (gkroam--process-searched-string string title))
-                    (num (car processed-str))
-                    (references (cdr processed-str)))
-               (insert (format "* %d Linked References to \"%s\"\n\n" num title))
-               (insert references)
-               ;; use overlay to hide part of reference. (filter)
-               ;; (gkroam-overlay-region beg (point-max) 'invisible t)
-               (indent-region reference-start (point-max))
-               (gkroam-backlink-fontify reference-start (point-max))
-               (put-text-property reference-start (point-max)
-                                  'read-only "Linked references region is uneditable."))
-             (save-buffer)))))))
+           (insert (format "* %d Linked References to \"%s\"\n\n" num title))
+           (insert references)
+           ;; use overlay to hide part of reference. (filter)
+           ;; (gkroam-overlay-region beg (point-max) 'invisible t)
+           (when gkroam-prettify-page-p
+             (gkroam-org-list-fontify reference-start (point-max)))
+           (gkroam-backlink-fontify reference-start (point-max))
+           (indent-region reference-start (point-max))
+           (put-text-property reference-start (point-max)
+                              'read-only "Linked references region is uneditable.")
+           (save-buffer))))))
   (message "%s reference updated" page))
 
 ;; ----------------------------------------
 ;; headline linked references
-
-(defun gkroam--narrow-to-region ()
-  "Narrow region to gkroam page content, exclude linked references region."
-  (save-excursion
-    (let (content-end)
-      (goto-char (point-min))
-      (if (re-search-forward gkroam-reference-delimiter-re nil t)
-          (setq content-end (1- (line-beginning-position)))
-        (setq content-end (point-max)))
-      (narrow-to-region (point-min) content-end))))
 
 (defun gkroam--get-headlines (title)
   "Get page's headline list, the page is titled with TITLE."
@@ -500,7 +493,7 @@ Output matched files' path and context."
      ;; do not use `insert-file-contents-literally', it cannot show chinese normally.
      (gkroam--get-file (gkroam-retrive-page title)))
     (save-restriction
-      (gkroam--narrow-to-region)
+      (gkroam--narrow-to-content)
       (org-element-map (org-element-parse-buffer) 'headline
         (lambda (headline)
           (org-element-property :raw-value headline))))))
@@ -508,7 +501,7 @@ Output matched files' path and context."
 (defun gkroam-goto-headline (id)
   "Goto headline with id ID."
   (org-id-goto id)
-  (gkroam-update)
+  (gkroam-fontify-link)
   (gkroam-prettify-page))
 
 (defun gkroam-set-headline-id (title headline)
@@ -610,13 +603,12 @@ Output matched files' path."
 (defun gkroam-rebuild-caches ()
   "Clear gkroam headline-id cache."
   (interactive)
-  (let (page-num headline-link-num)
+  (let (page-num)
     (db-hash-clear gkroam-page-db)
     (setq page-num (gkroam-cache-all-pages))
     (db-hash-clear gkroam-headline-db)
     (gkroam-cache-all-headline-links)
-    (message "Have cached %d gkroam pages."
-             page-num headline-link-num)))
+    (message "Have cached %d gkroam pages." page-num)))
 
 ;; ----------------------------------------
 
@@ -631,7 +623,9 @@ Output matched files' path."
     (if page
         (find-file (gkroam--get-file page))
       (find-file (gkroam-new title)))
-    (gkroam-update)))
+    (gkroam-update)
+    (gkroam-prettify-page)
+    (gkroam-fontify-link)))
 
 ;;;###autoload
 (defun gkroam-daily ()
@@ -744,12 +738,13 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
       (gkroam-update-reference (file-name-nondirectory (buffer-file-name)))
     (message "Not in the gkroam directory!")))
 
-;;;###autoload
-(defun gkroam-update-all ()
-  "Update all gkroam files' reference."
-  (interactive)
-  (let ((pages (gkroam--all-pages)))
-    (mapcar #'gkroam-update-reference pages)))
+(defun gkroam-refresh-page ()
+  "Refresh current gkroam page, update reference,
+ fontify link and prettify page"
+  (when (gkroam-work-p)
+    (gkroam-prettify-page)
+    (gkroam-fontify-link)
+    (gkroam-update)))
 
 ;;; ----------------------------------------
 ;; minor mode: gkroam-link-mode
@@ -758,9 +753,20 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
   'action #'gkroam-follow-link
   'title nil
   'headline nil
-  'alias nil
   'follow-link t
   'help-echo "Jump to page")
+
+(defun gkroam--format-link (title &optional headline alias)
+  "Format TITLE into a gkroam page link.
+With optional argument HEADLINE, format also with headline.
+With optional argument ALIAS, format also with alias."
+  (if headline
+      (if alias
+          (format "{[%s » %s][%s]}" title headline alias)
+        (format "{[%s » %s]}" title headline))
+    (if alias
+        (format "{[%s][%s]}" title alias)
+      (format "{[%s]}" title))))
 
 (defun gkroam-follow-link (button)
   "Jump to the page that BUTTON represents."
@@ -784,19 +790,11 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
 
 (defun gkroam--link-has-headline ()
   "Judge if a gkroam link has headline after `re-search-forward'."
-  (not (string-empty-p (match-string-no-properties 3))))
+  (match-string-no-properties 5))
 
 (defun gkroam--link-has-alias ()
   "Judge if a gkroam link has alias after `re-search-forward'."
-  (not (string-empty-p (match-string-no-properties 7))))
-
-(defun gkroam-fontify-all ()
-  "Highlight links and org symbols in all gkroam live windows."
-  (let ((windows (window-list)))
-    (save-selected-window
-      (dolist (window windows)
-        (select-window window)
-        (jit-lock-refontify)))))
+  (match-string-no-properties 9))
 
 (defun gkroam--fontify-hashtag ()
   "Highlight gkroam hashtag using text properties."
@@ -805,16 +803,18 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
     (add-text-properties (match-beginning 2) (match-end 2) '(display ""))
     (add-text-properties (match-beginning 4) (match-end 4) '(display ""))))
 
-(defun gkroam-hashtag-fontify(beg end)
+(defun gkroam-hashtag-fontify (beg end)
   "Put gkroam link between BEG and END."
-  (goto-char (or (point-min) beg))
-  (while (and (re-search-forward gkroam-hashtag-regexp nil t)
-              (< (point) (or (point-max) end)))
-    (gkroam--fontify-hashtag)
-    (make-text-button (match-beginning 0)
-                      (match-end 0)
-                      :type 'gkroam-link
-                      'title (match-string-no-properties 3))))
+  (when (gkroam-work-p)
+    (save-excursion
+      (goto-char beg)
+      (while (re-search-forward gkroam-hashtag-regexp end t)
+        (gkroam--fontify-hashtag)
+        (with-silent-modifications
+          (make-text-button (match-beginning 0)
+                            (match-end 0)
+                            :type 'gkroam-link
+                            'title (match-string-no-properties 3)))))))
 
 (defun gkroam--fontify-hide-brackets ()
   "Hide gkroam link brackets using text properties."
@@ -863,40 +863,29 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
 
 (defun gkroam-link-fontify (beg end)
   "Put gkroam link between BEG and END."
-  (goto-char beg)
-  (while (and (re-search-forward gkroam-link-regexp nil t)
-              (< (point) end))
-    (let* ((title (match-string-no-properties 2))
-           (headline (when (gkroam--link-has-headline)
-                       (match-string-no-properties 5)))
-           (alias (when (gkroam--link-has-alias)
-                    (match-string-no-properties 9)))
-           (echo (if headline
-                     (concat title " » " headline)
-                   title)))
-      (unless (equal (char-to-string (char-before (match-beginning 0))) "#")
-        (if gkroam-show-brackets-p
-            (gkroam--fontify-show-brackets)
-          (gkroam--fontify-hide-brackets)))
-      (make-text-button (match-beginning 0)
-                        (match-end 0)
-                        :type 'gkroam-link
-                        'title title
-                        'headline headline
-                        'alias alias
-                        'help-echo echo))))
-
-(define-minor-mode gkroam-link-mode
-  "Recognize gkroam link."
-  t "" nil
   (when (gkroam-work-p)
-    (if gkroam-link-mode
-        (progn
-          (jit-lock-register #'gkroam-hashtag-fontify)
-          (jit-lock-register #'gkroam-link-fontify))
-      (jit-lock-unregister #'gkroam-hashtag-fontify)
-      (jit-lock-unregister #'gkroam-link-fontify)))
-  (jit-lock-refontify))
+    (save-excursion
+      (goto-char beg)
+      (while (re-search-forward gkroam-link-regexp end t)
+        (let* ((title (match-string-no-properties 2))
+               (headline (when (gkroam--link-has-headline)
+                           (match-string-no-properties 5)))
+               (alias (when (gkroam--link-has-alias)
+                        (match-string-no-properties 9)))
+               (echo (if headline
+                         (concat title " » " headline)
+                       title)))
+          (unless (equal (char-to-string (char-before (match-beginning 0))) "#")
+            (if gkroam-show-brackets-p
+                (gkroam--fontify-show-brackets)
+              (gkroam--fontify-hide-brackets)))
+          (with-silent-modifications
+            (make-text-button (match-beginning 0)
+                              (match-end 0)
+                              :type 'gkroam-link
+                              'title title
+                              'headline headline
+                              'help-echo echo)))))))
 
 ;;;###autoload
 (defun gkroam-link-edit ()
@@ -918,13 +907,15 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
 ;; gkroam backlink
 
 (defvar gkroam-backlink-regexp
-  "{{\\(.+?\\)::\\([0-9]+\\)}{\\(.+?\\)}}"
+  "{{\\(.+?\\)\\(::\\([0-9]+\\)\\)?}{\\(.+?\\)}}"
   "Regular expression that matches a gkroam backlink")
 
 (defun gkroam--format-backlink (page line-number alias)
   "Format gkroam backlink for PAGE, refer to a link in LINE-NUMBER line,
  display a description ALIAS."
-  (format "{{%s::%d}{%s}}" page line-number alias))
+  (if line-number
+      (format "{{%s::%d}{%s}}" page line-number alias)
+    (format "{{%s}{%s}}" page alias)))
 
 (define-button-type 'gkroam-backlink
   'action #'gkroam-follow-backlink
@@ -937,39 +928,47 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
   "Jump to the page that BUTTON represents."
   (with-demoted-errors "Error when following the link: %s"
     (let* ((page (button-get button 'page))
-           (file (gkroam--get-file page))
-           (line-number (string-to-number
-                         (button-get button 'line-number))))
-      (find-file file)
-      (goto-line line-number)
-      (recenter-top-bottom))))
+           (title (gkroam-retrive-title page))
+           (line-number (button-get button 'line-number)))
+      (gkroam-find title)
+      (when line-number
+        (setq line-number (string-to-number line-number))
+        (forward-line (- line-number (current-line) 1)))
+      (recenter-top-bottom)
+      (gkroam-fontify-link))))
 
 (defun gkroam-backlink-fontify (beg end)
   "Highlight gkroam backlink."
-  (save-excursion
-    (goto-char beg)
-    (while (re-search-forward gkroam-backlink-regexp end t)
-      (let ((page (match-string-no-properties 1))
-            (line-number (match-string-no-properties 2)))
-        (with-silent-modifications
-          (add-text-properties (match-beginning 0) (match-beginning 3)
-                               '(display ""))
-          (add-text-properties (match-end 3) (match-end 0)
-                               '(display ""))
-          (add-text-properties (match-beginning 3) (match-end 3)
-                               '(face org-link))
-          (make-text-button (match-beginning 3)
-                            (match-end 3)
-                            :type 'gkroam-backlink
-                            'page page
-                            'line-number line-number))))))
-
-(define-minor-mode gkroam-backlink-mode
-  "Recognize gkroam link."
-  t "" nil
   (when (gkroam-work-p)
-    (if gkroam-backlink-mode
-        (jit-lock-register #'gkroam-backlink-fontify)
+    (save-excursion
+      (goto-char beg)
+      (while (re-search-forward gkroam-backlink-regexp end t)
+        (let* ((page (match-string-no-properties 1))
+               (line-number (match-string-no-properties 3)))
+          (with-silent-modifications
+            (add-text-properties (match-beginning 0) (match-beginning 4)
+                                 '(display ""))
+            (add-text-properties (match-end 4) (match-end 0)
+                                 '(display ""))
+            (add-text-properties (match-beginning 4) (match-end 4)
+                                 '(face link))
+            (make-text-button (match-beginning 4)
+                              (match-end 4)
+                              :type 'gkroam-backlink
+                              'page page
+                              'line-number line-number)))))))
+
+(define-minor-mode gkroam-link-mode
+  "Recognize gkroam link."
+  t nil nil
+  (when (gkroam-work-p)
+    (if gkroam-link-mode
+        (progn
+          (jit-lock-register #'gkroam-hashtag-fontify)
+          (jit-lock-register #'gkroam-link-fontify)
+          (jit-lock-register #'gkroam-backlink-fontify))
+      (jit-lock-unregister #'gkroam-hashtag-fontify)
+      (jit-lock-unregister #'gkroam-link-fontify)
       (jit-lock-unregister #'gkroam-backlink-fontify)))
   (jit-lock-refontify))
 
@@ -995,9 +994,8 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
 (defun gkroam-org-list-fontify (beg end)
   "Fontify org list bullet between BEG and END."
   (save-excursion
-    (goto-char (or (point-min) beg))
-    (while (and (re-search-forward gkroam-org-list-re nil t)
-                (< (point) (or (point-max) end)))
+    (goto-char beg)
+    (while (re-search-forward gkroam-org-list-re end t)
       (if (string= (match-string-no-properties 1) "*")
           (unless (= (match-beginning 0) (match-beginning 1))
             (gkroam--fontify-org-list))
@@ -1013,49 +1011,61 @@ The overlays has a PROP and VALUE."
   (save-excursion
     (goto-char beg)
     (when (re-search-forward "\\(^ *#\\+TITLE: *\\)\\(.+\\)$" bound t)
-      (if (and gkroam-prettify-p gkroam-mode)
+      (if (and gkroam-mode gkroam-prettify-page-p)
           (progn
             (gkroam-overlay-region (match-beginning 1) (match-end 1) 'display "")
             (gkroam-overlay-region (match-beginning 2) (match-end 2)
                                    'face `(:height ,gkroam-title-height)))
         (remove-overlays (line-beginning-position) (line-end-position))))))
 
-(defun gkroam-prettify-org-symbols ()
-  "Prettify org list."
-  (if (and gkroam-prettify-p gkroam-mode)
-      (jit-lock-register #'gkroam-org-list-fontify)
-    (jit-lock-unregister #'gkroam-org-list-fontify)
-    (with-silent-modifications
-      (remove-text-properties (point-min) (point-max) '(display nil))))
-  (jit-lock-refontify))
+;;;###autoload
+(define-minor-mode gkroam-prettify-mode
+  "Minor mode for prettifying page."
+  :lighter ""
+  :keymap nil
+  :require 'gkroam
+  (when (gkroam-work-p)
+    (if gkroam-prettify-mode
+        (progn
+          (jit-lock-register #'gkroam-org-list-fontify)
+          (gkroam-org-title-overlay (point-min))
+          (gkroam-org-list-fontify (point-min) (point-max)))
+      (jit-lock-unregister #'gkroam-org-list-fontify)
+      (save-excursion
+        (goto-char (point-min))
+        (while (re-search-forward gkroam-org-list-re nil t)
+          (with-silent-modifications
+            (remove-text-properties (match-beginning 0) (match-end 0)
+                                    '(display nil)))))
+      (gkroam-org-title-overlay (point-min)))
+    (jit-lock-refontify)))
 
-(defun gkroam-set-curr-window-margin ()
-  "Set current gkroam window's margin when `gkroam-prettify-mode' is on."
-  (if (and gkroam-prettify-p gkroam-mode)
+(defun gkroam-set-window-margin ()
+  "Set gkroam pages' window margin."
+  (if (and gkroam-mode gkroam-prettify-page-p)
       (set-window-margins (selected-window)
                           gkroam-window-margin
                           gkroam-window-margin)
     (set-window-margins (selected-window) 0 0)))
 
-(defun gkroam-set-window-margin ()
-  "Set all gkroam windows' margin when prettifying page."
-  (let ((windows (window-list)))
-    (save-selected-window
-      (dolist (window windows)
-        (select-window window)
-        (when (gkroam-work-p)
-          (gkroam-set-curr-window-margin))))))
-
 (defun gkroam-prettify-page ()
-  "Prettify gkroam page for all gkroam live windows."
-  (let ((windows (window-list)))
-    (save-selected-window
-      (dolist (window windows)
-        (select-window window)
-        (when (gkroam-work-p)
-          (gkroam-set-curr-window-margin)
-          (gkroam-org-title-overlay (point-min))
-          (gkroam-prettify-org-symbols))))))
+  (when (and gkroam-mode (gkroam-work-p))
+    (if gkroam-prettify-page-p
+        (gkroam-prettify-mode 1)
+      (gkroam-prettify-mode -1))
+    (gkroam-set-window-margin)))
+
+(defun gkroam-fontify-link ()
+  "Highlight links and org symbols in all gkroam live windows."
+  (when gkroam-mode
+    (save-excursion
+      (save-restriction
+        (gkroam--narrow-to-content)
+        (gkroam-hashtag-fontify (point-min) (point-max))
+        (gkroam-link-fontify (point-min) (point-max)))
+      (save-restriction
+        (when (gkroam--narrow-to-reference)
+          (gkroam-backlink-fontify (point-min) (point-max)))))))
 
 ;;;; commands
 
@@ -1069,19 +1079,28 @@ The overlays has a PROP and VALUE."
         (message "Hide gkroam link brackets"))
     (setq gkroam-show-brackets-p t)
     (message "Show gkroam link brackets"))
-  (gkroam-fontify-all))
+  (let ((windows (window-list)))
+    (save-selected-window
+      (dolist (window windows)
+        (select-window window)
+        (gkroam-fontify-link)))))
 
 ;;;###autoload
 (defun gkroam-toggle-prettify ()
   "Toggle gkroam page prettification."
   (interactive)
-  (if gkroam-prettify-p
+  (if gkroam-prettify-page-p
       (progn
-        (setq gkroam-prettify-p nil)
+        (setq gkroam-prettify-page-p nil)
         (message "Page prettification is turned off"))
-    (setq gkroam-prettify-p t)
+    (setq gkroam-prettify-page-p t)
     (message "Page prettification is turned on"))
-  (gkroam-prettify-page))
+  (let ((windows (window-list)))
+    (save-selected-window
+      (dolist (window windows)
+        (select-window window)
+        (gkroam-prettify-page)
+        (gkroam-fontify-link)))))
 
 ;;; ----------------------------------------
 ;; minor mode: gkroam-capture-mode
@@ -1358,13 +1377,12 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
   :global t
   (if gkroam-mode
       (progn
-        (gkroam-rebuild-caches)
+        ;; (gkroam-rebuild-caches)
+        (gkroam-link-mode 1)
+        (gkroam-refresh-page)
         (add-hook 'completion-at-point-functions #'gkroam-completion-at-point nil 'local)
         (add-hook 'company-completion-finished-hook #'gkroam-completion-finish nil 'local)
-        (add-hook 'window-state-change-hook #'gkroam-set-window-margin)
-        (add-hook 'window-state-change-hook #'gkroam-prettify-page)
         (add-hook 'org-mode-hook #'gkroam-link-mode)
-        (add-hook 'org-mode-hook #'gkroam-backlink-mode)
         (add-hook 'org-mode-hook (lambda ()
                                    (when (gkroam-work-p)
                                      (toggle-truncate-lines)
@@ -1376,19 +1394,21 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
     ;; how to preserve the original variable value?
     (remove-hook 'completion-at-point-functions #'gkroam-completion-at-point 'local)
     (remove-hook 'company-completion-finished-hook #'gkroam-completion-finish 'local)
-    (remove-hook 'window-state-change-hook #'gkroam-set-window-margin)
-    (remove-hook 'window-state-change-hook #'gkroam-prettify-page)
-    (gkroam-prettify-page)
     (remove-hook 'org-mode-hook #'gkroam-link-mode)
-    (remove-hook 'org-mode-hook #'gkroam-backlink-mode)
-    (remove-hook 'org-mode-hook (lambda ()
-                                  (when (gkroam-work-p)
-                                    (toggle-truncate-lines)
-                                    (gkroam-link-frame-setup 'find-file)
-                                    (gkroam-ivy-use-selectable-prompt t)
-                                    (setq org-startup-folded nil)
-                                    (setq org-return-follows-link t)
-                                    (setq gkroam-pages (gkroam-retrive-all-titles)))))))
+    (remove-hook 'org-mode-hook
+                 (lambda ()
+                   (when (gkroam-work-p)
+                     (toggle-truncate-lines)
+                     (gkroam-link-frame-setup 'find-file)
+                     (gkroam-ivy-use-selectable-prompt t)
+                     (setq org-startup-folded nil)
+                     (setq org-return-follows-link t)
+                     (setq gkroam-pages (gkroam-retrive-all-titles)))))
+    (gkroam-prettify-mode -1)
+    (gkroam-link-mode -1)
+    (set-window-margins (selected-window) 0 0)
+    (with-silent-modifications
+      (set-text-properties (point-min) (point-max) nil))))
 
 (provide 'gkroam)
 ;;; gkroam.el ends here
