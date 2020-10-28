@@ -754,10 +754,10 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
       (erase-buffer)
       (insert (format "#+TITLE: %s\n\n" gkroam-index-title))
       (dolist (page (gkroam--all-pages))
-        (insert (format "+ [[file:%s][%s]]\n"
-                        (gkroam--get-file page) (gkroam-retrive-title page)))))
+        (insert (format "- {[%s]}\n" (gkroam-retrive-title page)))))
     (switch-to-buffer gkroam-index-buf)
-    (org-mode)
+    (gkroam-link-fontify (point-min) (point-max))
+    (gkroam-prettify-page)
     (read-only-mode 1)))
 
 ;;;###autoload
