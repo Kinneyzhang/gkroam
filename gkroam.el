@@ -439,7 +439,7 @@ the backlink refers to a link in Line-NUMBER line of PAGE."
                   (setq last-headline headline)))
               (setq references
                     (concat references
-                            (format "** %s\n%s"
+                            (format "** %s\n\n%s"
                                     (gkroam--format-backlink
                                      page nil (gkroam-retrive-title page))
                                     context)))
