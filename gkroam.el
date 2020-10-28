@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Kinney Zhang
 ;;
-;; Version: 2.3.7
+;; Version: 2.4.0
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: https://github.com/Kinneyzhang/gkroam.el
@@ -80,6 +80,25 @@
 
 ;; v2.3.7 - Add headline id only when you insert a gkroam link.
 ;; Use `gkroam-rebuild-caches' command to rebuild headline and id caches.
+
+;; v2.4.0
+
+;; 1. Delete =gkroam-toggle-dynamic= command
+
+;; 2. Set gkroam-mode as a minor mode, instead of a major mode derived from org-mode
+
+;; 3. Use text properties to render gkroam links.
+
+;; 4. More caches and a big improvement in performance.
+
+;;    4.1 Cache gkroam pages and their filenames.
+;;    4.2 Cache gkroam pages and their references.
+
+;; 5. Prettify and enhance linked references
+;;    5.1 Change backlink format to "{{page::line-number}{alias}}"
+;;    5.2 Show list item's parent items above it and shadow them.
+;;    5.3 Highlight each reference region.
+;;    5.4 Jump back to the specific line when click backlink.
 
 ;;; Code:
 
@@ -239,13 +258,13 @@ If BUFFER is non-nil, check the buffer visited file."
       (gkroam-at-capture-buf)))
 
 (defun gkroam-retrive-page (title)
-  "Retrive page's filename from database, 
-the page has a title named TITLE"
+  "Retrive page's filename from database.
+The page has a title named TITLE."
   (cdar (db-get title gkroam-page-db)))
 
 (defun gkroam-retrive-title (page)
-  "Retrive page's title from database, 
-the page has a filename named PAGE"
+  "Retrive page's title from database.
+The page has a filename named PAGE."
   (caar (db-query gkroam-page-db `(= "page" ,page))))
 
 (defun gkroam-retrive-all-titles ()
@@ -327,8 +346,8 @@ ARGS are the arguments of rg process."
     (set-process-sentinel process sentinel)))
 
 (defun gkroam--process-backlink (string page line-number)
-  "Convert gkroam link to backlink in STRING, 
-the backlink refers to a link in Line-NUMBER line of PAGE."
+  "Convert gkroam link to backlink in STRING.
+The backlink refers to a link in LINE-NUMBER line of PAGE."
   (with-temp-buffer
     (insert string)
     ;; (goto-char (point-min))
@@ -613,32 +632,14 @@ Output matched files' path."
        (with-current-buffer (find-file-noselect file t)
          (gkroam-cache-curr-headline-links))))))
 
-(defun gkroam-cache-page-references (title)
-  "Cache gkroam page's references, which titled with TITLE."
-  (let ((page (gkroam-retrive-page title)))
-    (gkroam-search-process
-     (gkroam-search-page-link page)
-     (lambda (string)
-       (let ((references (cdr (gkroam--process-searched-string string title))))
-         (db-put title `(("reference" . ,references)) gkroam-reference-db))))))
-
-;;;###autoload
-(defun gkroam-cache-all-page-references ()
-  "Cache all gkroam page's references."
-  (let ((titles (gkroam--all-titles)))
-    (dolist (title titles)
-      (gkroam-cache-page-references title))))
-
 ;;;###autoload
 (defun gkroam-rebuild-caches ()
   "Clear gkroam headline-id cache."
   (interactive)
   (db-hash-clear gkroam-page-db)
   (db-hash-clear gkroam-headline-db)
-  (db-hash-clear gkroam-reference-db)
   (gkroam-cache-all-pages)
   (gkroam-cache-all-headline-links)
-  (gkroam-cache-all-page-references)
   (message "All caches have been built."))
 
 ;; ----------------------------------------
@@ -770,8 +771,7 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
     (message "Not in the gkroam directory!")))
 
 (defun gkroam-refresh-page ()
-  "Refresh current gkroam page, update reference,
- fontify link and prettify page"
+  "Refresh current gkroam page, update reference, fontify link and prettify page."
   (when (gkroam-work-p)
     (gkroam-prettify-page)
     (gkroam-fontify-link)
@@ -902,8 +902,6 @@ With optional argument ALIAS, format also with alias."
         (let* ((title (match-string-no-properties 2))
                (headline (when (gkroam--link-has-headline)
                            (match-string-no-properties 5)))
-               (alias (when (gkroam--link-has-alias)
-                        (match-string-no-properties 9)))
                (echo (if headline
                          (concat title " » " headline)
                        title)))
@@ -940,11 +938,11 @@ With optional argument ALIAS, format also with alias."
 
 (defvar gkroam-backlink-regexp
   "{{\\(.+?\\)\\(::\\([0-9]+\\)\\)?}{\\(.+?\\)}}"
-  "Regular expression that matches a gkroam backlink")
+  "Regular expression that matches a gkroam backlink.")
 
 (defun gkroam--format-backlink (page line-number alias)
-  "Format gkroam backlink for PAGE, refer to a link in LINE-NUMBER line,
- display a description ALIAS."
+  "Format gkroam backlink for PAGE, refer to a link 
+in LINE-NUMBER line, display a description ALIAS."
   (if line-number
       (format "{{%s::%d}{%s}}" page line-number alias)
     (format "{{%s}{%s}}" page alias)))
@@ -971,7 +969,7 @@ With optional argument ALIAS, format also with alias."
       (gkroam-fontify-link))))
 
 (defun gkroam-backlink-fontify (beg end)
-  "Highlight gkroam backlink."
+  "Highlight gkroam backlink between BEG and END."
   (when (gkroam-work-p)
     (save-excursion
       (goto-char beg)
@@ -1044,7 +1042,7 @@ The overlays has a PROP and VALUE."
   "Regular expression that matches org plain list parent items in references.")
 
 (defun gkroam-list-parent-item-overlay (beg)
-  "Shadow plain list's parent items in references."
+  "Shadow plain list's parent items in references between BEG and `point-max'."
   (save-excursion
     (goto-char beg)
     (while (re-search-forward gkroam-list-parent-item-re nil t)
@@ -1053,10 +1051,8 @@ The overlays has a PROP and VALUE."
                                'face 'shadow)))))
 
 (defun gkroam-reference-region-overlay (beg)
-  "Highlight all reference regions."
-  (let* ((page (file-name-nondirectory (buffer-file-name)))
-         (title (gkroam-retrive-title page))
-         (end beg))
+  "Highlight all reference regions between BEG and `point-max'."
+  (let ((end beg))
     (while (not (= end (point-max)))
       (save-excursion
         (goto-char beg)
@@ -1133,6 +1129,7 @@ The overlays has a PROP and VALUE."
         (gkroam-set-window-margin)))))
 
 (defun gkroam-prettify-page ()
+  "Prettify gkroam page."
   (when (and gkroam-mode (gkroam-work-p))
     (if gkroam-prettify-page-p
         (gkroam-prettify-mode 1)
@@ -1380,9 +1377,9 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
             (split-window-right)
             (other-window 1)
             (switch-to-buffer gkroam-capture-buf)
+            (org-mode)
             (gkroam-capture-append title content)
             (gkroam-capture-mode)
-            (org-mode)
             (setq gkroam-capture-flag t))
         (select-window (get-buffer-window gkroam-capture-buf))
         (gkroam-capture-append title content)
@@ -1450,7 +1447,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
 (defun gkroam-selectrum-mode-p ()
   "Judge if selectrum is installed and selectrum-mode is turned on."
   (when (require 'selectrum nil t)
-    selectrum-mode))
+    (bound-and-true-p selectrum-mode)))
 
 ;;;###autoload
 (define-minor-mode gkroam-mode

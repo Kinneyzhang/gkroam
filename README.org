@@ -32,7 +32,7 @@
      :hook (after-init . gkroam-mode)
      :init
      (setq gkroam-root-dir "~/gkroam/org/")
-     (setq gkroam-prettify-p t
+     (setq gkroam-prettify-page-p t
            gkroam-show-brackets-p t
            gkroam-use-default-filename t
            gkroam-window-margin 4)
@@ -47,6 +47,7 @@
             ("C-c r n" . gkroam-smart-new)
             ("C-c r p" . gkroam-toggle-prettify)
             ("C-c r t" . gkroam-toggle-brackets)
+            ("C-c r R" . gkroam-rebuild-caches)
             ("C-c r g" . gkroam-update))))
    #+END_SRC
 
@@ -111,7 +112,8 @@
     Update all files' references.
 
     =gkroam-rebuild-caches=\\
-    Rebuild headline and headline id caches.
+    Rebuild all caches, including page and filename cache, headline and headline id cache, page and references cache. It may takes seconds to build all, please be patient.
+
 
 ** ChangeLog
    - =v1.0=: Auto update link references at the bottom of page buffer.
@@ -133,6 +135,19 @@
    - =v2.3.6=: Implement a perfect linked references workflow. When a link is the item of org plain list, the whole list structure will be shown. The same as any source block, verse block, etc.
 
    - =v2.3.7=: Add headline id only when you insert a gkroam link. Use `gkroam-rebuild-caches' command to rebuild headline and id caches.
+
+   - =v2.4.0=
+     - Delete =gkroam-toggle-dynamic= command
+     - Set gkroam-mode as a minor mode, instead of a major mode derived from org-mode
+     - Use text properties to render gkroam links.
+     - More caches and a big improvement in performance.
+       - Cache gkroam pages and their filenames.
+       - Cache gkroam pages and their references. Upadte references only when there're changes in references.
+     - Prettify and enhance linked references
+       - Change backlink format to "{{page::line-number}{alias}}"
+       - Show list item's parent items above it and shadow them.
+       - Highlight each reference region.
+       - Jump back to the specific line when click backlink.
 
 ** TodoList
    
