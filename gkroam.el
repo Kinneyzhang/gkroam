@@ -331,6 +331,11 @@ ARGS are the arguments of rg process."
 the backlink refers to a link in Line-NUMBER line of PAGE."
   (with-temp-buffer
     (insert string)
+    ;; (goto-char (point-min))
+    ;; (while (re-search-forward gkroam-hashtag-regexp nil t)
+    ;;   (replace-match (gkroam--format-backlink
+    ;;                   page line-number
+    ;;                   (concat "#" (match-string-no-properties 3)))))
     (goto-char (point-min))
     (while (re-search-forward gkroam-link-regexp nil t)
       (let* ((title (match-string-no-properties 2))
@@ -341,11 +346,6 @@ the backlink refers to a link in Line-NUMBER line of PAGE."
           (if headline
               (replace-match (gkroam--format-backlink page line-number headline))
             (replace-match (gkroam--format-backlink page line-number title))))))
-    (goto-char (point-min))
-    (while (re-search-forward gkroam-hashtag-regexp nil t)
-      (replace-match (gkroam--format-backlink
-                      page line-number
-                      (match-string-no-properties 2))))
     (buffer-string)))
 
 (defun gkroam--format-reference-content ()
@@ -409,39 +409,40 @@ the backlink refers to a link in Line-NUMBER line of PAGE."
           (if (re-search-forward gkroam-file-re nil t 2)
               (setq end (line-beginning-position))
             (setq end (point-max))))
-        (save-restriction
-          (narrow-to-region beg end)
-          (goto-char beg)
-          (re-search-forward gkroam-file-re nil t)
-          (let* ((path (match-string-no-properties 0))
-                 (page (file-name-nondirectory path))
-                 context (last-headline ""))
-            (while (re-search-forward
-                    (replace-regexp-in-string "%s" title gkroam-link-re-format)
-                    nil t)
-              (let* ((headline "")
-                     (line-number (current-line))
-                     (raw-content
-                      (string-trim
-                       (gkroam--format-reference-content) nil "[ \t\n\r]+"))
-                     (content (gkroam--process-backlink raw-content page line-number)))
-                (setq num (1+ num))
-                (save-excursion
-                  (when (re-search-backward "^*+ .+\n" nil t)
-                    (setq headline
-                          (string-trim (match-string-no-properties 0) "*+ +" nil))
-                    (setq headline (concat "*** " headline))))
-                (if (string= headline last-headline)
-                    (setq context (concat context content "\n\n"))
-                  (setq context (concat context headline "\n" content "\n\n")))
-                (setq last-headline headline)))
-            (setq references
-                  (concat references
-                          (format "** %s\n%s"
-                                  (gkroam--format-backlink
-                                   page nil (gkroam-retrive-title page))
-                                  context)))
-            (setq beg end))))
+        (save-excursion
+          (save-restriction
+            (narrow-to-region beg end)
+            (goto-char beg)
+            (re-search-forward gkroam-file-re nil t)
+            (let* ((path (match-string-no-properties 0))
+                   (page (file-name-nondirectory path))
+                   context (last-headline ""))
+              (while (re-search-forward
+                      (replace-regexp-in-string "%s" title gkroam-link-re-format)
+                      nil t)
+                (let* ((headline "")
+                       (line-number (current-line))
+                       (raw-content
+                        (string-trim
+                         (gkroam--format-reference-content) nil "[ \t\n\r]+"))
+                       (content (gkroam--process-backlink raw-content page line-number)))
+                  (setq num (1+ num))
+                  (save-excursion
+                    (when (re-search-backward "^*+ .+\n" nil t)
+                      (setq headline
+                            (string-trim (match-string-no-properties 0) "*+ +" nil))
+                      (setq headline (concat "*** " headline))))
+                  (if (string= headline last-headline)
+                      (setq context (concat context content "\n\n"))
+                    (setq context (concat context headline "\n" content "\n\n")))
+                  (setq last-headline headline)))
+              (setq references
+                    (concat references
+                            (format "** %s\n%s"
+                                    (gkroam--format-backlink
+                                     page nil (gkroam-retrive-title page))
+                                    context)))
+              (setq beg end)))))
       (cons num (string-trim references)))))
 
 (defun gkroam-search-page-link (page)
@@ -1122,6 +1123,14 @@ The overlays has a PROP and VALUE."
                           gkroam-window-margin)
     (set-window-margins (selected-window) 0 0)))
 
+(defun gkroam-preserve-window-margin ()
+  "Preserve gkroam pages' window margin."
+  (save-selected-window
+    (dolist (win (window-list))
+      (select-window win)
+      (when (gkroam-work-p)
+        (gkroam-set-window-margin)))))
+
 (defun gkroam-prettify-page ()
   (when (and gkroam-mode (gkroam-work-p))
     (if gkroam-prettify-page-p
@@ -1451,11 +1460,9 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
   :global t
   (if gkroam-mode
       (progn
-        ;; (gkroam-rebuild-caches)
-        (gkroam-link-mode 1)
-        (gkroam-refresh-page)
         (add-hook 'completion-at-point-functions #'gkroam-completion-at-point nil 'local)
         (add-hook 'company-completion-finished-hook #'gkroam-completion-finish nil 'local)
+        (add-hook 'window-configuration-change-hook #'gkroam-preserve-window-margin)
         (add-hook 'org-mode-hook #'gkroam-link-mode)
         (add-hook 'org-mode-hook (lambda ()
                                    (when (gkroam-work-p)
@@ -1468,6 +1475,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
     ;; how to preserve the original variable value?
     (remove-hook 'completion-at-point-functions #'gkroam-completion-at-point 'local)
     (remove-hook 'company-completion-finished-hook #'gkroam-completion-finish 'local)
+    (remove-hook 'window-configuration-change-hook #'gkroam-preserve-window-margin)
     (remove-hook 'org-mode-hook #'gkroam-link-mode)
     (remove-hook 'org-mode-hook
                  (lambda ()
