@@ -362,8 +362,9 @@ the backlink refers to a link in Line-NUMBER line of PAGE."
            reference-str)
       (pcase elem-type
         ('item
-         (let* ((relative-levels (/ (- blank-num level-1-blank-num) 2))
-                parent parent-beg (parent-strs "") parent-str (relative-level 0))
+         (let* ((parent-strs "")
+                (relative-level 0)
+                parent parent-beg parent-str)
            (catch 'break
              (while (point)
                (if (= blank-num level-1-blank-num)
@@ -384,7 +385,7 @@ the backlink refers to a link in Line-NUMBER line of PAGE."
                                                          (line-end-position))))
                  (when (= relative-level 1)
                    (setq parent-strs (concat parent-str "\n" parent-strs)))
-                 (when (= relative-level relative-levels)
+                 (when (> relative-level 1)
                    (setq parent-strs (concat parent-str " > " parent-strs))))))
            (setq reference-str (concat parent-strs elem-str))))
         ('plain-list
