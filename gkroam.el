@@ -1040,7 +1040,7 @@ The overlays has a PROP and VALUE."
   (overlay-put (make-overlay beg end) prop value))
 
 (defvar gkroam-list-parent-item-re
-  "^\\(\\*\\{3\\} .+\\)?\n +\\(.+\\( > .+\\)*\\)\n \\{4\\}\\([0-9]+[).]\\|[*+-]\\) \\(\\[[ X-]\\] \\)?"
+  "^\\(\\*\\{2,3\\} .+\\)?\n +\\(.+\\( > .+\\)*\\)\n \\{3,4\\}\\([0-9]+[).]\\|[*+-]\\) \\(\\[[ X-]\\] \\)?"
   "Regular expression that matches org plain list parent items in references.")
 
 (defun gkroam-list-parent-item-overlay (beg)
@@ -1076,7 +1076,7 @@ The overlays has a PROP and VALUE."
                 (skip-chars-forward "[ ]")
                 (setq elem (org-element-at-point))
                 (setq content-start (org-element-property :begin elem))
-                (setq content-end (org-element-property :end elem))
+                (setq content-end (org-element-property :contents-end elem))
                 (gkroam-overlay-region content-start content-end
                                        'face 'hl-line)
                 (goto-char content-end))))))
