@@ -145,6 +145,12 @@ The default format is '%Y%m%d%H%M%S' time string."
      :filename ,(concat gkroam-cache-dir "gkroam-page-db")))
   "Database for caching gkroam page's filename.")
 
+(defvar gkroam-reference-db
+  (db-make
+   `(db-hash
+     :filename ,(concat gkroam-cache-dir "gkroam-reference-db")))
+  "Database for caching gkroam page's references.")
+
 (defvar gkroam-org-list-re
   "^ *\\([0-9]+[).]\\|[*+-]\\) \\(\\[[ X-]\\] \\)?"
   "Org list bullet and checkbox regexp.")
@@ -401,8 +407,7 @@ the backlink refers to a link in Line-NUMBER line of PAGE."
         (save-excursion
           (goto-char beg)
           (if (re-search-forward gkroam-file-re nil t 2)
-              (progn
-                (setq end (line-beginning-position)))
+              (setq end (line-beginning-position))
             (setq end (point-max))))
         (save-restriction
           (narrow-to-region beg end)
@@ -437,7 +442,7 @@ the backlink refers to a link in Line-NUMBER line of PAGE."
                                    page nil (gkroam-retrive-title page))
                                   context)))
             (setq beg end))))
-      (cons num references))))
+      (cons num (string-trim references)))))
 
 (defun gkroam-search-page-link (page)
   "Return a rg process to search a specific PAGE's link.
@@ -461,27 +466,33 @@ Output matched files' path and context."
             (processed-str (gkroam--process-searched-string string title))
             (num (car processed-str))
             (references (cdr processed-str))
+            (cached-references (cdar (db-get title gkroam-reference-db)))
             reference-start)
        (with-current-buffer file-buf
          (save-excursion
            (goto-char (point-max))
            (re-search-backward gkroam-reference-delimiter-re nil t)
            (setq reference-start (point))
-           (let ((inhibit-read-only t))
-             (remove-text-properties reference-start (point-max) '(read-only nil)))
-           (delete-region (point) (point-max))
-           (insert (format "* %d Linked References to \"%s\"\n\n" num title))
-           (insert references)
-           ;; use overlay to hide part of reference. (filter)
-           ;; (gkroam-overlay-region beg (point-max) 'invisible t)
+           (unless (string= references cached-references)
+             (let ((inhibit-read-only t))
+               (remove-text-properties reference-start (point-max) '(read-only nil)))
+             (delete-region (point) (point-max))
+             (insert (format "* %d Linked References to \"%s\"\n\n" num title))
+             (insert references)
+             ;; use overlay to hide part of reference. (filter)
+             ;; (gkroam-overlay-region beg (point-max) 'invisible t)
+             (indent-region reference-start (point-max))
+             (save-buffer)
+             (db-put title `(("reference" . ,references)) gkroam-reference-db)
+             (message "%s reference updated" page))
+           (gkroam-list-parent-item-overlay reference-start)
+           (gkroam-reference-region-overlay reference-start)
            (when gkroam-prettify-page-p
              (gkroam-org-list-fontify reference-start (point-max)))
            (gkroam-backlink-fontify reference-start (point-max))
-           (indent-region reference-start (point-max))
-           (put-text-property reference-start (point-max)
-                              'read-only "Linked references region is uneditable.")
-           (save-buffer))))))
-  (message "%s reference updated" page))
+           (unless (get-text-property reference-start 'read-only)
+             (put-text-property reference-start (point-max)
+                                'read-only "Linked references region is uneditable."))))))))
 
 ;; ----------------------------------------
 ;; headline linked references
@@ -501,6 +512,7 @@ Output matched files' path and context."
 (defun gkroam-goto-headline (id)
   "Goto headline with id ID."
   (org-id-goto id)
+  (gkroam-update)
   (gkroam-fontify-link)
   (gkroam-prettify-page))
 
@@ -599,16 +611,33 @@ Output matched files' path."
        (with-current-buffer (find-file-noselect file t)
          (gkroam-cache-curr-headline-links))))))
 
+(defun gkroam-cache-page-references (title)
+  "Cache gkroam page's references, which titled with TITLE."
+  (let ((page (gkroam-retrive-page title)))
+    (gkroam-search-process
+     (gkroam-search-page-link page)
+     (lambda (string)
+       (let ((references (cdr (gkroam--process-searched-string string title))))
+         (db-put title `(("reference" . ,references)) gkroam-reference-db))))))
+
+;;;###autoload
+(defun gkroam-cache-all-page-references ()
+  "Cache all gkroam page's references."
+  (let ((titles (gkroam--all-titles)))
+    (dolist (title titles)
+      (gkroam-cache-page-references title))))
+
 ;;;###autoload
 (defun gkroam-rebuild-caches ()
   "Clear gkroam headline-id cache."
   (interactive)
-  (let (page-num)
-    (db-hash-clear gkroam-page-db)
-    (setq page-num (gkroam-cache-all-pages))
-    (db-hash-clear gkroam-headline-db)
-    (gkroam-cache-all-headline-links)
-    (message "Have cached %d gkroam pages." page-num)))
+  (db-hash-clear gkroam-page-db)
+  (db-hash-clear gkroam-headline-db)
+  (db-hash-clear gkroam-reference-db)
+  (gkroam-cache-all-pages)
+  (gkroam-cache-all-headline-links)
+  (gkroam-cache-all-page-references)
+  (message "All caches have been built."))
 
 ;; ----------------------------------------
 
@@ -751,6 +780,7 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
 
 (define-button-type 'gkroam-link
   'action #'gkroam-follow-link
+  'face '(:underline nil)
   'title nil
   'headline nil
   'follow-link t
@@ -919,6 +949,7 @@ With optional argument ALIAS, format also with alias."
 
 (define-button-type 'gkroam-backlink
   'action #'gkroam-follow-backlink
+  'face '(:underline nil)
   'page nil
   'line-number nil
   'follow-link t
@@ -975,12 +1006,12 @@ With optional argument ALIAS, format also with alias."
 ;; page beautify
 
 (defun gkroam--fontify-org-checkbox (notation)
-  "Fontify org checkbox with NOTATION."
+  "Highlight org checkbox with NOTATION."
   (add-text-properties
    (match-beginning 2) (1- (match-end 2)) `(display ,notation)))
 
 (defun gkroam--fontify-org-list ()
-  "Fontify org list, including bullet and checkbox."
+  "Highlight org list, including bullet and checkbox."
   (with-silent-modifications
     (add-text-properties
      (match-beginning 1) (match-end 1)
@@ -992,7 +1023,7 @@ With optional argument ALIAS, format also with alias."
         ("[X] " (gkroam--fontify-org-checkbox "☑"))))))
 
 (defun gkroam-org-list-fontify (beg end)
-  "Fontify org list bullet between BEG and END."
+  "Highlight org list bullet between BEG and END."
   (save-excursion
     (goto-char beg)
     (while (re-search-forward gkroam-org-list-re end t)
@@ -1005,6 +1036,49 @@ With optional argument ALIAS, format also with alias."
   "Put overlays in region started by BEG and ended with END.
 The overlays has a PROP and VALUE."
   (overlay-put (make-overlay beg end) prop value))
+
+(defvar gkroam-list-parent-item-re
+  "^\\(\\*\\{3\\} .+\\)?\n +\\(.+\\( > .+\\)*\\)\n \\{4\\}\\([0-9]+[).]\\|[*+-]\\) \\(\\[[ X-]\\] \\)?"
+  "Regular expression that matches org plain list parent items in references.")
+
+(defun gkroam-list-parent-item-overlay (beg)
+  "Shadow plain list's parent items in references."
+  (save-excursion
+    (goto-char beg)
+    (while (re-search-forward gkroam-list-parent-item-re nil t)
+      (with-silent-modifications
+        (gkroam-overlay-region (match-beginning 2) (match-end 2)
+                               'face 'shadow)))))
+
+(defun gkroam-reference-region-overlay (beg)
+  "Highlight all reference regions."
+  (let* ((page (file-name-nondirectory (buffer-file-name)))
+         (title (gkroam-retrive-title page))
+         (end beg))
+    (while (not (= end (point-max)))
+      (save-excursion
+        (goto-char beg)
+        (if (re-search-forward "^\\*\\* .+" nil t 2)
+            (setq end (1- (line-beginning-position)))
+          (setq end (point-max))))
+      (save-restriction
+        (narrow-to-region beg end)
+        (goto-char beg)
+        (re-search-forward "^\\*\\* .+" nil t)
+        (while (re-search-forward gkroam-backlink-regexp nil t)
+          (catch 'continue
+            (if (overlays-at (1- (point)))
+                (throw 'continue nil)
+              (let (elem content-start content-end)
+                (goto-char (line-beginning-position))
+                (skip-chars-forward "[ ]")
+                (setq elem (org-element-at-point))
+                (setq content-start (org-element-property :begin elem))
+                (setq content-end (org-element-property :end elem))
+                (gkroam-overlay-region content-start content-end
+                                       'face 'hl-line)
+                (goto-char content-end))))))
+      (setq beg end))))
 
 (defun gkroam-org-title-overlay (beg &optional bound)
   "Overlay org title, search between BEG and BOUND."
