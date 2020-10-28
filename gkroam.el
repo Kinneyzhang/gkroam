@@ -1263,7 +1263,8 @@ Except mata infomation and page references."
   (goto-char (line-beginning-position))
   (newline-and-indent 2)
   (goto-char (point-min))
-  (insert (format "* %s\n%s" title content)))
+  (insert (format "* %s\n%s" title content))
+  (gkroam-prettify-page))
 
 (defun gkroam-capture-write--process (content)
   "Process the CONTENT, restore the headline level when write back to pages."
@@ -1379,12 +1380,11 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
             (other-window 1)
             (switch-to-buffer gkroam-capture-buf)
             (gkroam-capture-append title content)
-            (org-mode)
             (gkroam-capture-mode)
+            (org-mode)
             (setq gkroam-capture-flag t))
         (select-window (get-buffer-window gkroam-capture-buf))
         (gkroam-capture-append title content)
-        (org-mode)
         (gkroam-capture-mode)))))
 
 ;; ----------------------------------------
