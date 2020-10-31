@@ -17,9 +17,14 @@
    Gkroam is a lightweight [[https://roamresearch.com][Roam Research]] replica, built on top of emacs org-mode. It uses 'ripgrep' to search links on pages and insert references at the bottom of org pages automatically. Gkroam imitates roam research in as many aspects as possible.
 
 ** Demos
+   - [[https://youtu.be/xdHX1Z8jciw][Youtube]]
+
+   - [[https://www.bilibili.com/video/BV1cz4y1o7BY/][Bilibili]]
    
-   [[https://youtu.be/xdHX1Z8jciw]]
-   
+   =v2.4.0 linked references:=
+
+   [[./image/gkroam-reference.png]]
+
 ** Installation
    
    Clone this repo and add gkroam to your emacs load-path. My configurations are as follows. Feel free to modify them as to however you prefer.
