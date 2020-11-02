@@ -203,7 +203,7 @@ The default format is '%Y%m%d%H%M%S' time string."
   "Gkroam headline link regexp.")
 
 (defvar gkroam-reference-delimiter-re
-  "^* [0-9]+ Linked References.*"
+  "^* \\([0-9]+\\) Linked References.*"
   "Delimiter string regexp to separate page contents from references region.")
 
 (defvar gkroam-prettify-page-p nil
@@ -323,8 +323,8 @@ The page has a filename named PAGE."
   "Start a rg process with output buffer named BUF-NAME.
 ARGS are the arguments of rg process."
   (let ((name (generate-new-buffer-name buf-name)))
-    (eval `(start-process ,name ,name "rg" ,@args
-                          ,(expand-file-name gkroam-root-dir)))))
+    (apply #'start-process `(,name ,name "rg" ,@args
+                                   ,(expand-file-name gkroam-root-dir)))))
 
 (defun gkroam-search-process (process callback)
   "Call CALLBACK After the PROCESS finished."
@@ -560,7 +560,54 @@ Output matched files' path and context."
         (save-buffer)))
     headline-id))
 
-;; cache
+;; word count
+
+(defvar gkroam-wc-regexp-chinese-char-and-punc
+  (rx (category chinese))
+  "Regular expression to match Chinese characters and punctuations.")
+
+(defvar gkroam-wc-regexp-chinese-punc
+  "[。，！？；：「」『』（）、【】《》〈〉※—]"
+  "Regular expression to match Chinese punctuations.")
+
+(defvar gkroam-wc-regexp-english-word
+  "[a-zA-Z0-9-]+"
+  "Regular expression to match English words.")
+
+(defun gkroam-word-count ()
+  "Count gkroam page' words."
+  (interactive)
+  (let* ((v-buffer-string
+          (progn
+            (if (eq major-mode 'org-mode)
+                (setq v-buffer-string (replace-regexp-in-string
+                                       "^#\\+.+" ""
+				       (buffer-substring-no-properties
+                                        (point-min) (point-max))))
+              (setq v-buffer-string (buffer-substring-no-properties
+                                     (point-min) (point-max))))
+            (replace-regexp-in-string
+             (format "^ *%s *.+" comment-start) "" v-buffer-string)))
+         (chinese-char-and-punc 0)
+         (chinese-punc 0)
+         (english-word 0)
+         (chinese-char 0))
+    (with-temp-buffer
+      (insert v-buffer-string)
+      (goto-char (point-min))
+      (while (re-search-forward gkroam-wc-regexp-chinese-char-and-punc nil :no-error)
+        (setq chinese-char-and-punc (1+ chinese-char-and-punc)))
+      (goto-char (point-min))
+      (while (re-search-forward gkroam-wc-regexp-chinese-punc nil :no-error)
+        (setq chinese-punc (1+ chinese-punc)))
+      (goto-char (point-min))
+      (while (re-search-forward gkroam-wc-regexp-english-word nil :no-error)
+        (setq english-word (1+ english-word))))
+    (setq chinese-char (- chinese-char-and-punc chinese-punc))
+    (+ chinese-char english-word)))
+
+;; gkroam cache
+
 (defun gkroam--get-page (title)
   "Get gkroam page from TITLE."
   (let ((pages (gkroam--all-pages))
@@ -578,34 +625,97 @@ Output matched files' path and context."
   "Get all gkroam pages."
   (directory-files gkroam-root-dir nil "^[^.#].+\\.org$"))
 
-(defun gkroam--get-title (page)
-  "Get PAGE's title."
-  (with-temp-buffer
-    (insert-file-contents (gkroam--get-file page) nil 0 2000 t)
-    (goto-char (point-min))
-    (re-search-forward "^ *#\\+TITLE:" nil t)
-    (string-trim (buffer-substring (match-end 0) (line-end-position)))))
+(defun gkroam--convert-date-num-to-string (date-num)
+  "Convert a \"%Y%m%d%H%M%S\" time format
+to a \"%Y-%m-%d %H-%M-%S\" time string."
+  (let ((year (substring date-num 0 4))
+        (month (substring date-num 4 6))
+        (day (substring date-num 6 8))
+        (hour (substring date-num 8 10))
+        (minute (substring date-num 10 12))
+        (second (substring date-num 12 14)))
+    (format "%s-%s-%s %s:%s:%s"
+            year month day hour minute second)))
+
+(defun gkroam--format-date-string (string)
+  "Format org date string to a \"%b %d, %Y\" time format."
+  (cond
+   ((string-match
+     "[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\( [0-9]\\{2\\}:[0-9]\\{2\\}:[0-9]\\{2\\}\\)?" string)
+    (format-time-string "%b %d, %Y" (date-to-time string)))
+   (t string)))
+
+(defun gkroam--get-meta (page meta)
+  "Get PAGE's META value."
+  (let* ((date-num (string-trim-right page "\\.org"))
+         title word-count mentions created-time updated-time org-date)
+    (with-temp-buffer
+      (insert-file-contents (gkroam--get-file page) nil)
+      (goto-char (point-min))
+      (if (re-search-forward "^ *#\\+TITLE:" nil t)
+          (setq title (string-trim (buffer-substring (match-end 0) (line-end-position))))
+        (error "%s doesn't have a title!" page))
+      (setq word-count (gkroam-word-count))
+      (if (re-search-forward gkroam-reference-delimiter-re nil t)
+          (setq mentions (match-string-no-properties 1))
+        (setq mentions "0"))
+      (setq created-time
+            (if (string-match "[0-9]\\{14\\}" date-num)
+                (format-time-string
+                 "%b %d, %Y"
+                 (date-to-time
+                  (gkroam--convert-date-num-to-string date-num)))
+              (goto-char (point-min))
+              (if (re-search-forward "^ *#\\+DATE:" nil t)
+                  (setq org-date (string-trim (buffer-substring (match-end 0) (line-end-position))))
+                (setq org-date "unknow"))
+              (gkroam--format-date-string org-date)))
+      (setq updated-time (format-time-string
+                          "%b %d, %Y"
+                          (file-attribute-modification-time
+                           (file-attributes (gkroam--get-file page)))))
+      (pcase meta
+        (:title title)
+        (:count word-count)
+        (:mention mentions)
+        (:create created-time)
+        (:update updated-time)))))
 
 (defun gkroam--all-titles ()
   "Get all gkroam titles."
   (let* ((pages (gkroam--all-pages)))
-    (mapcar (lambda (page) (gkroam--get-title page)) pages)))
+    (mapcar (lambda (page) (gkroam--get-meta page :title)) pages)))
 
 (defun gkroam-cache-curr-page (title)
   "Cache gkroam page's filename, which titled with TITLE."
-  (let* ((page (db-get title gkroam-page-db))
-         (filename (gkroam--get-page title)))
-    (unless (equal page filename)
-      (db-put title `(("page" . ,filename)) gkroam-page-db))))
+  (let* ((db-page (db-get title gkroam-page-db))
+         (page (gkroam--get-page title))
+         (word-count (gkroam--get-meta page :count))
+         (mentions (gkroam--get-meta page :mention))
+         (created-time (gkroam--get-meta page :create))
+         (updated-time (gkroam--get-meta page :update)))
+    (unless (equal db-page page)
+      (db-put title `(("page" . ,page)
+                      ("count" . ,word-count)
+                      ("mention" . ,mentions)
+                      ("create" . ,created-time)
+                      ("update" . ,updated-time))
+              gkroam-page-db))))
+
+(defun gkroam-db-get (title key)
+  "Get KEY attribute's value of TITLE page from database."
+  (cdr (assoc key (db-get title gkroam-page-db))))
+
+;; (defun gkroam-db-update (db title key new-val)
+;;   "For TITLE record in DB database, update KEY's value to NEW-VAL"
+;;   (db-get title db))
 
 ;;;###autoload
 (defun gkroam-cache-all-pages ()
   "Cache all gkroam pages' title and filename."
-  (let* ((titles (gkroam--all-titles))
-         (num (length titles)))
+  (let* ((titles (gkroam--all-titles)))
     (dolist (title titles)
-      (gkroam-cache-curr-page title))
-    num))
+      (gkroam-cache-curr-page title))))
 
 (defun gkroam-cache-curr-headline-links ()
   "Cache current page's gkroam headline links."
@@ -747,20 +857,128 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
    ((thing-at-point 'word) (gkroam-new-at-point))
    (t (call-interactively #'gkroam-find))))
 
+;; ----------------------------------------
+;; gkroam index
+
+(defvar gkroam-index-keys
+  '("TITLE" "WORD COUNT" "MENTIONS" "UPDATED" "CREATED")
+  "Column key list of gkroam index buffer.")
+
+(defun gkroam--get-max-column-length (key)
+  "Get KEY column's max length in gkroam index buffer."
+  (let ((key-len (length key))
+        (title-max-len (apply #'max (mapcar #'length (gkroam-retrive-all-titles)))))
+    (pcase key
+      ("TITLE" (max title-max-len key-len))
+      ("WORD COUNT" 10)
+      ("MENTIONS" 8)
+      ("UPDATED" 12)
+      ("CREATED" 12))))
+
+(defsubst gkroam--valign-space (xpos)
+  "Return a display property that aligns to XPOS."
+  `(space :align-to (,xpos)))
+
+(defun gkroam--pixel-width-from-to (from to &optional with-prefix)
+  "Return the width of the glyphs from FROM (inclusive) to TO (exclusive).
+The buffer has to be in a live window. FROM has to be less than
+TO and they should be on the same line.
+
+If WITH-PREFIX is non-nil, don’t subtract the width of line
+prefix."
+  (let* ((window (get-buffer-window))
+         (line-prefix
+          (let ((pos to))
+            (while (get-char-property pos 'display)
+              (cl-decf pos))
+            (car (window-text-pixel-size window pos pos)))))
+    (- (car (window-text-pixel-size window from to))
+       (if with-prefix 0 line-prefix)
+       (if (bound-and-true-p display-line-numbers-mode)
+           (line-number-display-width 'pixel)
+         0))))
+
+(defun gkroam--put-overlay (beg end &rest props)
+  "Put overlay between BEG and END.
+PROPS contains properties and values."
+  (let ((ov (make-overlay beg end nil t nil)))
+    (while props
+      (overlay-put ov (pop props) (pop props)))))
+
 ;;;###autoload
 (defun gkroam-index ()
   "Show gkroam index buffer."
   (interactive)
   (with-current-buffer (get-buffer-create gkroam-index-buf)
-    (let ((inhibit-read-only t))
+    (switch-to-buffer gkroam-index-buf)
+    (let ((inhibit-read-only t)
+          max-column-len-lst
+          (title (nth 0 gkroam-index-keys))
+          (count (nth 1 gkroam-index-keys))
+          (mention (nth 2 gkroam-index-keys))
+          (update (nth 3 gkroam-index-keys))
+          (create (nth 4 gkroam-index-keys))
+          right-pixel-lst)
       (erase-buffer)
       (insert (format "#+TITLE: %s\n\n" gkroam-index-title))
+      (dotimes (i (length gkroam-index-keys))
+        (let* ((key (nth i gkroam-index-keys))
+               (max-column-len (gkroam--get-max-column-length key))
+               (key-len (length key)))
+          (push max-column-len max-column-len-lst)
+          (insert key)
+          (unless (= i (1- (length gkroam-index-keys)))
+            (dotimes (j (+ 8 (- max-column-len key-len)))
+              (insert " "))
+            (push
+             (gkroam--pixel-width-from-to
+              (line-beginning-position) (point))
+             right-pixel-lst))))
+      (setq right-pixel-lst (reverse right-pixel-lst))
+      (setq max-column-len-lst (reverse max-column-len-lst))
+      (newline)
       (dolist (page (gkroam--all-pages))
-        (insert (format "- {[%s]}\n" (gkroam-retrive-title page)))))
-    (switch-to-buffer gkroam-index-buf)
+        (let* ((title (gkroam-retrive-title page))
+               (count (number-to-string (gkroam-db-get title "count")))
+               (mention (gkroam-db-get title "mention"))
+               (create (gkroam-db-get title "create"))
+               (update (gkroam-db-get title "update"))
+               (value-lst (list title count mention create update))
+               overlay-beg-lst value-len-lst
+               overlay-beg overlay-end)
+          (dotimes (i (length gkroam-index-keys))
+            (let ((max-column-len (nth i max-column-len-lst))
+                  val-len)
+              (if (= i 0)
+                  (progn
+                    (insert (format "{[%s]}" (nth i value-lst)))
+                    (setq val-len (+ 4 (length (nth i value-lst)))))
+                (insert (nth i value-lst))
+                (setq val-len (length (nth i value-lst))))
+              (push (point) overlay-beg-lst)
+              (push val-len value-len-lst)
+              (unless (= i (1- (length gkroam-index-keys)))
+                (dotimes (j (+ 8 (- max-column-len val-len)))
+                  (insert " ")))))
+          (setq overlay-beg-lst (reverse overlay-beg-lst))
+          (setq value-len-lst (reverse value-len-lst))
+          (dotimes (i (1- (length gkroam-index-keys)))
+            (setq overlay-beg (nth i overlay-beg-lst))
+            (setq overlay-end
+                  (- (nth (1+ i) overlay-beg-lst)
+                     (nth (1+ i) value-len-lst)))
+            (gkroam--put-overlay
+             overlay-beg overlay-end
+             'display (gkroam--valign-space
+                       (nth i right-pixel-lst)))))
+        (newline)))
+    (toggle-truncate-lines t)
     (gkroam-link-fontify (point-min) (point-max))
     (gkroam-prettify-page)
-    (read-only-mode 1)))
+    (read-only-mode 1)
+    (goto-char (point-min))))
+
+;; ----------------------------------------
 
 ;;;###autoload
 (defun gkroam-update ()
