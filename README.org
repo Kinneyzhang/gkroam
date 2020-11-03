@@ -25,6 +25,10 @@
 
    [[./image/gkroam-reference.png]]
 
+   =v2.4.1 gkroam-index buffer:=
+   
+   [[./image/gkroam-index.png]]
+
 ** Installation
    
    Clone this repo and add gkroam to your emacs load-path. My configurations are as follows. Feel free to modify them as to however you prefer.
@@ -45,11 +49,12 @@
      (:map gkroam-mode-map
            (("C-c r I" . gkroam-index)
             ("C-c r d" . gkroam-daily)
+            ("C-c r D" . gkroam-delete)
             ("C-c r f" . gkroam-find)
             ("C-c r i" . gkroam-insert)
+            ("C-c r n" . gkroam-dwim)
             ("C-c r c" . gkroam-capture)
             ("C-c r e" . gkroam-link-edit)
-            ("C-c r n" . gkroam-smart-new)
             ("C-c r p" . gkroam-toggle-prettify)
             ("C-c r t" . gkroam-toggle-brackets)
             ("C-c r R" . gkroam-rebuild-caches)
@@ -83,14 +88,26 @@
     =gkroam-find=\\
     Find a gkroam file and open it. If it does not exist, create a new one. Just like /ido-find-file/.
 
+    =gkroam-insert=\\
+    Insert a page bracket link at point.
+
+    =gkroam-delete=\\
+    Delete one or more gkroam pages.
+
+    =gkroam-daily=\\
+    Create or open 'daily notes' page.
+
+    =gkroam-dwim=\\
+    Smartly create a new file. If in a region, read the text in region as file title. If a word at point, read the text at point as file title. Otherwise, use =gkroam-find=. Finally, insert a file link at point or in region.
+
+    =gkroam-index=\\
+    Show gkroam index buffer. Index buffer includes all gkroam pages' title, word counts, mentions, updated time and created time. You can click mentions number to see all references in a side window.
+
     =gkroam-capture=\\
     Capture many pages in a side window and save changes by pressing =C-c C-c=, abort changes by pressing =C-c C-k=.
 
     =gkroam-link-edit=\\
     Edit link in minibuffer. This function is very useful when brackets are hidden.
-
-    =gkroam-daily=\\
-    Create or open 'daily notes' page.
 
     =gkroam-toggle-brackets=\\
     Hide and show brackets of link and hashtag.
@@ -98,23 +115,8 @@
     =gkroam-toggle-prettify=\\
     Whether to prettify gkroam page.
 
-    =gkroam-toggle-dynamic=\\
-    Whether to show gkroam page in dynamic mode.
-
-    =gkroam-insert=\\
-    Insert a page bracket link at point.
-
-    =gkroam-smart-new=\\
-    Smartly create a new file. If in a region, read the text in region as file title. If a word at point, read the text at point as file title. Otherwise, use =gkroam-find=. Finally, insert a file link at point or in region.
-
-    =gkroam-index=\\
-    Show gkroam index buffer. Well, it's just a simple site map because I have not yet had a better idea about this yet. Feel free to contribute by opening an [[https://github.com/Kinneyzhang/gkroam.el/issues][issue]] or [[https://github.com/Kinneyzhang/gkroam.el/pulls][PR]].
-
     =gkroam-update=\\
     Update current buffer's references. Actually, references are updated automatically.
-
-    =gkroam-update-all=\\
-    Update all files' references.
 
     =gkroam-rebuild-caches=\\
     Rebuild all caches, including page and filename cache, headline and headline id cache, page and references cache. It may takes seconds to build all, please be patient.
@@ -153,6 +155,11 @@
        - Show list item's parent items above it and shadow them.
        - Highlight each reference region.
        - Jump back to the specific line when click backlink.
+
+   - =v2.4.1=
+     - Implement a Roam Research like index buffer.
+     - Add new command =gkroam-delete=.
+     - Rename 'gkroam-insert-new' to =gkroam-dwim=.
 
 ** TodoList
    
