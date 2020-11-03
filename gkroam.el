@@ -1092,6 +1092,8 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
       (org-mode)
       (gkroam-backlink-fontify (point-min) (point-max))
       (gkroam-prettify-page)
+      (gkroam-list-parent-item-overlay (point-min))
+      (gkroam-reference-region-overlay (point-min))
       (when gkroam-prettify-page-p
         (gkroam-org-list-fontify (point-min) (point-max)))
       (goto-char (point-min)))
