@@ -109,6 +109,7 @@
 
 (require 'cl-lib)
 (require 'org-id)
+(require 'array)
 (require 'db)
 (require 'company)
 
@@ -407,7 +408,7 @@ The backlink refers to a link in LINE-NUMBER line of PAGE."
                  (save-excursion
                    (goto-char (line-beginning-position))
                    (re-search-forward gkroam-org-list-re (line-end-position) t)
-                   (incf relative-level)
+                   (cl-incf relative-level)
                    (setq parent-str
                          (buffer-substring-no-properties (point)
                                                          (line-end-position))))
