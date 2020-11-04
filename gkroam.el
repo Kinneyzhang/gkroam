@@ -926,10 +926,15 @@ at point or in region."
 
 (defun gkroam--get-max-column-length (key)
   "Get KEY column's max length in gkroam index buffer."
-  (let ((key-len (length key))
-        (title-max-len (apply #'max (mapcar #'length (gkroam-retrive-all-titles)))))
+  (let* ((key-len (length key))
+         (titles-p (gkroam-retrive-all-titles))
+         (title-max-len
+          (when titles-p (apply #'max (mapcar #'length titles-p)))))
     (pcase key
-      ("TITLE" (max title-max-len key-len))
+      ("TITLE"
+       (if title-max-len
+           (max title-max-len key-len)
+         key-len))
       ("WORD COUNT" 10)
       ("MENTIONS" 8)
       ("UPDATED" 12)
