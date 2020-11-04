@@ -158,6 +158,9 @@ The default format is '%Y%m%d%H%M%S' time string."
   :type 'integer
   :group 'gkroam)
 
+(defvar gkroam-link-face 'hl-line
+  "Face for gkroam link.")
+
 (defvar gkroam-headline-db
   (db-make
    `(db-hash
@@ -1437,7 +1440,7 @@ The overlays has a PROP and VALUE."
                 (setq content-start (org-element-property :begin elem))
                 (setq content-end (org-element-property :contents-end elem))
                 (gkroam-overlay-region content-start content-end
-                                       'face 'hl-line)
+                                       'face gkroam-link-face)
                 (goto-char content-end))))))
       (setq beg end))))
 
