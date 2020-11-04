@@ -663,7 +663,7 @@ Output matched files' path and context."
   (directory-files gkroam-root-dir nil "^[^.#].+\\.org$"))
 
 (defun gkroam--convert-date-num-to-string (date-num)
-  "Convert a \"%Y%m%d%H%M%S\" time format
+  "Convert a \"%Y%m%d%H%M%S\" format DATE-NUM
 to a \"%Y-%m-%d %H-%M-%S\" time string."
   (let ((year (substring date-num 0 4))
         (month (substring date-num 4 6))
@@ -675,7 +675,7 @@ to a \"%Y-%m-%d %H-%M-%S\" time string."
             year month day hour minute second)))
 
 (defun gkroam--format-date-string (string)
-  "Format org date string to a \"%b %d, %Y\" time format."
+  "Format org date STRING to a \"%b %d, %Y\" time format."
   (cond
    ((string-match
      "[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\( [0-9]\\{2\\}:[0-9]\\{2\\}:[0-9]\\{2\\}\\)?" string)
@@ -746,7 +746,7 @@ to a \"%Y-%m-%d %H-%M-%S\" time string."
   (cdr (assoc key (db-get title db))))
 
 (defun gkroam-db-update (db title key new-val)
-  "For TITLE record in DB database, update KEY's value to NEW-VAL"
+  "For TITLE record in DB database, update KEY's value to NEW-VAL."
   (unless (equal new-val (gkroam-db-get db title key))
     (let* ((old-alist (db-get title db))
            (new-alist (mapcar
@@ -913,8 +913,8 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
 (defun gkroam-dwim ()
   "Smartly create a new file or insert a link.
 If in a region, read the text in region as file title.
-If a word at point, read the text at point as file title. 
-Otherwise, use gkroam-find. Finally, insert a file link
+If a word at point, read the text at point as file title.
+Otherwise, use gkroam-find.  Finally, insert a file link
 at point or in region."
   (interactive)
   (cond
@@ -951,7 +951,8 @@ at point or in region."
 
 (defun gkroam--pixel-width-from-to (from to &optional with-prefix)
   "Return the width of the glyphs from FROM (inclusive) to TO (exclusive).
-The buffer has to be in a live window. FROM has to be less than
+
+The buffer has to be in a live window.  FROM has to be less than
 TO and they should be on the same line.
 
 If WITH-PREFIX is non-nil, don’t subtract the width of line
@@ -1028,7 +1029,7 @@ PROPS contains properties and values."
                      (insert-button val
                                     'action 'gkroam-show-mentions
                                     'follow-link t
-                                    'face 'success 
+                                    'face 'success
                                     'help-echo "Click to show all mentions.")))
                 (_ (insert (nth i value-lst))
                    (gkroam-overlay-region (- (point) val-len) (point)
@@ -1068,7 +1069,7 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
       "\\<gkroam-mentions-mode-map>All references mentioned this page, press `\\[gkroam-mentions-finalize]' to quit window."))))
 
 (defvar gkroam-mentions-flag nil
-  "Judge if gkroam is in process of gkroam mentions.")
+  "Non-nil means it's in process of gkroam mentions.")
 
 (defun gkroam-mentions-finalize ()
   "Quit gkroam mentions window and restore window configuration."
@@ -1126,10 +1127,12 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
     (message "Not in the gkroam directory!")))
 
 ;;;###autoload
-(defun gkroam-delete (&optional title)
-  "Delete gkroam pages."
+(defun gkroam-delete (&optional title-lst)
+  "Delete gkroam pages.
+If optional argument TITLE-LST is non-nil,
+delete those pages with title in TITLE-LST."
   (interactive)
-  (let* ((titles (or title
+  (let* ((titles (or title-lst
                      (completing-read-multiple
                       "Choose one or multiple pages to delete (use ',' to separate): "
                       (gkroam-retrive-all-titles) nil t)))
@@ -1307,7 +1310,7 @@ With optional argument ALIAS, format also with alias."
   "Regular expression that matches a gkroam backlink.")
 
 (defun gkroam--format-backlink (page line-number alias)
-  "Format gkroam backlink for PAGE, refer to a link 
+  "Format gkroam backlink for PAGE, refer to a link
 in LINE-NUMBER line, display a description ALIAS."
   (if line-number
       (format "{{%s::%d}{%s}}" page line-number alias)
