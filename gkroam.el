@@ -103,7 +103,7 @@
 ;; v2.4.1
 ;; 1. Implement a roam research like index buffer.
 ;; 2. Add new command `gkroam-delete'.
-;; 3. Rename 'gkroam-insert-new' to `gkroam-dwim'.
+;; 3. Rename 'gkroam-smart-new' to `gkroam-dwim'.
 
 ;;; Code:
 

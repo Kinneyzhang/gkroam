@@ -71,8 +71,7 @@
 
    - Install the command line search tool *ripgrep(rg)* first and make sure it is in the exec-path list.
    - Page's headline should not match the regexp "^ [0-9]+ Linked References.*" because it's the delimiter for page contents and reference region.
-   - Do not set the =company-idle-delay= variable to zero, it will causes an error. See [[https://github.com/company-mode/company-mode/issues/455][issue#455]].
-   - Use =gkroam-rebuild-caches= to generate all headline ids and caches according to headline links. If you got an error when click a headline link, this command is also very useful.
+   - Use =gkroam-rebuild-caches= to generate all caches. If you got an error when click a headline link, this command is also very useful.
 
 ** Usage
 *** Link format
@@ -159,7 +158,7 @@
    - =v2.4.1=
      - Implement a Roam Research like index buffer.
      - Add new command =gkroam-delete=.
-     - Rename 'gkroam-insert-new' to =gkroam-dwim=.
+     - Rename 'gkroam-smart-new' to =gkroam-dwim=.
 
 ** TodoList
    
@@ -177,7 +176,8 @@
    * [X] Beautify gkroam page: set window margin, unify bullet style and so on.
    * [X] Make page filename customizable.
    * [X] Generate headline id only when you insert a gkroam link.
-   * [ ] Implement linked references filter function.
+   * [ ] Implement 'unlinked references'.
+   * [ ] Implement 'linked references' filter function.
    * [ ] Implement 'block reference' and 'block embed'.
 
    More in future!
