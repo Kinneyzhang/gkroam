@@ -108,7 +108,9 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'org)
 (require 'org-id)
+(require 'hl-line)
 (require 'array)
 (require 'db)
 (require 'company)
