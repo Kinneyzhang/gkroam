@@ -488,23 +488,22 @@ The backlink refers to a link in LINE-NUMBER line of PAGE."
                 (buffer-string)))
         (cons num references)))))
 
-(defun gkroam-search-page-link (page)
-  "Return a rg process to search a specific PAGE's link.
+(defun gkroam-search-page-link (title)
+  "Return a rg process to search a specific TITLE page's link.
 Output matched files' path and context."
-  (let ((title (gkroam-retrive-title page)))
-    (gkroam-start-process " *gkroam-rg*"
-                          `(,(format "\\{\\[%s.*?\\](\\[.+?\\])?\\}" title)
-                            "--ignore-case" "--sortr" "path"
-                            "-C" ,(number-to-string 9999)
-                            "-N" "--heading"
-                            "-g" "!index.org*"))))
+  (gkroam-start-process " *gkroam-rg*"
+                        `(,(format "\\{\\[%s.*?\\](\\[.+?\\])?\\}" title)
+                          "--ignore-case" "--sortr" "path"
+                          "-C" ,(number-to-string 9999)
+                          "-N" "--heading"
+                          "-g" "!index.org*")))
 
-(defun gkroam-update-reference (page)
-  "Update gkroam PAGE's reference."
+(defun gkroam-update-reference (process title)
+  "Update gkroam TITLE page's reference, using rg process PROCESS."
   (gkroam-search-process
-   (gkroam-search-page-link page)
+   (gkroam-search-page-link title)
    (lambda (string)
-     (let* ((title (gkroam-retrive-title page))
+     (let* ((page (gkroam-retrive-page title))
             (file (gkroam--get-file page))
             (file-buf (find-file-noselect file t))
             (processed-str (gkroam--process-searched-string string title))
@@ -597,11 +596,13 @@ Output matched files' path and context."
         (save-buffer)))
     headline-id))
 
-;; word count
+;; ----------------------------------------
+;; gkroam cache
 
 (defvar gkroam-wc-regexp-chinese-char-and-punc
   (rx (category chinese))
-  "Regular expression to match Chinese characters and punctuations.")
+  "Regular expression to match Chinese characters 
+and punctuations.")
 
 (defvar gkroam-wc-regexp-chinese-punc
   "[。，！？；：「」『』（）、【】《》〈〉※—]"
@@ -642,8 +643,6 @@ Output matched files' path and context."
         (setq english-word (1+ english-word))))
     (setq chinese-char (- chinese-char-and-punc chinese-punc))
     (+ chinese-char english-word)))
-
-;; gkroam cache
 
 (defun gkroam--get-page (title)
   "Get gkroam page from TITLE."
@@ -866,7 +865,8 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
         (unless (gkroam-at-capture-buf)
           (save-buffer)
           (when title-exist-p
-            (gkroam-update-reference title-exist-p))))
+            (gkroam-update-reference
+             (gkroam-search-page-link title) title))))
     (message "Not in the gkroam directory!")))
 
 ;;;###autoload
@@ -1123,7 +1123,10 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
   "Update current gkroam buffer's reference."
   (interactive)
   (if (gkroam-at-root-p)
-      (gkroam-update-reference (file-name-nondirectory (buffer-file-name)))
+      (let ((title (gkroam-retrive-title
+                    (file-name-nondirectory (buffer-file-name)))))
+        (gkroam-update-reference
+         (gkroam-search-page-link title) title))
     (message "Not in the gkroam directory!")))
 
 ;;;###autoload
@@ -1132,9 +1135,10 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
 If optional argument TITLE-LST is non-nil,
 delete those pages with title in TITLE-LST."
   (interactive)
-  (let* ((titles (or title-lst
+  (let* ((crm-separator "[ 	]*|[ 	]*")
+         (titles (or title-lst
                      (completing-read-multiple
-                      "Choose one or multiple pages to delete (use ',' to separate): "
+                      "Choose one or multiple pages to delete (use '|' to separate): "
                       (gkroam-retrive-all-titles) nil t)))
          page file)
     (dolist (title titles)
