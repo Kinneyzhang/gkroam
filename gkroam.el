@@ -501,7 +501,7 @@ Output matched files' path and context."
 (defun gkroam-update-reference (process title)
   "Update gkroam TITLE page's reference, using rg process PROCESS."
   (gkroam-search-process
-   (gkroam-search-page-link title)
+   process
    (lambda (string)
      (let* ((page (gkroam-retrive-page title))
             (file (gkroam--get-file page))
