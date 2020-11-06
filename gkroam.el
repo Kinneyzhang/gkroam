@@ -110,13 +110,18 @@
 (require 'cl-lib)
 (require 'org)
 (require 'org-id)
-(require 'hl-line)
-(require 'array)
+(require 'org-element)
 (require 'db)
 (require 'company)
+(eval-when-compile
+  (require 'subr-x)
+  (require 'hl-line)
+  (require 'array)
+  (require 'crm))
 
 ;;;; Declarations
 (defvar org-link-frame-setup)
+(defvar ivy-use-selectable-prompt)
 
 ;;;; Variables
 (defgroup gkroam nil
@@ -615,22 +620,22 @@ and punctuations.")
 (defun gkroam-word-count ()
   "Count gkroam page' words."
   (interactive)
-  (let* ((v-buffer-string
-          (progn
-            (if (eq major-mode 'org-mode)
-                (setq v-buffer-string (replace-regexp-in-string
-                                       "^#\\+.+" ""
-				       (buffer-substring-no-properties
-                                        (point-min) (point-max))))
-              (setq v-buffer-string (buffer-substring-no-properties
-                                     (point-min) (point-max))))
-            (replace-regexp-in-string
-             (format "^ *%s *.+" comment-start) "" v-buffer-string)))
-         (chinese-char-and-punc 0)
-         (chinese-punc 0)
-         (english-word 0)
-         (chinese-char 0))
+  (let ((v-buffer-string
+         (if (eq major-mode 'org-mode)
+             (replace-regexp-in-string
+              "^#\\+.+" ""
+	      (buffer-substring-no-properties
+               (point-min) (point-max)))
+           (buffer-substring-no-properties
+            (point-min) (point-max))))
+        (chinese-char-and-punc 0)
+        (chinese-punc 0)
+        (english-word 0)
+        (chinese-char 0))
     (with-temp-buffer
+      (setq v-buffer-string
+            (replace-regexp-in-string
+             (format "^ *%s *.+" comment-start) "" v-buffer-string))
       (insert v-buffer-string)
       (goto-char (point-min))
       (while (re-search-forward gkroam-wc-regexp-chinese-char-and-punc nil :no-error)
@@ -1806,17 +1811,19 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
       (setq bds (bounds-of-thing-at-point 'list))
       (setq beg (1+ (car bds)))
       (setq end (1- (cdr bds)))
-      (list beg end gkroam-pages . nil))
+      (list beg end (gkroam-retrive-all-titles) . nil))
      ((gkroam-company-hashtag-p)
       (setq bds (bounds-of-thing-at-point 'symbol))
       (setq beg (car bds))
       (setq end (cdr bds))
-      (list beg end gkroam-pages . nil)))))
+      (list beg end (gkroam-retrive-all-titles) . nil)))))
 
 (defun gkroam-ivy-use-selectable-prompt (boolean)
   "Set `ivy-use-selectable-prompt' to BOOLEAN."
   (when (require 'ivy nil t)
-    (when ivy-mode (setq ivy-use-selectable-prompt boolean))))
+    (when (and (bound-and-true-p ivy-mode)
+               (bound-and-true-p ivy-use-selectable-prompt))
+      (setq ivy-use-selectable-prompt t))))
 
 (defun gkroam-selectrum-mode-p ()
   "Judge if selectrum is installed and selectrum-mode is turned on."
@@ -1842,8 +1849,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
                                      (gkroam-link-frame-setup 'find-file)
                                      (gkroam-ivy-use-selectable-prompt t)
                                      (setq org-startup-folded nil)
-                                     (setq org-return-follows-link t)
-                                     (setq gkroam-pages (gkroam-retrive-all-titles))))))
+                                     (setq org-return-follows-link t)))))
     ;; how to preserve the original variable value?
     (remove-hook 'after-save-hook #'gkroam-update-page-cache)
     (remove-hook 'completion-at-point-functions #'gkroam-completion-at-point 'local)
@@ -1856,8 +1862,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
                      (gkroam-link-frame-setup 'find-file)
                      (gkroam-ivy-use-selectable-prompt t)
                      (setq org-startup-folded nil)
-                     (setq org-return-follows-link t)
-                     (setq gkroam-pages (gkroam-retrive-all-titles)))))
+                     (setq org-return-follows-link t))))
     (gkroam-prettify-mode -1)
     (gkroam-link-mode -1)
     (set-window-margins (selected-window) 0 0)
