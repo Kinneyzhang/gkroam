@@ -1041,7 +1041,6 @@ PROPS contains properties and values."
            overlay-beg overlay-end
            'display (gkroam--valign-space right-pixel)))
         (newline)))
-    (toggle-truncate-lines t)
     (gkroam-link-fontify (point-min) (point-max))
     (gkroam-prettify-page)
     (goto-char (point-min))))
@@ -1840,7 +1839,6 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
         (add-hook 'org-mode-hook #'gkroam-link-mode)
         (add-hook 'org-mode-hook (lambda ()
                                    (when (gkroam-work-p)
-                                     (toggle-truncate-lines)
                                      (gkroam-link-frame-setup 'find-file)
                                      (gkroam-ivy-use-selectable-prompt t)
                                      (setq org-startup-folded nil)
@@ -1855,7 +1853,6 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
     (remove-hook 'org-mode-hook
                  (lambda ()
                    (when (gkroam-work-p)
-                     (toggle-truncate-lines)
                      (gkroam-link-frame-setup 'find-file)
                      (gkroam-ivy-use-selectable-prompt t)
                      (setq org-startup-folded nil)
