@@ -661,7 +661,7 @@ and punctuations.")
         (with-temp-buffer
           (insert-file-contents file nil 0 2000 t)
           (goto-char (point-min))
-          (when (re-search-forward (format "^ *#\\+TITLE: *%s *$" title) nil t)
+          (when (re-search-forward (format "^ *#\\+TITLE: *%s *$" (regexp-quote title)) nil t)
             (throw 'break page)))))))
 
 (defun gkroam--all-pages ()
