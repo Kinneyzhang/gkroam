@@ -564,7 +564,8 @@ Output matched files' path and context."
   "Get page's headline list, the page is titled with TITLE."
   (with-temp-buffer
     (insert-file-contents
-     ;; do not use `insert-file-contents-literally', it cannot show chinese normally.
+     ;; do not use `insert-file-contents-literally',
+     ;; it cannot show chinese normally.
      (gkroam--get-file (gkroam-retrive-page title)))
     (save-restriction
       (gkroam--narrow-to-content)
@@ -581,26 +582,27 @@ Output matched files' path and context."
 
 (defun gkroam-set-headline-id (title headline)
   "Cache the HEADLINE's id of page titled with TITLE in db."
-  (let* ((file (gkroam--get-file (gkroam-retrive-page title)))
-         (page-buf (find-file-noselect file t))
-         headline-id)
-    (with-current-buffer page-buf
-      (save-excursion
-        (goto-char (point-min))
-        (re-search-forward (concat "^*+ " headline " *$") nil t)
-        (let ((alist (db-get title gkroam-headline-db)))
-          (if alist
-              (let ((kv (assoc headline alist)))
-                (setq headline-id (org-id-get-create))
-                (if kv
-                    (unless (string= headline-id (cdr kv))
-                      (setq alist (assoc-delete-all headline alist))
-                      (push (cons headline headline-id) alist))
-                  (push (cons headline (org-id-get-create)) alist))
-                (db-put title alist gkroam-headline-db))
-            (db-put title `(,(cons headline (org-id-get-create))) gkroam-headline-db)))
-        (save-buffer)))
-    headline-id))
+  (when-let ((page (gkroam-retrive-page title)))
+    (let* ((file (gkroam--get-file page))
+           (page-buf (find-file-noselect file t))
+           headline-id)
+      (with-current-buffer page-buf
+        (save-excursion
+          (goto-char (point-min))
+          (re-search-forward (concat "^*+ " headline " *$") nil t)
+          (let ((alist (db-get title gkroam-headline-db)))
+            (if alist
+                (let ((kv (assoc headline alist)))
+                  (setq headline-id (org-id-get-create))
+                  (if kv
+                      (unless (string= headline-id (cdr kv))
+                        (setq alist (assoc-delete-all headline alist))
+                        (push (cons headline headline-id) alist))
+                    (push (cons headline (org-id-get-create)) alist))
+                  (db-put title alist gkroam-headline-db))
+              (db-put title `(,(cons headline (org-id-get-create))) gkroam-headline-db)))
+          (save-buffer)))
+      headline-id)))
 
 ;; ----------------------------------------
 ;; gkroam cache
