@@ -1048,6 +1048,7 @@ PROPS contains properties and values."
         (newline)))
     (gkroam-link-fontify (point-min) (point-max))
     (gkroam-prettify-page)
+    (setq truncate-lines t)
     (goto-char (point-min))))
 
 ;;;###autoload
