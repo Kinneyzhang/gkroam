@@ -116,7 +116,6 @@
 (eval-when-compile
   (require 'subr-x)
   (require 'hl-line)
-  (require 'array)
   (require 'crm))
 
 ;;;; Declarations
