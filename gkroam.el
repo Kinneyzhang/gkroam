@@ -444,7 +444,7 @@ The backlink refers to a link in LINE-NUMBER line of PAGE."
       (insert string)
       (goto-char (point-min))
       (let ((gkroam-file-re
-             (concat "^" (expand-file-name ".+\\.org" gkroam-root-dir)))
+             (concat "^" (expand-file-name gkroam-root-dir) ".+\\.org"))
             (beg (point-min)) (end (point)) (num 0) references)
         (while (not (= end (point-max)))
           (save-excursion
