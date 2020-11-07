@@ -464,7 +464,7 @@ The backlink refers to a link in LINE-NUMBER line of PAGE."
                         (replace-regexp-in-string "%s" title gkroam-link-re-format)
                         nil t)
                   (let* ((headline "")
-                         (line-number (current-line))
+                         (line-number (line-number-at-pos))
                          (raw-content
                           (string-trim
                            (gkroam--format-reference-content) nil "[ \t\n\r]+"))
@@ -1346,7 +1346,7 @@ in LINE-NUMBER line, display a description ALIAS."
       (gkroam-find title)
       (when line-number
         (setq line-number (string-to-number line-number))
-        (forward-line (- line-number (current-line) 1)))
+        (forward-line (- line-number (line-number-at-pos) 1)))
       (recenter-top-bottom)
       (gkroam-fontify-link))))
 
