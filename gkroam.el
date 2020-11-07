@@ -983,6 +983,22 @@ PROPS contains properties and values."
     (while props
       (overlay-put ov (pop props) (pop props)))))
 
+(defvar gkroam-index-key-space-num 8
+  "The number of spaces inserted between 
+different keys of index buffer.")
+
+(defun gkroam-index-max-columns ()
+  "Get the max columns of index buffer string."
+  (let ((max-len-lst
+         (mapcar (lambda (key)
+                   (gkroam--get-max-column-length key))
+                 gkroam-index-keys))
+        (columns 0))
+    (mapcar (lambda (num)
+              (setq columns (+ columns (+ num gkroam-index-key-space-num))))
+            max-len-lst)
+    columns))
+
 ;;;###autoload
 (defun gkroam-index ()
   "Show gkroam index buffer."
@@ -990,6 +1006,7 @@ PROPS contains properties and values."
   (with-current-buffer (get-buffer-create gkroam-index-buf)
     (view-buffer gkroam-index-buf)
     (let ((inhibit-read-only t)
+          (space-num 8)
           max-column-len-lst
           right-pixel)
       (erase-buffer)
@@ -1003,7 +1020,9 @@ PROPS contains properties and values."
           (gkroam-overlay-region (- (point) key-len) (point)
                                  'face '(bold italic))
           (unless (= i (1- (length gkroam-index-keys)))
-            (self-insert-command (+ 8 (- max-column-len key-len)) ?\s)
+            (self-insert-command (+ gkroam-index-key-space-num
+                                    (- max-column-len key-len))
+                                 ?\s)
             (when (= i 0)
               (setq right-pixel
                     (gkroam--pixel-width-from-to
@@ -1042,7 +1061,8 @@ PROPS contains properties and values."
                    (gkroam-overlay-region (- (point) val-len) (point)
                                           'face 'shadow)))
               (unless (= i (1- (length gkroam-index-keys)))
-                (self-insert-command (+ 8 (- max-column-len val-len))
+                (self-insert-command (+ gkroam-index-key-space-num
+                                        (- max-column-len val-len))
                                      ?\s))))
           (gkroam--put-overlay
            overlay-beg overlay-end
@@ -1074,7 +1094,8 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
     (setq-local
      header-line-format
      (substitute-command-keys
-      "\\<gkroam-mentions-mode-map>All references mentioned this page, press `\\[gkroam-mentions-finalize]' to quit window."))))
+      "\\<gkroam-mentions-mode-map>All references mentioned this page, press `\\[gkroam-mentions-finalize]' to quit window.")))
+  (setq truncate-lines nil))
 
 (defvar gkroam-mentions-flag nil
   "Non-nil means it's in process of gkroam mentions.")
@@ -1117,7 +1138,7 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
       (when gkroam-prettify-page-p
         (gkroam-org-list-fontify (point-min) (point-max)))
       (goto-char (point-min)))
-    (split-window-right)
+    (split-window-right (gkroam-index-max-columns))
     (other-window 1)
     (switch-to-buffer buf)
     (gkroam-mentions-mode)

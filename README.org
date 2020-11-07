@@ -11,10 +11,10 @@
     - [[#main-functions][Main functions]]
   - [[#changelog][ChangeLog]]
   - [[#todolist][TodoList]]
-  - [[#acknowledgements][Acknowledgements]]
+  - [[#credits][Credits]]
 
 ** Introduction
-   Gkroam is a lightweight [[https://roamresearch.com][Roam Research]] replica, built on top of emacs org-mode. It uses 'ripgrep' to search links on pages and insert references at the bottom of org pages automatically. Gkroam imitates roam research in as many aspects as possible.
+   Gkroam is a lightweight [[https://roamresearch.com][Roam Research]] replica, built on top of emacs org-mode. It uses 'ripgrep' to search links on pages and insert references at the bottom of org pages automatically. The principle of Gkroam is "Be faithful to Roam Research".
 
 ** Demos
    - [[https://youtu.be/xdHX1Z8jciw][Youtube]]
@@ -70,7 +70,7 @@
 ** Tips (important)
 
    - Install the command line search tool *ripgrep(rg)* first and make sure it is in the exec-path list.
-   - Page's headline should not match the regexp "^ [0-9]+ Linked References.*" because it's the delimiter for page contents and reference region.
+   - Page's headline should not match the regexp "^* [0-9]+ Linked References.*" because it's the delimiter for page contents and reference region.
    - Use =gkroam-rebuild-caches= to generate all caches. If you got an error when click a headline link, this command is also very useful.
 
 ** Usage
@@ -182,6 +182,5 @@
 
    More in future!
 
-** Acknowledgements
-
-   Thanks to the cool guys from [[https://emacs-china.org][emacs-china.org]] who answered some key questions. Also special thanks to [[https://github.com/casouri][casouri]], his [[https://github.com/casouri/lunarymacs/blob/master/site-lisp/bklink.el][bklink.el]] gave me a lot of ideas.
+** Credits
+   The original idea of Gkroam comes from [[https://github.com/casouri][casouri]]'s [[https://github.com/casouri/lunarymacs/blob/master/site-lisp/bklink.el][bklink.el]].
