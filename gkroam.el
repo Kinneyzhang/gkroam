@@ -165,7 +165,7 @@ The default format is '%Y%m%d%H%M%S' time string."
   :type 'integer
   :group 'gkroam)
 
-(defvar gkroam-link-face 'hl-line
+(defvar gkroam-link-face 'font-lock-type-face
   "Face for gkroam link.")
 
 (defvar gkroam-headline-db
@@ -443,7 +443,8 @@ The backlink refers to a link in LINE-NUMBER line of PAGE."
     (with-temp-buffer
       (insert string)
       (goto-char (point-min))
-      (let ((gkroam-file-re (expand-file-name ".+\\.org" gkroam-root-dir))
+      (let ((gkroam-file-re
+             (concat "^" (expand-file-name ".+\\.org" gkroam-root-dir)))
             (beg (point-min)) (end (point)) (num 0) references)
         (while (not (= end (point-max)))
           (save-excursion
@@ -1034,7 +1035,7 @@ PROPS contains properties and values."
                      (insert-button val
                                     'action 'gkroam-show-mentions
                                     'follow-link t
-                                    'face 'success
+                                    'face 'font-lock-string-face
                                     'help-echo "Click to show all mentions.")))
                 (_ (insert (nth i value-lst))
                    (gkroam-overlay-region (- (point) val-len) (point)
@@ -1231,15 +1232,15 @@ With optional argument ALIAS, format also with alias."
   (with-silent-modifications
     (if (gkroam--link-has-alias)
         (progn
-          (add-text-properties (match-beginning 9) (match-beginning 10) '(face warning))
+          (add-text-properties (match-beginning 9) (match-beginning 10) `(face ,gkroam-link-face))
           (add-text-properties (match-beginning 0) (match-beginning 9) '(display ""))
           (add-text-properties (match-beginning 10) (match-end 0) '(display "")))
       (if (gkroam--link-has-headline)
           (progn
-            (add-text-properties (match-beginning 2) (match-end 3) '(face warning))
+            (add-text-properties (match-beginning 2) (match-end 3) `(face ,gkroam-link-face))
             (add-text-properties (match-beginning 0) (match-beginning 5) '(display ""))
             (add-text-properties (match-end 3) (match-end 0) '(display "")))
-        (add-text-properties (match-beginning 2) (match-end 3)  '(face warning))
+        (add-text-properties (match-beginning 2) (match-end 3)  `(face ,gkroam-link-face))
         (add-text-properties (match-beginning 0) (match-beginning 2) '(display ""))
         (add-text-properties (match-end 3) (match-end 0) '(display ""))))))
 
@@ -1255,8 +1256,8 @@ With optional argument ALIAS, format also with alias."
           (add-text-properties (match-beginning 0) (match-beginning 2) '(face shadow))
           (add-text-properties (match-beginning 6) (match-beginning 9) '(face shadow))
           (add-text-properties (match-beginning 10) (match-end 0) '(face shadow))
-          (add-text-properties (match-beginning 2) (match-beginning 6) '(face warning))
-          (add-text-properties (match-beginning 9) (match-beginning 10) '(face warning)))
+          (add-text-properties (match-beginning 2) (match-beginning 6) `(face ,gkroam-link-face))
+          (add-text-properties (match-beginning 9) (match-beginning 10) `(face ,gkroam-link-face)))
       (if (gkroam--link-has-headline)
           (progn
             (remove-text-properties (match-beginning 0) (match-beginning 5) '(display nil))
@@ -1264,12 +1265,12 @@ With optional argument ALIAS, format also with alias."
             (add-text-properties (match-beginning 0) (match-beginning 2) '(face shadow))
             (add-text-properties (match-end 3) (match-end 0)'(face shadow))
             (add-text-properties (match-beginning 4) (match-end 4) '(face shadow))
-            (add-text-properties (match-beginning 2) (match-end 3) '(face warning)))
+            (add-text-properties (match-beginning 2) (match-end 3) `(face ,gkroam-link-face)))
         (remove-text-properties (match-beginning 0) (match-beginning 2) '(display nil))
         (remove-text-properties (match-end 3) (match-end 0) '(display nil))
         (add-text-properties (match-beginning 0) (match-beginning 2) '(face shadow))
         (add-text-properties (match-end 3) (match-end 0) '(face shadow))
-        (add-text-properties (match-beginning 2) (match-end 3) '(face warning))))))
+        (add-text-properties (match-beginning 2) (match-end 3) `(face ,gkroam-link-face))))))
 
 (defun gkroam-link-fontify (beg end)
   "Put gkroam link between BEG and END."
@@ -1454,7 +1455,7 @@ The overlays has a PROP and VALUE."
                 (setq content-start (org-element-property :begin elem))
                 (setq content-end (org-element-property :contents-end elem))
                 (gkroam-overlay-region content-start content-end
-                                       'face gkroam-link-face)
+                                       'face 'hl-line)
                 (goto-char content-end))))))
       (setq beg end))))
 
