@@ -1047,7 +1047,8 @@ PROPS contains properties and values."
            overlay-beg overlay-end
            'display (gkroam--valign-space right-pixel)))
         (newline)))
-    (gkroam-link-fontify (point-min) (point-max))
+    (let ((gkroam-show-brackets-p nil))
+      (gkroam-fontify-link))
     (gkroam-prettify-page)
     (setq truncate-lines t)
     (goto-char (point-min))))
@@ -1216,16 +1217,15 @@ With optional argument ALIAS, format also with alias."
 
 (defun gkroam-hashtag-fontify (beg end)
   "Put gkroam link between BEG and END."
-  (when (gkroam-work-p)
-    (save-excursion
-      (goto-char beg)
-      (while (re-search-forward gkroam-hashtag-regexp end t)
-        (gkroam--fontify-hashtag)
-        (with-silent-modifications
-          (make-text-button (match-beginning 0)
-                            (match-end 0)
-                            :type 'gkroam-link
-                            'title (match-string-no-properties 3)))))))
+  (save-excursion
+    (goto-char beg)
+    (while (re-search-forward gkroam-hashtag-regexp end t)
+      (gkroam--fontify-hashtag)
+      (with-silent-modifications
+        (make-text-button (match-beginning 0)
+                          (match-end 0)
+                          :type 'gkroam-link
+                          'title (match-string-no-properties 3))))))
 
 (defun gkroam--fontify-hide-brackets ()
   "Hide gkroam link brackets using text properties."
@@ -1274,27 +1274,26 @@ With optional argument ALIAS, format also with alias."
 
 (defun gkroam-link-fontify (beg end)
   "Put gkroam link between BEG and END."
-  (when (gkroam-work-p)
-    (save-excursion
-      (goto-char beg)
-      (while (re-search-forward gkroam-link-regexp end t)
-        (let* ((title (match-string-no-properties 2))
-               (headline (when (gkroam--link-has-headline)
-                           (match-string-no-properties 5)))
-               (echo (if headline
-                         (concat title " » " headline)
-                       title)))
-          (unless (equal (char-to-string (char-before (match-beginning 0))) "#")
-            (if gkroam-show-brackets-p
-                (gkroam--fontify-show-brackets)
-              (gkroam--fontify-hide-brackets)))
-          (with-silent-modifications
-            (make-text-button (match-beginning 0)
-                              (match-end 0)
-                              :type 'gkroam-link
-                              'title title
-                              'headline headline
-                              'help-echo echo)))))))
+  (save-excursion
+    (goto-char beg)
+    (while (re-search-forward gkroam-link-regexp end t)
+      (let* ((title (match-string-no-properties 2))
+             (headline (when (gkroam--link-has-headline)
+                         (match-string-no-properties 5)))
+             (echo (if headline
+                       (concat title " » " headline)
+                     title)))
+        (unless (equal (char-to-string (char-before (match-beginning 0))) "#")
+          (if gkroam-show-brackets-p
+              (gkroam--fontify-show-brackets)
+            (gkroam--fontify-hide-brackets)))
+        (with-silent-modifications
+          (make-text-button (match-beginning 0)
+                            (match-end 0)
+                            :type 'gkroam-link
+                            'title title
+                            'headline headline
+                            'help-echo echo))))))
 
 ;;;###autoload
 (defun gkroam-link-edit ()
@@ -1351,24 +1350,23 @@ in LINE-NUMBER line, display a description ALIAS."
 
 (defun gkroam-backlink-fontify (beg end)
   "Highlight gkroam backlink between BEG and END."
-  (when (gkroam-work-p)
-    (save-excursion
-      (goto-char beg)
-      (while (re-search-forward gkroam-backlink-regexp end t)
-        (let* ((page (match-string-no-properties 1))
-               (line-number (match-string-no-properties 3)))
-          (with-silent-modifications
-            (add-text-properties (match-beginning 0) (match-beginning 4)
-                                 '(display ""))
-            (add-text-properties (match-end 4) (match-end 0)
-                                 '(display ""))
-            (add-text-properties (match-beginning 4) (match-end 4)
-                                 '(face link))
-            (make-text-button (match-beginning 4)
-                              (match-end 4)
-                              :type 'gkroam-backlink
-                              'page page
-                              'line-number line-number)))))))
+  (save-excursion
+    (goto-char beg)
+    (while (re-search-forward gkroam-backlink-regexp end t)
+      (let* ((page (match-string-no-properties 1))
+             (line-number (match-string-no-properties 3)))
+        (with-silent-modifications
+          (add-text-properties (match-beginning 0) (match-beginning 4)
+                               '(display ""))
+          (add-text-properties (match-end 4) (match-end 0)
+                               '(display ""))
+          (add-text-properties (match-beginning 4) (match-end 4)
+                               '(face link))
+          (make-text-button (match-beginning 4)
+                            (match-end 4)
+                            :type 'gkroam-backlink
+                            'page page
+                            'line-number line-number))))))
 
 (define-minor-mode gkroam-link-mode
   "Recognize gkroam link."
@@ -1519,7 +1517,7 @@ The overlays has a PROP and VALUE."
 
 (defun gkroam-fontify-link ()
   "Highlight links and org symbols in all gkroam live windows."
-  (when gkroam-mode
+  (when (and gkroam-mode (gkroam-work-p))
     (save-excursion
       (save-restriction
         (gkroam--narrow-to-content)
@@ -1545,7 +1543,8 @@ The overlays has a PROP and VALUE."
     (save-selected-window
       (dolist (window windows)
         (select-window window)
-        (gkroam-fontify-link)))))
+        (unless (gkroam-at-index-buf)
+          (gkroam-fontify-link))))))
 
 ;;;###autoload
 (defun gkroam-toggle-prettify ()
