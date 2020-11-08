@@ -983,7 +983,7 @@ PROPS contains properties and values."
     (while props
       (overlay-put ov (pop props) (pop props)))))
 
-(defvar gkroam-index-key-space-num 8
+(defvar gkroam-index-key-space-num 5
   "The number of spaces inserted between 
 different keys of index buffer.")
 
