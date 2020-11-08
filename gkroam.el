@@ -179,11 +179,17 @@ The default format is '%Y%m%d%H%M%S' time string."
      :filename ,(concat gkroam-cache-dir "gkroam-page-db")))
   "Database for caching gkroam page's filename.")
 
-(defvar gkroam-reference-db
+(defvar gkroam-linked-reference-db
   (db-make
    `(db-hash
-     :filename ,(concat gkroam-cache-dir "gkroam-reference-db")))
-  "Database for caching gkroam page's references.")
+     :filename ,(concat gkroam-cache-dir "gkroam-linked-reference-db")))
+  "Database for caching gkroam page's linked references.")
+
+(defvar gkroam-unlinked-reference-db
+  (db-make
+   `(db-hash
+     :filename ,(concat gkroam-cache-dir "gkroam-unlinked-reference-db")))
+  "Database for caching gkroam page's unlinked references.")
 
 (defvar gkroam-org-list-re
   "^ *\\([0-9]+[).]\\|[*+-]\\) \\(\\[[ X-]\\] \\)?"
@@ -214,8 +220,12 @@ The default format is '%Y%m%d%H%M%S' time string."
 (defvar gkroam-link-with-headline-re "{\\[\\(.+?\\) » \\(.+?\\)\\].*?}"
   "Gkroam headline link regexp.")
 
-(defvar gkroam-reference-delimiter-re
+(defvar gkroam-linked-reference-delimiter-re
   "^* \\([0-9]+\\) Linked References.*"
+  "Delimiter string regexp to separate page contents from references region.")
+
+(defvar gkroam-unlinked-reference-delimiter-re
+  "^* \\([0-9]+\\) Unlinked References.*"
   "Delimiter string regexp to separate page contents from references region.")
 
 (defvar gkroam-prettify-page-p nil
@@ -313,7 +323,7 @@ The page has a filename named PAGE."
   "Narrow region to gkroam page contents if there is a reference region."
   (save-excursion
     (goto-char (point-min))
-    (when (re-search-forward gkroam-reference-delimiter-re nil t)
+    (when (re-search-forward gkroam-linked-reference-delimiter-re nil t)
       (unless (> (point-min) (1- (line-beginning-position)))
         (narrow-to-region (point-min) (1- (line-beginning-position)))))))
 
@@ -321,7 +331,7 @@ The page has a filename named PAGE."
   "Narrow region to page references if there is a reference region."
   (save-excursion
     (goto-char (point-min))
-    (when (re-search-forward gkroam-reference-delimiter-re nil t)
+    (when (re-search-forward gkroam-linked-reference-delimiter-re nil t)
       (narrow-to-region (line-beginning-position) (point-max)))))
 
 (defun gkroam-new (title)
@@ -386,7 +396,7 @@ The backlink refers to a link in LINE-NUMBER line of PAGE."
             (replace-match (gkroam--format-backlink page line-number title))))))
     (buffer-string)))
 
-(defun gkroam--format-reference-content ()
+(defun gkroam--format-linked-reference-content ()
   "Format the content of linked reference."
   (save-excursion
     (goto-char (line-beginning-position))
@@ -435,56 +445,115 @@ The backlink refers to a link in LINE-NUMBER line of PAGE."
         (_ (setq reference-str elem-str)))
       reference-str)))
 
-(defun gkroam--process-searched-string (string title)
-  "Process searched STRING by 'rg', get the whole contents of TITLE page."
+(defun gkroam--format-unlinked-reference-content ()
+  "Format the content of unlinked reference."
+  (save-excursion
+    (let ((title-beg (match-beginning 0))
+          link-p curr-line)
+      (goto-char title-beg)
+      (setq curr-line (line-number-at-pos))
+      ;; for unlinked references 
+      (save-excursion
+        (backward-char 2)
+        (when (= curr-line (line-number-at-pos))
+          (setq link-p (or (looking-at gkroam-link-regexp)
+                           (looking-at gkroam-backlink-regexp)))))
+      (unless link-p
+        (goto-char (line-beginning-position))
+        ;; (re-search-forward gkroam-org-list-re (line-end-position) t)
+        (buffer-substring-no-properties (point) (line-end-position))))))
+
+(defvar gkroam-file-path-re
+  (concat "^" (expand-file-name gkroam-root-dir) ".+\\.org")
+  "Regular expression to match gkroam file path.")
+
+(defun gkroam--get-rg-output-region ()
+  "Split rg output to different regions according to different pages.
+Each region is a list consist of '(beg-postion end-position page-name)'.
+Return a list of all region lists."
+  (let ((beg (point-min))
+        (end (point))
+        page region-lst)
+    (save-excursion
+      (while (not (= end (point-max)))
+        (goto-char beg)
+        (save-excursion
+          (when (re-search-forward gkroam-file-path-re nil t)
+            (setq page (file-name-nondirectory
+                        (match-string-no-properties 0)))))
+        (if (re-search-forward gkroam-file-path-re nil t 2)
+            (setq end (line-beginning-position))
+          (setq end (point-max)))
+        (push `(,beg ,end ,page) region-lst)
+        (setq beg end)))
+    (reverse region-lst)))
+
+(defun gkroam--process-searched-string (type string title)
+  "Process the TYPE type of searched STRING by 'rg', get the whole contents of TITLE page.
+If type is 'linked', it means to process linked references.
+If type is 'unlinked', it means to process unlinked references."
   (if (string-empty-p string)
       (cons 0 "")
     (with-temp-buffer
       (insert string)
       (goto-char (point-min))
-      (let ((gkroam-file-re
-             (concat "^" (expand-file-name gkroam-root-dir) ".+\\.org"))
-            (beg (point-min)) (end (point)) (num 0) references)
-        (while (not (= end (point-max)))
-          (save-excursion
+      (let ((region-lst (gkroam--get-rg-output-region))
+            (num 0) references)
+        (dolist (region region-lst)
+          (let ((beg (nth 0 region))
+                (end (nth 1 region))
+                (page (nth 2 region))
+                (last-headline "")
+                (regexp-format
+                 (pcase type
+                   ('linked gkroam-link-re-format)
+                   ('unlinked "%s")))
+                (context nil))
             (goto-char beg)
-            (if (re-search-forward gkroam-file-re nil t 2)
-                (setq end (line-beginning-position))
-              (setq end (point-max))))
-          (save-excursion
-            (save-restriction
-              (narrow-to-region beg end)
-              (goto-char beg)
-              (re-search-forward gkroam-file-re nil t)
-              (let* ((path (match-string-no-properties 0))
-                     (page (file-name-nondirectory path))
-                     context (last-headline ""))
+            (save-excursion
+              (save-restriction
+                (narrow-to-region beg end)
+                (goto-char (point-min))
                 (while (re-search-forward
-                        (replace-regexp-in-string "%s" title gkroam-link-re-format)
+                        (format (eval regexp-format) (regexp-quote title))
                         nil t)
                   (let* ((headline "")
                          (line-number (line-number-at-pos))
                          (raw-content
-                          (string-trim
-                           (gkroam--format-reference-content) nil "[ \t\n\r]+"))
-                         (content (gkroam--process-backlink raw-content page line-number)))
-                    (setq num (1+ num))
-                    (save-excursion
-                      (when (re-search-backward "^*+ .+\n" nil t)
-                        (setq headline
-                              (string-trim (match-string-no-properties 0) "*+ +" nil))
-                        (setq headline (concat "*** " headline))))
-                    (if (string= headline last-headline)
-                        (setq context (concat context content "\n\n"))
-                      (setq context (concat context headline "\n" content "\n\n")))
-                    (setq last-headline headline)))
-                (setq references
-                      (concat references
-                              (format "** %s\n\n%s"
-                                      (gkroam--format-backlink
-                                       page nil (gkroam-retrive-title page))
-                                      context)))
-                (setq beg end)))))
+                          (pcase type
+                            ('linked (string-trim
+                                      (gkroam--format-linked-reference-content)
+                                      nil "[ \t\n\r]+"))
+                            ('unlinked
+                             (when (gkroam--format-unlinked-reference-content)
+                               (string-trim
+                                (gkroam--format-unlinked-reference-content)
+                                nil "[ \t\n\r]+")))))
+                         (content
+                          (pcase type
+                            ('linked (gkroam--process-backlink
+                                      raw-content page line-number))
+                            ('unlinked raw-content))))
+                    (if content
+                        (progn
+                          (setq num (1+ num))
+                          (save-excursion
+                            (when (re-search-backward "^*+ .+\n" nil t)
+                              (setq headline
+                                    (string-trim (match-string-no-properties 0) "*+ +" nil))
+                              (setq headline (concat "*** " headline))))
+                          (if (string= headline last-headline)
+                              (setq context (concat context content "\n\n"))
+                            (setq context (concat context headline "\n" content "\n\n")))
+                          (setq last-headline headline))
+                      (setq context nil))))))
+            (when context
+              (setq references
+                    (concat references
+                            (format "** %s\n\n%s"
+                                    (gkroam--format-backlink
+                                     page nil (gkroam-retrive-title page))
+                                    context))))))
         (setq references
               (with-temp-buffer
                 (insert (string-trim references))
@@ -503,7 +572,19 @@ Output matched files' path and context."
                           "-N" "--heading"
                           "-g" "!index.org*")))
 
-(defun gkroam-update-reference (process title)
+(defun gkroam-search-page-title (title)
+  "Return a rg process to search a specific PAGE's title.
+Output the context including the TITLE."
+  (gkroam-start-process "*gkroam-unlinked-references*"
+                        `(,(regexp-quote title)
+                          "--ignore-case" "--sortr" "path"
+                          ;; "-C" ,(number-to-string 9999)
+                          "-N" "--heading"
+                          "-g" ,(format
+                                 "!%s"
+                                 (gkroam-retrive-page title)))))
+
+(defun gkroam-update-reference (process title type)
   "Update gkroam TITLE page's reference, using rg process PROCESS."
   (gkroam-search-process
    process
@@ -511,20 +592,33 @@ Output matched files' path and context."
      (let* ((page (gkroam-retrive-page title))
             (file (gkroam--get-file page))
             (file-buf (find-file-noselect file t))
-            (processed-str (gkroam--process-searched-string string title))
+            (processed-str (gkroam--process-searched-string
+                            type string title))
             (num (number-to-string (car processed-str)))
             (references (cdr processed-str))
-            (cached-references (cdar (db-get title gkroam-reference-db)))
+            (reference-db
+             (pcase type
+               ('linked gkroam-linked-reference-db)
+               ('unlinked gkroam-unlinked-reference-db)))
+            (cached-references (cdar (db-get title reference-db)))
+            (delimiter-re
+             (pcase type
+               ('linked gkroam-linked-reference-delimiter-re)
+               ('unlinked gkroam-unlinked-reference-delimiter-re)))
+            (delimiter-format
+             (pcase type
+               ('linked "* %s Linked References to \"%s\"\n\n")
+               ('unlinked "* %s Unlinked References to \"%s\"\n:PROPERTIES:\n:VISIBILITY: folded\n:END:\n\n")))
             reference-start curr-references reference-content-start)
        (unless (string= references cached-references)
-         (db-put title `(("reference" . ,references)) gkroam-reference-db)
-         (setq cached-references (cdar (db-get title gkroam-reference-db))))
+         (db-put title `(("reference" . ,references)) reference-db)
+         (setq cached-references (cdar (db-get title reference-db))))
        ;; compare searched references string with cached references string.
        ;; If not equal, cache searched one.
        (with-current-buffer file-buf
          (save-excursion
            (goto-char (point-max))
-           (re-search-backward gkroam-reference-delimiter-re nil t)
+           (re-search-backward delimiter-re nil t)
            (setq reference-start (point))
            (forward-line 2)
            (setq reference-content-start (point))
@@ -539,13 +633,18 @@ Output matched files' path and context."
                (remove-text-properties reference-start (point-max) '(read-only nil)))
              (delete-region reference-start (point-max))
              (unless (string-empty-p string)
-               (insert (format "* %s Linked References to \"%s\"\n\n" num title))
+               (when (equal type 'unlinked)
+                 (insert "\n"))
+               (insert (format delimiter-format num title))
                (insert references)
                ;; use overlay to hide part of reference. (filter)
                ;; (gkroam-overlay-region beg (point-max) 'invisible t)
                (indent-region reference-content-start (point-max))
                (save-buffer)
-               (gkroam-db-update gkroam-page-db title "mention" num)
+               (when (equal type 'linked)
+                 (gkroam-db-update gkroam-page-db title "mention" num))
+               (when (equal type 'unlinked)
+                 (org-mode))
                (message "%s reference updated" page)))
            (gkroam-list-parent-item-overlay reference-start)
            (gkroam-reference-region-overlay reference-start)
@@ -554,7 +653,8 @@ Output matched files' path and context."
            (gkroam-backlink-fontify reference-start (point-max))
            (unless (get-text-property reference-start 'read-only)
              (put-text-property reference-start (point-max)
-                                'read-only "Linked references region is uneditable."))))))))
+                                'read-only "References region is uneditable."))
+           ))))))
 
 ;; ----------------------------------------
 ;; headline linked references
@@ -701,7 +801,7 @@ to a \"%Y-%m-%d %H-%M-%S\" time string."
       (if (re-search-forward "^ *#\\+TITLE:" nil t)
           (setq title (string-trim (buffer-substring (match-end 0) (line-end-position))))
         (error "%s doesn't have a title!" page))
-      (if (re-search-forward gkroam-reference-delimiter-re nil t)
+      (if (re-search-forward gkroam-linked-reference-delimiter-re nil t)
           (setq mentions (match-string-no-properties 1))
         (setq mentions "0"))
       (setq created-time
@@ -873,7 +973,7 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
           (save-buffer)
           (when title-exist-p
             (gkroam-update-reference
-             (gkroam-search-page-link title) title))))
+             (gkroam-search-page-link title) title 'linked))))
     (message "Not in the gkroam directory!")))
 
 ;;;###autoload
@@ -989,14 +1089,14 @@ different keys of index buffer.")
 
 (defun gkroam-index-max-columns ()
   "Get the max columns of index buffer string."
-  (let ((max-len-lst
+  (let ((columns 0)
+        (max-len-lst
          (mapcar (lambda (key)
                    (gkroam--get-max-column-length key))
-                 gkroam-index-keys))
-        (columns 0))
-    (mapcar (lambda (num)
-              (setq columns (+ columns (+ num gkroam-index-key-space-num))))
-            max-len-lst)
+                 gkroam-index-keys)))
+    (mapc (lambda (num)
+            (setq columns (+ columns (+ num gkroam-index-key-space-num))))
+          max-len-lst)
     (if gkroam-prettify-page-p
         (+ columns gkroam-window-margin)
       columns)))
@@ -1008,7 +1108,6 @@ different keys of index buffer.")
   (with-current-buffer (get-buffer-create gkroam-index-buf)
     (view-buffer gkroam-index-buf)
     (let ((inhibit-read-only t)
-          (space-num 8)
           max-column-len-lst
           right-pixel)
       (erase-buffer)
@@ -1125,7 +1224,7 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
           (with-temp-buffer
             (insert-file-contents (gkroam--get-file (gkroam-retrive-page title)))
             (goto-char (point-max))
-            (re-search-backward gkroam-reference-delimiter-re nil t)
+            (re-search-backward gkroam-linked-reference-delimiter-re nil t)
             (buffer-substring (point) (point-max))))
     (delete-other-windows)
     (with-current-buffer buf
@@ -1156,8 +1255,10 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
   (if (gkroam-at-root-p)
       (let ((title (gkroam-retrive-title
                     (file-name-nondirectory (buffer-file-name)))))
+        ;; (gkroam-update-reference
+        ;;  (gkroam-search-page-title title) title 'unlinked)
         (gkroam-update-reference
-         (gkroam-search-page-link title) title))
+         (gkroam-search-page-link title) title 'linked))
     (message "Not in the gkroam directory!")))
 
 ;;;###autoload
@@ -1616,7 +1717,7 @@ The region is a begin position and end position cons."
     (goto-char (point-min))
     (while (re-search-forward "^ *#\\+.+?:.*" nil t))
     (setq content-beg (1+ (match-end 0)))
-    (if (re-search-forward gkroam-reference-delimiter-re nil t)
+    (if (re-search-forward gkroam-linked-reference-delimiter-re nil t)
         (setq content-end (1- (match-beginning 0)))
       (setq content-end (point-max)))
     (cons content-beg content-end)))
@@ -1848,7 +1949,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
   (when (require 'ivy nil t)
     (when (and (bound-and-true-p ivy-mode)
                (bound-and-true-p ivy-use-selectable-prompt))
-      (setq ivy-use-selectable-prompt t))))
+      (setq ivy-use-selectable-prompt boolean))))
 
 (defun gkroam-selectrum-mode-p ()
   "Judge if selectrum is installed and selectrum-mode is turned on."
