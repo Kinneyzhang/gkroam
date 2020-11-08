@@ -211,7 +211,7 @@ The default format is '%Y%m%d%H%M%S' time string."
            (group "]}")))
   "Regular expression that matches a gkroam hashtag.")
 
-(defvar gkroam-link-with-headline-re "{\\[\\(.+?\\) » \\(.+?\\)\\].*}"
+(defvar gkroam-link-with-headline-re "{\\[\\(.+?\\) » \\(.+?\\)\\].*?}"
   "Gkroam headline link regexp.")
 
 (defvar gkroam-reference-delimiter-re
