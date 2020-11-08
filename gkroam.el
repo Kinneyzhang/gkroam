@@ -997,7 +997,9 @@ different keys of index buffer.")
     (mapcar (lambda (num)
               (setq columns (+ columns (+ num gkroam-index-key-space-num))))
             max-len-lst)
-    columns))
+    (if gkroam-prettify-page-p
+        (+ columns gkroam-window-margin)
+      columns)))
 
 ;;;###autoload
 (defun gkroam-index ()
