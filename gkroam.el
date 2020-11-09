@@ -259,8 +259,7 @@ Use FUNC function to open file link."
           (wl . wl-other-frame))))
 
 (defun gkroam-at-root-p ()
-  "Check if current file exists in `gkroam-root-dir'.
-If BUFFER is non-nil, check the buffer visited file."
+  "Check if current file exists in `gkroam-root-dir'."
   (when (buffer-file-name)
     (file-equal-p (file-name-directory (buffer-file-name))
                   (expand-file-name gkroam-root-dir))))
@@ -319,10 +318,13 @@ The page has a filename named PAGE."
 (defun gkroam--narrow-to-content ()
   "Narrow region to gkroam page contents if there is a reference region."
   (save-excursion
-    (goto-char (point-min))
-    (when (re-search-forward gkroam-linked-reference-delimiter-re nil t)
-      (unless (> (point-min) (1- (line-beginning-position)))
-        (narrow-to-region (point-min) (1- (line-beginning-position)))))))
+    (let ((content-beg (point-min)))
+      (goto-char (point-min))
+      (when (re-search-forward "\\(^ *#+.+:.+\n+\\)+" nil t)
+        (setq content-beg (point)))
+      (when (re-search-forward gkroam-linked-reference-delimiter-re nil t)
+        (unless (> (point-min) (1- (line-beginning-position)))
+          (narrow-to-region content-beg (1- (line-beginning-position))))))))
 
 (defun gkroam--narrow-to-reference ()
   "Narrow region to page references if there is a reference region."
@@ -449,7 +451,13 @@ The backlink refers to a link in LINE-NUMBER line of PAGE."
           link-p curr-line)
       (goto-char title-beg)
       (setq curr-line (line-number-at-pos))
-      ;; for unlinked references 
+      ;; For title, the following conditions should not
+      ;; be considered as a unlinked reference.
+      ;; 1. Title in org head meta and linked reference (backlink, etc)
+      ;; 2. Title in gkroam link, hashtag. Consider headline, alias.
+      ;; 3. Title in org headline
+      ;; 4. Title in org link.
+      ;; 5. Title is a substring of words or sentences (exclude Chinese.)
       (save-excursion
         (backward-char 2)
         (when (= curr-line (line-number-at-pos))
@@ -457,8 +465,8 @@ The backlink refers to a link in LINE-NUMBER line of PAGE."
                            (looking-at gkroam-backlink-regexp)))))
       (unless link-p
         (goto-char (line-beginning-position))
-        ;; (re-search-forward gkroam-org-list-re (line-end-position) t)
-        (buffer-substring-no-properties (point) (line-end-position))))))
+        (unless (looking-at "^*+ .+") ;; case 3
+          (buffer-substring-no-properties (point) (line-end-position)))))))
 
 (defvar gkroam-file-path-re
   (concat "^" (expand-file-name gkroam-root-dir) ".+\\.org")
@@ -507,13 +515,19 @@ If type is 'unlinked', it means to process unlinked references."
                    ('unlinked "%s")))
                 (context nil))
             (goto-char beg)
-            (save-excursion
-              (save-restriction
+            (save-restriction
+              (let (bound-end)
                 (narrow-to-region beg end)
+                ;; 'narrow in narrow' does not succeed.
                 (goto-char (point-min))
+                (re-search-forward "\\(^ *#+.+:.+\n+\\)+" nil t)
+                (save-excursion
+                  (if (re-search-forward gkroam-linked-reference-delimiter-re nil t)
+                      (setq bound-end (match-beginning 0))
+                    (setq bound-end (point-max))))
                 (while (re-search-forward
-                        (format (eval regexp-format) (regexp-quote title))
-                        nil t)
+                        (format regexp-format (regexp-quote title))
+                        bound-end t)
                   (let* ((headline "")
                          (line-number (line-number-at-pos))
                          (raw-content
@@ -563,7 +577,7 @@ If type is 'unlinked', it means to process unlinked references."
   "Return a rg process to search a specific TITLE page's link.
 Output matched files' path and context."
   (gkroam-start-process " *gkroam-rg*"
-                        `(,(format "\\{\\[%s.*?\\](\\[.+?\\])?\\}" title)
+                        `(,(format "\\{\\[%s.*?\\](\\[.+?\\])?\\}" (regexp-quote title))
                           "--ignore-case" "--sortr" "path"
                           "-C" ,(number-to-string 9999)
                           "-N" "--heading"
@@ -575,7 +589,7 @@ Output the context including the TITLE."
   (gkroam-start-process "*gkroam-unlinked-references*"
                         `(,(regexp-quote title)
                           "--ignore-case" "--sortr" "path"
-                          ;; "-C" ,(number-to-string 9999)
+                          "-C" ,(number-to-string 9999)
                           "-N" "--heading"
                           "-g" ,(format
                                  "!%s"
@@ -652,6 +666,67 @@ Output the context including the TITLE."
              (put-text-property reference-start (point-max)
                                 'read-only "References region is uneditable."))
            ))))))
+
+(defun gkroam-set-unlinked-references (title)
+  "Set unlinked references of TITLE gkroam page to `gkroam-mentions-buf'."
+  (gkroam-search-process
+   (gkroam-search-page-title title)
+   (lambda (string)
+     (let* ((processed-str (gkroam--process-searched-string
+                            'unlinked string title))
+            (num (number-to-string (car processed-str)))
+            (references (cdr processed-str))
+            (reference-db gkroam-unlinked-reference-db)
+            (cached-references (cdar (db-get title reference-db)))
+            (reference-title "* %s Unlinked References to \"%s\"\n\n"))
+       (unless (string= references cached-references)
+         (db-put title `(("reference" . ,references)) reference-db)
+         (setq cached-references (cdar (db-get title reference-db))))
+       (with-current-buffer gkroam-mentions-buf
+         (let ((inhibit-read-only t))
+           (remove-text-properties (point-min) (point-max) '(read-only nil)))
+         (erase-buffer)
+         (goto-char (point-max))
+         (unless (string-empty-p string)
+           (org-mode)
+           (insert "#+TITLE: UNLINKED REFERENCES\n\n")
+           (insert (format reference-title num title))
+           (insert cached-references)
+           (indent-region (point-min) (point-max))
+           ;; use overlay to hide part of reference. (filter)
+           ;; (gkroam-overlay-region beg (point-max) 'invisible t)
+           (gkroam-backlink-fontify (point-min) (point-max))
+           (gkroam-link-fontify (point-min) (point-max))
+           (gkroam-hashtag-fontify (point-min) (point-max))
+           (gkroam-prettify-page)
+           ;; (gkroam-list-parent-item-overlay (point-min))
+           ;; (gkroam-reference-region-overlay (point-min))
+           ;; (when gkroam-prettify-page-p
+           ;;   (gkroam-org-list-fontify (point-min) (point-max)))
+           (goto-char (point-min))
+           (gkroam-mentions-mode)
+           (put-text-property (point-min) (point-max)
+                              'read-only "References region is uneditable.")
+           (message "%s page unlinked reference updated" title)))))))
+
+;;;###autoload
+(defun gkroam-show-unlinked ()
+  "Show unlinked references of current page in a side window."
+  (interactive)
+  (let* ((buf (get-buffer-create gkroam-mentions-buf))
+         (page (file-name-nondirectory (buffer-file-name)))
+         (title (gkroam-retrive-title page)))
+    (when (null gkroam-mentions-flag)
+      (setq gkroam-return-wconf (current-window-configuration)))
+    (setq gkroam-mentions-flag t)
+    (if (gkroam-at-root-p)
+        (progn
+          (delete-other-windows)
+          (gkroam-set-unlinked-references title)
+          (split-window-right)
+          (other-window 1)
+          (switch-to-buffer buf))
+      (message "Not in the gkroam directory!"))))
 
 ;; ----------------------------------------
 ;; headline linked references
@@ -1639,7 +1714,7 @@ The overlays has a PROP and VALUE."
     (gkroam-set-window-margin)))
 
 (defun gkroam-fontify-link ()
-  "Highlight links and org symbols in all gkroam live windows."
+  "Highlight gkroam links, hashtags and backlinks."
   (when (and gkroam-mode (gkroam-work-p))
     (save-excursion
       (save-restriction
