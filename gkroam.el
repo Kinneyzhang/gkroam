@@ -340,8 +340,8 @@ The page has a filename named PAGE."
     (gkroam-cache-curr-page title)
     file))
 
-;;; ----------------------------------------
-;; linked references
+;; ----------------------------------------
+;;;;; linked references
 
 (defvar gkroam-link-re-format "{\\[%s.*?\\]}"
   "Gkroam link regexp format used for searching link context.")
@@ -654,7 +654,7 @@ Output the context including the TITLE."
            ))))))
 
 ;; ----------------------------------------
-;; headline linked references
+;;;;; headline linked references
 
 (defun gkroam--get-headlines (title)
   "Get page's headline list, the page is titled with TITLE."
@@ -701,7 +701,7 @@ Output the context including the TITLE."
       headline-id)))
 
 ;; ----------------------------------------
-;; gkroam cache
+;;;;; gkroam cache
 
 (defvar gkroam-wc-regexp-chinese-char-and-punc
   (rx (category chinese))
@@ -1028,7 +1028,7 @@ at point or in region."
    (t (call-interactively #'gkroam-find))))
 
 ;; ----------------------------------------
-;; gkroam index
+;;;;; gkroam index
 
 (defvar gkroam-index-keys
   '("TITLE" "WORD COUNT" "MENTIONS" "UPDATED" "CREATED")
@@ -1280,8 +1280,8 @@ delete those pages with title in TITLE-LST."
       (delete-file file)
       (gkroam-rebuild-caches))))
 
-;;; ----------------------------------------
-;; minor mode: gkroam-link-mode
+;; ----------------------------------------
+;;;;; minor mode: gkroam-link-mode
 
 (define-button-type 'gkroam-link
   'action #'gkroam-follow-link
@@ -1435,7 +1435,7 @@ With optional argument ALIAS, format also with alias."
         (save-buffer))
     (message "no link at point")))
 
-;; gkroam backlink
+;;;;; gkroam backlink
 
 (defvar gkroam-backlink-regexp
   "{{\\(.+?\\)\\(::\\([0-9]+\\)\\)?}{\\(.+?\\)}}"
@@ -1505,7 +1505,7 @@ in LINE-NUMBER line, display a description ALIAS."
       (jit-lock-unregister #'gkroam-backlink-fontify)))
   (jit-lock-refontify))
 
-;; page beautify
+;;;;; page beautify
 
 (defun gkroam--fontify-org-checkbox (notation)
   "Highlight org checkbox with NOTATION."
@@ -1686,8 +1686,8 @@ The overlays has a PROP and VALUE."
         (gkroam-prettify-page)
         (gkroam-fontify-link)))))
 
-;;; ----------------------------------------
-;; minor mode: gkroam-capture-mode
+;; ----------------------------------------
+;;;;; minor mode: gkroam-capture-mode
 
 (defun gkroam-dwim-page ()
   "Get page from gkroam link, org link, region or at point."
@@ -1889,7 +1889,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
         (gkroam-capture-mode)))))
 
 ;; ----------------------------------------
-;; gkroam mode
+;;;;; gkroam mode
 
 (defun gkroam-company-bracket-p ()
   "Judge if need to company bracket link."
