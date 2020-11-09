@@ -563,7 +563,7 @@ If type is 'unlinked', it means to process unlinked references."
   "Return a rg process to search a specific TITLE page's link.
 Output matched files' path and context."
   (gkroam-start-process " *gkroam-rg*"
-                        `(,(format "\\{\\[%s.*?\\](\\[.+?\\])?\\}" title)
+                        `(,(format "\\{\\[%s( ».*)?\\](\\[.+?\\])?\\}" title)
                           "--ignore-case" "--sortr" "path"
                           "-C" ,(number-to-string 9999)
                           "-N" "--heading"
