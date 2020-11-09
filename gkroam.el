@@ -1972,6 +1972,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
                                    (when (gkroam-work-p)
                                      (gkroam-link-frame-setup 'find-file)
                                      (gkroam-ivy-use-selectable-prompt t)
+                                     (setq truncate-lines nil)
                                      (setq org-startup-folded nil)
                                      (setq org-return-follows-link t)))))
     ;; how to preserve the original variable value?
@@ -1985,6 +1986,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
                    (when (gkroam-work-p)
                      (gkroam-link-frame-setup 'find-file)
                      (gkroam-ivy-use-selectable-prompt t)
+                     (setq truncate-lines nil)
                      (setq org-startup-folded nil)
                      (setq org-return-follows-link t))))
     (gkroam-prettify-mode -1)
