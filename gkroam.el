@@ -1336,7 +1336,7 @@ delete those pages with title in TITLE-LST."
       (setq file (gkroam--get-file page))
       (when (get-file-buffer file)
         (kill-buffer (get-file-buffer file)))
-      (delete-file file)
+      (delete-file file t)
       (gkroam-rebuild-caches))))
 
 ;; ----------------------------------------
