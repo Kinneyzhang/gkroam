@@ -358,19 +358,18 @@ ARGS are the arguments of rg process."
 (defun gkroam-search-process (process callback)
   "Call CALLBACK After the PROCESS finished."
   (unless (executable-find "rg")
-    (user-error "Cannot find program rg"))
-  (let (sentinel)
-    (setq sentinel
-          (lambda (process event)
-            (if (string-match-p (rx (or "finished" "exited"))
-                                event)
-                (if-let ((buf (process-buffer process)))
-                    (with-current-buffer buf
-                      (save-excursion
-                        (funcall callback (buffer-string))))
-                  (error "Gkroam’s rg process’ buffer is killed"))
-              (error "Gkroam’s rg process failed with signal: %s"
-                     event))))
+    (user-error "Cannot find program 'rg'."))
+  (let ((sentinel
+         (lambda (process event)
+           (if (string-match-p (rx (or "finished" "exited"))
+                               event)
+               (if-let ((buf (process-buffer process)))
+                   (with-current-buffer buf
+                     (save-excursion
+                       (funcall callback (buffer-string))))
+                 (error "Gkroam’s rg process’ buffer is killed"))
+             (error "Gkroam’s rg process failed with signal: %s"
+                    event)))))
     (set-process-sentinel process sentinel)))
 
 (defun gkroam--process-backlink (string page line-number)
@@ -588,7 +587,7 @@ Output matched files' path and context."
 (defun gkroam-search-page-title (title)
   "Return a rg process to search a specific PAGE's title.
 Output the context including the TITLE."
-  (gkroam-start-process "*gkroam-unlinked-references*"
+  (gkroam-start-process " *gkroam-unlinked-references*"
                         `(,(regexp-quote title)
                           "--ignore-case" "--sortr" "path"
                           "-C" ,(number-to-string 9999)
