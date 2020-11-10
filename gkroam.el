@@ -289,9 +289,15 @@ Use FUNC function to open file link."
 
 (defun gkroam-title-exist-p (title)
   "Check if the case fold TITLE page exists in `gkroam-root-dir'.
-Return the original title of page."
-  (car (cl-member title (gkroam-retrive-all-titles)
-                  :test #'gkroam-case-fold-string=)))
+Return the original title if TITLE does't equal to the original title.
+Return non-nil if TITLE equals to the original title.
+Return nil if TITLE doesn't exist in gkroam pages."
+  (let ((case-title (car (cl-member title (gkroam-retrive-all-titles)
+                                    :test #'gkroam-case-fold-string=))))
+    (when case-title
+      (when (string= title case-title)
+        (setq case-title t)))
+    case-title))
 
 (defun gkroam-retrive-page (title)
   "Retrive page's filename from database.
@@ -1059,7 +1065,9 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
         (if case-title
             (progn
               (delete-region beg end)
-              (gkroam-insert case-title title))
+              (if (stringp case-title)
+                  (gkroam-insert case-title title)
+                (gkroam-insert title "")))
           (delete-region beg end)
           (gkroam-insert title "")
           (unless (gkroam-at-capture-buf)
@@ -1081,7 +1089,9 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
           (if case-title
               (progn
                 (delete-region beg end)
-                (gkroam-insert case-title title))
+                (if (stringp case-title)
+                    (gkroam-insert case-title title)
+                  (gkroam-insert title "")))
             (delete-region beg end)
             (gkroam-insert title "")
             (unless (gkroam-at-capture-buf)
