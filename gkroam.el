@@ -287,9 +287,9 @@ Use FUNC function to open file link."
   "Ignore case sensitive when compare A and B using `string='."
   (eq t (compare-strings a nil nil b nil nil t)))
 
-(defun gkroam-page-exist-p (title)
-  "Check if TITLE page exists in `gkroam-root-dir'.
-Return the case sensitive title of page."
+(defun gkroam-title-exist-p (title)
+  "Check if the case fold TITLE page exists in `gkroam-root-dir'.
+Return the original title of page."
   (car (cl-member title (gkroam-retrive-all-titles)
                   :test #'gkroam-case-fold-string=)))
 
@@ -1054,7 +1054,7 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
          (bounds (bounds-of-thing-at-point 'word))
          (beg (car bounds))
          (end (cdr bounds))
-         (case-title (gkroam-page-exist-p title)))
+         (case-title (gkroam-title-exist-p title)))
     (if (gkroam-work-p)
         (if case-title
             (progn
@@ -1076,7 +1076,7 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
     (let* ((beg (region-beginning))
            (end (region-end))
            (title (buffer-substring-no-properties beg end))
-           (case-title (gkroam-page-exist-p title)))
+           (case-title (gkroam-title-exist-p title)))
       (if (gkroam-work-p)
           (if case-title
               (progn
@@ -1777,7 +1777,7 @@ The overlays has a PROP and VALUE."
       (setq title (thing-at-point 'word t)))
      (t (setq title "")))
     (unless (string-empty-p title)
-      (let ((case-title (gkroam-page-exist-p title)))
+      (let ((case-title (gkroam-title-exist-p title)))
         (if (or page case-title)
             (cons (or page (gkroam-retrive-page case-title)) 'page)
           (cons title 'title))))))
