@@ -283,6 +283,16 @@ Use FUNC function to open file link."
       (gkroam-at-capture-buf)
       (gkroam-at-mentions-buf)))
 
+(defun gkroam-case-fold-string= (a b)
+  "Ignore case sensitive when compare A and B using `string='."
+  (eq t (compare-strings a nil nil b nil nil t)))
+
+(defun gkroam-page-exist-p (title)
+  "Check if TITLE page exists in `gkroam-root-dir'.
+Return the case sensitive title of page."
+  (car (cl-member title (gkroam-retrive-all-titles)
+                  :test #'gkroam-case-fold-string=)))
+
 (defun gkroam-retrive-page (title)
   "Retrive page's filename from database.
 The page has a title named TITLE."
@@ -1044,17 +1054,19 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
          (bounds (bounds-of-thing-at-point 'word))
          (beg (car bounds))
          (end (cdr bounds))
-         (page-exist-p (gkroam-retrive-page title)))
+         (case-title (gkroam-page-exist-p title)))
     (if (gkroam-work-p)
-        (if page-exist-p
+        (if case-title
             (progn
               (delete-region beg end)
-              (gkroam-insert title ""))
+              (gkroam-insert case-title title))
           (delete-region beg end)
           (gkroam-insert title "")
           (unless (gkroam-at-capture-buf)
             (gkroam-find title)))
-      (gkroam-find title))))
+      (if case-title
+          (gkroam-find case-title)
+        (gkroam-find title)))))
 
 ;;;###autoload
 (defun gkroam-new-from-region ()
@@ -1064,17 +1076,19 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
     (let* ((beg (region-beginning))
            (end (region-end))
            (title (buffer-substring-no-properties beg end))
-           (page-exist-p (gkroam-retrive-page title)))
+           (case-title (gkroam-page-exist-p title)))
       (if (gkroam-work-p)
-          (if page-exist-p
+          (if case-title
               (progn
                 (delete-region beg end)
-                (gkroam-insert title ""))
+                (gkroam-insert case-title title))
             (delete-region beg end)
             (gkroam-insert title "")
             (unless (gkroam-at-capture-buf)
               (gkroam-find title)))
-        (gkroam-find title)))))
+        (if case-title
+            (gkroam-find case-title)
+          (gkroam-find title))))))
 
 ;;;###autoload
 (defun gkroam-dwim ()
@@ -1748,7 +1762,7 @@ The overlays has a PROP and VALUE."
 ;; ----------------------------------------
 ;;;;; minor mode: gkroam-capture-mode
 
-(defun gkroam-dwim-page ()
+(defun gkroam--get-page-dwim ()
   "Get page from gkroam link, org link, region or at point."
   (let (title page)
     (cond
@@ -1763,9 +1777,10 @@ The overlays has a PROP and VALUE."
       (setq title (thing-at-point 'word t)))
      (t (setq title "")))
     (unless (string-empty-p title)
-      (if (or page (gkroam-retrive-page title))
-          (cons (or page (gkroam-retrive-page title)) 'page)
-        (cons title 'title)))))
+      (let ((case-title (gkroam-page-exist-p title)))
+        (if (or page case-title)
+            (cons (or page (gkroam-retrive-page case-title)) 'page)
+          (cons title 'title))))))
 
 (defun gkroam--get-content-region ()
   "Get the region of real contents.
@@ -1792,8 +1807,8 @@ Except mata infomation and page references."
 
 (defun gkroam-capture-append--cons ()
   "Get the title and content cons needed to be appended to side window."
-  (let ((title-or-page (car (gkroam-dwim-page)))
-        (type (cdr (gkroam-dwim-page)))
+  (let ((title-or-page (car (gkroam--get-page-dwim)))
+        (type (cdr (gkroam--get-page-dwim)))
         title page content)
     (when title-or-page
       (pcase type
@@ -2005,7 +2020,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
   "Set `ivy-use-selectable-prompt' to BOOLEAN."
   (when (require 'ivy nil t)
     (when (and (bound-and-true-p ivy-mode)
-               (bound-and-true-p ivy-use-selectable-prompt))
+               (boundp ivy-use-selectable-prompt))
       (setq ivy-use-selectable-prompt boolean))))
 
 (defun gkroam-selectrum-mode-p ()
