@@ -177,6 +177,7 @@
    * [X] Make page filename customizable.
    * [X] Generate headline id only when you insert a gkroam link.
    * [ ] Implement 'unlinked references'.
+   * [ ] Support the original format of org-link with gkroam link.
    * [ ] Implement 'linked references' filter function.
    * [ ] Implement 'block reference' and 'block embed'.
 
