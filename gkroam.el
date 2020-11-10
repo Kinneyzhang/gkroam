@@ -545,19 +545,18 @@ If type is 'unlinked', it means to process unlinked references."
                             ('linked (gkroam--process-backlink
                                       raw-content page line-number))
                             ('unlinked raw-content))))
-                    (if content
-                        (progn
-                          (setq num (1+ num))
-                          (save-excursion
-                            (when (re-search-backward "^*+ .+\n" nil t)
-                              (setq headline
-                                    (string-trim (match-string-no-properties 0) "*+ +" nil))
-                              (setq headline (concat "*** " headline))))
-                          (if (string= headline last-headline)
-                              (setq context (concat context content "\n\n"))
-                            (setq context (concat context headline "\n" content "\n\n")))
-                          (setq last-headline headline))
-                      (setq context nil))))))
+                    (when content
+                      (progn
+                        (setq num (1+ num))
+                        (save-excursion
+                          (when (re-search-backward "^*+ .+\n" nil t)
+                            (setq headline
+                                  (string-trim (match-string-no-properties 0) "*+ +" nil))
+                            (setq headline (concat "*** " headline))))
+                        (if (string= headline last-headline)
+                            (setq context (concat context content "\n\n"))
+                          (setq context (concat context headline "\n" content "\n\n")))
+                        (setq last-headline headline)))))))
             (when context
               (setq references
                     (concat references
@@ -565,19 +564,22 @@ If type is 'unlinked', it means to process unlinked references."
                                     (gkroam--format-backlink
                                      page nil (gkroam-retrive-title page))
                                     context))))))
-        (setq references
-              (with-temp-buffer
-                (insert (string-trim references))
-                (org-mode)
-                (indent-region (point-min) (point-max))
-                (buffer-string)))
+        (if references
+            (setq references
+                  (with-temp-buffer
+                    (insert (string-trim references))
+                    (org-mode)
+                    (indent-region (point-min) (point-max))
+                    (buffer-string)))
+          (setq references ""))
         (cons num references)))))
 
 (defun gkroam-search-page-link (title)
   "Return a rg process to search a specific TITLE page's link.
 Output matched files' path and context."
   (gkroam-start-process " *gkroam-rg*"
-                        `(,(format "\\{\\[%s( ».*)?\\](\\[.+?\\])?\\}" title)
+                        `(,(format "\\{\\[%s( ».*)?\\](\\[.+?\\])?\\}"
+                                   (regexp-quote title))
                           "--ignore-case" "--sortr" "path"
                           "-C" ,(number-to-string 9999)
                           "-N" "--heading"
@@ -595,31 +597,22 @@ Output the context including the TITLE."
                                  "!%s"
                                  (gkroam-retrive-page title)))))
 
-(defun gkroam-update-reference (process title type)
-  "Update gkroam TITLE page's reference, using rg process PROCESS."
+(defun gkroam-update-linked-references (title)
+  "Update gkroam TITLE page's linked reference."
   (gkroam-search-process
-   process
+   (gkroam-search-page-link title)
    (lambda (string)
      (let* ((page (gkroam-retrive-page title))
             (file (gkroam--get-file page))
             (file-buf (find-file-noselect file t))
             (processed-str (gkroam--process-searched-string
-                            type string title))
+                            'linked string title))
             (num (number-to-string (car processed-str)))
             (references (cdr processed-str))
-            (reference-db
-             (pcase type
-               ('linked gkroam-linked-reference-db)
-               ('unlinked gkroam-unlinked-reference-db)))
+            (reference-db gkroam-linked-reference-db)
             (cached-references (cdar (db-get title reference-db)))
-            (delimiter-re
-             (pcase type
-               ('linked gkroam-linked-reference-delimiter-re)
-               ('unlinked gkroam-unlinked-reference-delimiter-re)))
-            (delimiter-format
-             (pcase type
-               ('linked "* %s Linked References to \"%s\"\n\n")
-               ('unlinked "* %s Unlinked References to \"%s\"\n:PROPERTIES:\n:VISIBILITY: folded\n:END:\n\n")))
+            (delimiter-re gkroam-linked-reference-delimiter-re)
+            (delimiter-format "* %s Linked References to \"%s\"\n\n")
             reference-start curr-references reference-content-start)
        (unless (string= references cached-references)
          (db-put title `(("reference" . ,references)) reference-db)
@@ -644,18 +637,13 @@ Output the context including the TITLE."
                (remove-text-properties reference-start (point-max) '(read-only nil)))
              (delete-region reference-start (point-max))
              (unless (string-empty-p string)
-               (when (equal type 'unlinked)
-                 (insert "\n"))
                (insert (format delimiter-format num title))
                (insert references)
                ;; use overlay to hide part of reference. (filter)
                ;; (gkroam-overlay-region beg (point-max) 'invisible t)
                (indent-region reference-content-start (point-max))
                (save-buffer)
-               (when (equal type 'linked)
-                 (gkroam-db-update gkroam-page-db title "mention" num))
-               (when (equal type 'unlinked)
-                 (org-mode))
+               (gkroam-db-update gkroam-page-db title "mention" num)
                (message "%s reference updated" page)))
            (gkroam-list-parent-item-overlay reference-start)
            (gkroam-reference-region-overlay reference-start)
@@ -664,32 +652,34 @@ Output the context including the TITLE."
            (gkroam-backlink-fontify reference-start (point-max))
            (unless (get-text-property reference-start 'read-only)
              (put-text-property reference-start (point-max)
-                                'read-only "References region is uneditable."))
-           ))))))
+                                'read-only "References region is uneditable."))))))))
 
 (defun gkroam-set-unlinked-references (title)
   "Set unlinked references of TITLE gkroam page to `gkroam-mentions-buf'."
   (gkroam-search-process
    (gkroam-search-page-title title)
    (lambda (string)
-     (let* ((processed-str (gkroam--process-searched-string
+     (let* ((buf (get-buffer-create gkroam-mentions-buf))
+            (processed-str (gkroam--process-searched-string
                             'unlinked string title))
             (num (number-to-string (car processed-str)))
             (references (cdr processed-str))
             (reference-db gkroam-unlinked-reference-db)
             (cached-references (cdar (db-get title reference-db)))
-            (reference-title "* %s Unlinked References to \"%s\"\n\n"))
+            (reference-title "* %s unlinked references to \"%s\"\n\n"))
        (unless (string= references cached-references)
          (db-put title `(("reference" . ,references)) reference-db)
          (setq cached-references (cdar (db-get title reference-db))))
-       (with-current-buffer gkroam-mentions-buf
+       (with-current-buffer buf
          (let ((inhibit-read-only t))
            (remove-text-properties (point-min) (point-max) '(read-only nil)))
          (erase-buffer)
-         (goto-char (point-max))
-         (unless (string-empty-p string)
-           (org-mode)
-           (insert "#+TITLE: UNLINKED REFERENCES\n\n")
+         (org-mode)
+         (insert "#+TITLE: UNLINKED REFERENCES\n\n")
+         (if (string-empty-p references)
+             (progn
+               (insert (format "* None unlinked references to \"%s\"\n" title))
+               (gkroam-org-title-overlay (point-min)))
            (insert (format reference-title num title))
            (insert cached-references)
            (indent-region (point-min) (point-max))
@@ -702,31 +692,30 @@ Output the context including the TITLE."
            ;; (gkroam-list-parent-item-overlay (point-min))
            ;; (gkroam-reference-region-overlay (point-min))
            ;; (when gkroam-prettify-page-p
-           ;;   (gkroam-org-list-fontify (point-min) (point-max)))
-           (goto-char (point-min))
-           (gkroam-mentions-mode)
-           (put-text-property (point-min) (point-max)
-                              'read-only "References region is uneditable.")
-           (message "%s page unlinked reference updated" title)))))))
+           ;;   (gkroam-org-list-fontify (point-min) (point-max))))
+           )
+         (goto-char (point-min))
+         (gkroam-mentions-mode)
+         (put-text-property (point-min) (point-max)
+                            'read-only "References region is uneditable.")))))
+  (when (null gkroam-mentions-flag)
+    (setq gkroam-return-wconf (current-window-configuration)))
+  (setq gkroam-mentions-flag t)
+  (if (gkroam-at-root-p)
+      (progn
+        (delete-other-windows)
+        (split-window-right)
+        (other-window 1)
+        (switch-to-buffer gkroam-mentions-buf))
+    (message "Not in the gkroam directory!")))
 
 ;;;###autoload
 (defun gkroam-show-unlinked ()
   "Show unlinked references of current page in a side window."
   (interactive)
-  (let* ((buf (get-buffer-create gkroam-mentions-buf))
-         (page (file-name-nondirectory (buffer-file-name)))
-         (title (gkroam-retrive-title page)))
-    (when (null gkroam-mentions-flag)
-      (setq gkroam-return-wconf (current-window-configuration)))
-    (setq gkroam-mentions-flag t)
-    (if (gkroam-at-root-p)
-        (progn
-          (delete-other-windows)
-          (gkroam-set-unlinked-references title)
-          (split-window-right)
-          (other-window 1)
-          (switch-to-buffer buf))
-      (message "Not in the gkroam directory!"))))
+  (let ((title (gkroam-retrive-title
+                (file-name-nondirectory (buffer-file-name)))))
+    (gkroam-set-unlinked-references title)))
 
 ;; ----------------------------------------
 ;;;;; headline linked references
@@ -1045,8 +1034,7 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
         (unless (gkroam-at-capture-buf)
           (save-buffer)
           (when title-exist-p
-            (gkroam-update-reference
-             (gkroam-search-page-link title) title 'linked))))
+            (gkroam-update-linked-references title))))
     (message "Not in the gkroam directory!")))
 
 ;;;###autoload
@@ -1328,10 +1316,7 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
   (if (gkroam-at-root-p)
       (let ((title (gkroam-retrive-title
                     (file-name-nondirectory (buffer-file-name)))))
-        ;; (gkroam-update-reference
-        ;;  (gkroam-search-page-title title) title 'unlinked)
-        (gkroam-update-reference
-         (gkroam-search-page-link title) title 'linked))
+        (gkroam-update-linked-references title))
     (message "Not in the gkroam directory!")))
 
 ;;;###autoload
