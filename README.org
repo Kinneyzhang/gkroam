@@ -1,17 +1,22 @@
 [[https://melpa.org/#/gkroam][file:https://melpa.org/packages/gkroam-badge.svg]] [[https://stable.melpa.org/#/gkroam][file:https://stable.melpa.org/packages/gkroam-badge.svg]]
 
 * Table of Contents :TOC_3:
+  - [[#notice][NOTICE!]]
   - [[#introduction][Introduction]]
   - [[#demos][Demos]]
   - [[#installation][Installation]]
   - [[#dependencies][Dependencies]]
-  - [[#tips-important][Tips (important)]]
+  - [[#important-tips][Important Tips]]
   - [[#usage][Usage]]
     - [[#link-format][Link format]]
     - [[#main-functions][Main functions]]
   - [[#changelog][ChangeLog]]
   - [[#todolist][TodoList]]
   - [[#credits][Credits]]
+
+** NOTICE!
+
+   =Any issues or PRs will not be responded until December 28th, 2020. Thanks to everyone who makes contributions to Gkroam.=
 
 ** Introduction
    Gkroam is a lightweight [[https://roamresearch.com][Roam Research]] replica, built on top of emacs org-mode. It uses 'ripgrep' to search links on pages and insert references at the bottom of org pages automatically. The principle of Gkroam is "Be faithful to Roam Research".
@@ -67,7 +72,7 @@
    * [[https://github.com/company-mode/company-mode][company]] is used to auto-complete double bracket links and hashtags.
    * [[https://github.com/BurntSushi/ripgrep][ripgrep(rg)]] is used to search reference links.
 
-** Tips (important)
+** Important Tips
 
    - Install the command line search tool *ripgrep(rg)* first and make sure it is in the exec-path list.
    - Page's headline should not match the regexp "^* [0-9]+ Linked References.*" because it's the delimiter for page contents and reference region.
