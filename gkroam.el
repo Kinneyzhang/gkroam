@@ -716,21 +716,44 @@ Output the context including the TITLE."
   (when (null gkroam-mentions-flag)
     (setq gkroam-return-wconf (current-window-configuration)))
   (setq gkroam-mentions-flag t)
-  (if (gkroam-at-root-p)
-      (progn
-        (delete-other-windows)
-        (split-window-right)
-        (other-window 1)
-        (switch-to-buffer gkroam-mentions-buf))
-    (message "Not in the gkroam directory!")))
+  (delete-other-windows)
+  (split-window-right)
+  (other-window 1)
+  (switch-to-buffer gkroam-mentions-buf)
+  (insert (propertize "Calculating unlinked references..."
+                      'face '(italic))))
 
 ;;;###autoload
 (defun gkroam-show-unlinked ()
   "Show unlinked references of current page in a side window."
   (interactive)
-  (let ((title (gkroam-retrive-title
-                (file-name-nondirectory (buffer-file-name)))))
-    (gkroam-set-unlinked-references title)))
+  (if (gkroam-at-root-p)
+      (let ((title (gkroam-retrive-title
+                    (file-name-nondirectory (buffer-file-name)))))
+        (gkroam-set-unlinked-references title))
+    (message "Not in the gkroam directory!")))
+
+;; (defun gkroam--search-valid-unlinked-title (title)
+;;   "Search the first valid unlinked TITLE on current line.
+;; A valid unlinked title should be a single word, phrase or sentence.
+
+;; The following conditions should be excluded:
+;; 1. title is a substring of words. (Chinese excluded)
+;; 2. title is in a org link
+;; 3. title is in a gkroam link.
+;; 4. title is in the linked references or orgmode head metas.
+;; 5. title is in a org headline.
+;; "
+;;   (save-excursion
+;;     (goto-char (line-beginning-position))
+;;     (catch 'break
+;;       (while (re-search-forward (regexp-quote title) (line-end-position) t)
+;;         (pcase )))))
+
+;; ;;;###autoload
+;; (defun gkroam-link-unlinked ()
+;;   "Transform unlinked reference to linked reference."
+;;   (interactive))
 
 ;; ----------------------------------------
 ;;;;; headline linked references
