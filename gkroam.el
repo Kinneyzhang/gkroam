@@ -1464,6 +1464,25 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
         (gkroam-update-linked-references title))
     (message "Not in the gkroam directory!")))
 
+(defun gkroam-search-pages-with-references ()
+  "Return a rg process to search all pages with linked references.
+Output matched pages."
+  (gkroam-start-process " *gkroam-rg-page-with-references*"
+                        '("^* [0-9]+ Linked References.*"
+                          "--files-with-matches")))
+
+;;;###autoload
+(defun gkroam-update-all ()
+  "Update all pages' linked references if have."
+  (interactive)
+  (gkroam-search-process
+   (gkroam-search-pages-with-references)
+   (lambda (string)
+     (let* ((pages (mapcar #'file-name-nondirectory (split-string string)))
+            (titles (mapcar #'gkroam-retrive-title pages)))
+       (dolist (title titles)
+         (gkroam-update-linked-references title))))))
+
 ;;;###autoload
 (defun gkroam-delete (&optional title-lst)
   "Delete gkroam pages.

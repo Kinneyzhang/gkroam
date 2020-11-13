@@ -72,6 +72,8 @@
    - Install the command line search tool *ripgrep(rg)* first and make sure it is in the exec-path list.
    - Page's headline should not match the regexp "^* [0-9]+ Linked References.*" because it's the delimiter for page contents and reference region.
    - Use =gkroam-rebuild-caches= to generate all caches. If you got an error when click a headline link, this command is also very useful.
+   - For the following v2.4.2 update. Because v2.4.2 changed the format of backlink, please call command =gkroam-update-all= before using other functions.
+
 
 ** Usage
 *** Link format
