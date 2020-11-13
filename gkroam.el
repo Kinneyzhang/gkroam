@@ -1685,8 +1685,17 @@ in LINE-NUMBER line, display a description ALIAS."
            (line-number (string-to-number (button-get button 'line-number))))
       (pcase nil
         ((guard (gkroam-at-mentions-buf))
-         (other-window 1)
-         (gkroam--goto-specific-line title line-number))
+         (if page
+             (progn
+               (other-window 1)
+               (gkroam--goto-specific-line title line-number))
+           (setq page
+                 (save-excursion
+                   (when (re-search-backward gkroam-backlink-full-regexp nil t)
+                     (match-string-no-properties 1))))
+           (setq title (gkroam-retrive-title page))
+           (other-window 1)
+           (gkroam--goto-specific-line title line-number)))
         ((guard (gkroam-at-unlinked-buf))
          (if page
              (progn
