@@ -1,7 +1,6 @@
 [[https://melpa.org/#/gkroam][file:https://melpa.org/packages/gkroam-badge.svg]] [[https://stable.melpa.org/#/gkroam][file:https://stable.melpa.org/packages/gkroam-badge.svg]]
 
 * Table of Contents :TOC_3:
-  - [[#notice][NOTICE!]]
   - [[#introduction][Introduction]]
   - [[#demos][Demos]]
   - [[#installation][Installation]]
@@ -13,10 +12,6 @@
   - [[#changelog][ChangeLog]]
   - [[#todolist][TodoList]]
   - [[#credits][Credits]]
-
-** NOTICE!
-
-   =Any issues or PRs will not be responded until December 28th, 2020. Thanks to everyone who makes contributions to Gkroam!=
 
 ** Introduction
    Gkroam is a lightweight [[https://roamresearch.com][Roam Research]] replica, built on top of emacs org-mode. It uses 'ripgrep' to search links on pages and insert references at the bottom of org pages automatically. The principle of Gkroam is "Be faithful to Roam Research".
