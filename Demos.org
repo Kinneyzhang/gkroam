@@ -1,0 +1,11 @@
+=v2.4.0 linked references:=
+
+[[./image/gkroam-reference.png]]
+
+=v2.4.1 gkroam-index buffer:=
+   
+[[./image/gkroam-index.png]]
+
+=v2.4.2 gkroam unlinked references=
+
+[[./image/unlinked-references.gif]]

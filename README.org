@@ -21,14 +21,8 @@
 
    - [[https://www.bilibili.com/video/BV1cz4y1o7BY/][Bilibili]]
    
-   =v2.4.0 linked references:=
-
-   [[./image/gkroam-reference.png]]
-
-   =v2.4.1 gkroam-index buffer:=
-   
-   [[./image/gkroam-index.png]]
-
+   More demo pictures see [[./Demos.org][here]].
+     
 ** Installation
    
    Clone this repo and add gkroam to your emacs load-path. My configurations are as follows. Feel free to modify them as to however you prefer.
@@ -42,7 +36,7 @@
      :init
      (setq gkroam-root-dir "~/gkroam/org/")
      (setq gkroam-prettify-page-p t
-           gkroam-show-brackets-p t
+           gkroam-show-brackets-p nil
            gkroam-use-default-filename t
            gkroam-window-margin 4)
      :bind
@@ -55,6 +49,7 @@
             ("C-c r n" . gkroam-dwim)
             ("C-c r c" . gkroam-capture)
             ("C-c r e" . gkroam-link-edit)
+            ("C-c r u" . gkroam-show-unlinked)
             ("C-c r p" . gkroam-toggle-prettify)
             ("C-c r t" . gkroam-toggle-brackets)
             ("C-c r R" . gkroam-rebuild-caches)
@@ -110,6 +105,9 @@
     =gkroam-link-edit=\\
     Edit link in minibuffer. This function is very useful when brackets are hidden.
 
+    =gkroam-show-unlinked=\\
+    Show page' unlinked references in a side window. Click link in unlinked references to link it to reference.
+    
     =gkroam-toggle-brackets=\\
     Hide and show brackets of link and hashtag.
 
@@ -121,7 +119,6 @@
 
     =gkroam-rebuild-caches=\\
     Rebuild all caches, including page and filename cache, headline and headline id cache, page and references cache. It may takes seconds to build all, please be patient.
-
 
 ** ChangeLog
    - =v1.0=: Auto update link references at the bottom of page buffer.
@@ -162,6 +159,10 @@
      - Add new command =gkroam-delete=.
      - Rename 'gkroam-smart-new' to =gkroam-dwim=.
 
+   - =v2.4.2=: Implement 'unlinked references'.
+     - Use command `gkroam-show-unlinked' to show pages' unlinked references in a side window.
+     - Click link in unlinked references to link it to reference.
+
 ** TodoList
    
    Recently, I have been watching [[https://www.youtube.com/playlist?list=PLwXSqDdn_CpE934BjXMgmzHnlwXMy41TC][videos]] about Roam Research. From these, I have gotten lots of ideas on how to improve gkroam. The ideas are as follows:
@@ -178,7 +179,7 @@
    * [X] Beautify gkroam page: set window margin, unify bullet style and so on.
    * [X] Make page filename customizable.
    * [X] Generate headline id only when you insert a gkroam link.
-   * [ ] Implement 'unlinked references'.
+   * [X] Implement 'unlinked references'.
    * [ ] Support the original format of org-link with gkroam link.
    * [ ] Implement 'linked references' filter function.
    * [ ] Implement 'block reference' and 'block embed'.

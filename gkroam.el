@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020 Kinney Zhang
 ;;
-;; Version: 2.4.1
+;; Version: 2.4.2
 ;; Keywords: org, convenience
 ;; Author: Kinney Zhang <kinneyzhang666@gmail.com>
 ;; URL: https://github.com/Kinneyzhang/gkroam.el
@@ -104,6 +104,10 @@
 ;; 1. Implement a roam research like index buffer.
 ;; 2. Add new command `gkroam-delete'.
 ;; 3. Rename 'gkroam-smart-new' to `gkroam-dwim'.
+
+;; v2.4.2 - Implement 'unlinked references'.
+;; Use command `gkroam-show-unlinked' to show pages' unlinked references in a side window.
+;; Click link in unlinked references to link it to reference.
 
 ;;; Code:
 
@@ -716,6 +720,31 @@ include the original line number in text property."
         (replace-match (gkroam--format-unlinked-title line-number title))))
     (buffer-string)))
 
+(defun gkroam--between-org-link-p ()
+  "Check if current point is between a org link."
+  (let (beg end)
+    (and (save-excursion
+           (setq beg (re-search-backward "\\[\\[" (line-beginning-position) t)))
+         (not (save-excursion
+                (re-search-backward "\\]\\]" beg t)))
+         (save-excursion
+           (setq end (re-search-forward "\\]\\]" (line-end-position) t)))
+         (not (save-excursion
+                (re-search-forward "\\[\\[" end t))))))
+
+(defun gkroam--between-gkroam-link-p ()
+  "Check if current point is between a gkroam link."
+  (let (beg end)
+    (save-excursion
+      (and (save-excursion
+             (setq beg (re-search-backward "{\\[" (line-beginning-position) t)))
+           (not (save-excursion
+                  (re-search-backward "\\]]" beg t)))
+           (save-excursion
+             (setq end (re-search-forward "\\]}" (line-end-position) t)))
+           (not (save-excursion
+                  (re-search-forward "{\\[" end t)))))))
+
 (defun gkroam--unlinked-title-valid-p ()
   "Judge if current macth is a valid unlinked title after searching.
 The following conditions should be excluded:
@@ -735,17 +764,18 @@ The following conditions should be excluded:
          (setq valid-p nil))
         ;; case 2
         ((and (guard is-ascii)
-              (guard (not
-                      (and
-                       (string= " " (string (char-before
-                                             (match-beginning 0))))
-                       (string= " " (string (char-after
-                                             (match-end 0))))))))
+              (guard (or (not (string= (thing-at-point 'word t) title))
+                         (when (char-after (match-end 0))
+                           (or (string= "-" (string (char-after (match-end 0))))
+                               (string= "_" (string (char-after (match-end 0))))))
+                         (when (< (+ 2 (match-end 0)) (point-max))
+                           (string= "}}" (buffer-substring-no-properties
+                                          (match-end 0) (+ 2 (match-end 0))))))))
          (setq valid-p nil))
         ;; case 3
-        ;; ((guard (or (button-at (point))
-        ;;             (get-text-property (point) 'htmlize-link)))
-        ;;  (setq valid-p nil))
+        ((guard (or (gkroam--between-org-link-p)
+                    (gkroam--between-gkroam-link-p)))
+         (setq valid-p nil))
         (_ (setq valid-p t)))
       valid-p)))
 
@@ -792,6 +822,7 @@ Output the context including the TITLE."
          (insert "#+TITLE: UNLINKED REFERENCES\n\n")
          (if (string-empty-p references)
              (progn
+               (org-mode)
                (insert (format "* None unlinked references to \"%s\"\n" title))
                (gkroam-org-title-overlay (point-min)))
            (insert (format reference-title num title))
