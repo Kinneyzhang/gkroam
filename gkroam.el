@@ -221,7 +221,7 @@ The default format is '%Y%m%d%H%M%S' time string."
   "Regular expression that matches a gkroam hashtag.")
 
 (defvar gkroam-linked-reference-delimiter-re
-  "^* \\([0-9]+\\) Linked References.*"
+  "^* \\([0-9]+\\) Linked References to \"\\(.+?\\)\".*"
   "Delimiter string regexp to separate page contents from references region.")
 
 (defvar gkroam-unlinked-reference-delimiter-re
@@ -243,8 +243,11 @@ The default format is '%Y%m%d%H%M%S' time string."
 (defvar gkroam-capture-buf "*Gkroam Capture*"
   "Gkroam capture buffer name.")
 
-(defvar gkroam-mentions-buf "*Gkroam Mentions*"
-  "Gkroam mentions buffer name.")
+(defvar gkroam-linked-buf "*Gkroam Linked*"
+  "Gkroam linked references buffer name.")
+
+(defvar gkroam-unlinked-buf "*Gkroam Unlinked*"
+  "Gkroam unlinked references buffer name.")
 
 (defvar gkroam-capture-pages nil
   "Pages that have been capturing in gkroam capture buffer.
@@ -275,16 +278,20 @@ Use FUNC function to open file link."
   "Check if current buffer is `gkroam-capture-buf'."
   (string= (buffer-name) gkroam-capture-buf))
 
-(defun gkroam-at-mentions-buf ()
-  "Check if current buffer is `gkroam-mentions-buf'."
-  (string= (buffer-name) gkroam-mentions-buf))
+(defun gkroam-at-linked-buf ()
+  "Check if current buffer is `gkroam-linked-buf'."
+  (string= (buffer-name) gkroam-linked-buf))
+
+(defun gkroam-at-unlinked-buf ()
+  "Check if current buffer is `gkroam-unlinked-buf'"
+  (string= (buffer-name) gkroam-unlinked-buf))
 
 (defun gkroam-work-p ()
   "Check if current file or buffer is where gkroam has to be in work."
   (or (gkroam-at-root-p)
       (gkroam-at-index-buf)
       (gkroam-at-capture-buf)
-      (gkroam-at-mentions-buf)
+      (gkroam-at-linked-buf)
       (gkroam-at-unlinked-buf)))
 
 (defun gkroam-case-fold-string= (a b)
@@ -420,13 +427,6 @@ The backlink refers to a link in LINE-NUMBER line of PAGE."
 ;;   'line-number nil
 ;;   'follow-link t
 ;;   'help-echo "Link it to reference")
-
-(defvar gkroam-unlinked-buf "*Gkroam Unlinked*"
-  "Gkroam unlinked references buffer name.")
-
-(defun gkroam-at-unlinked-buf ()
-  "Check if current buffer is `gkroam-unlinked-buf'"
-  (string= (buffer-name) gkroam-unlinked-buf))
 
 (defun gkroam-unlinked-title-fontify (beg end)
   "Highlight gkroam backlink between BEG and END."
@@ -806,13 +806,13 @@ Output the context including the TITLE."
           (select-window (get-buffer-window buf))
           (let ((inhibit-read-only t))
             (remove-text-properties (point-min) (point-max) '(read-only nil))
-            (erase-buffer)))
+            (erase-buffer)
+            (insert "Calculating unlinked references...")))
       (delete-other-windows)
       (split-window-right)
       (other-window 1)
-      (switch-to-buffer buf))
-    (insert (propertize "Calculating unlinked references..."
-                        'face '(italic)))))
+      (switch-to-buffer buf)
+      (insert "Calculating unlinked references..."))))
 
 ;;;###autoload
 (defun gkroam-show-unlinked ()
@@ -1393,6 +1393,7 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
   :lighter ""
   :keymap (let ((map (make-sparse-keymap)))
             (define-key map (kbd "q") #'gkroam-mentions-finalize)
+            (define-key map (kbd "g") #'gkroam-mentions-update)
             map)
   :require 'gkroam
   (if gkroam-prettify-page-p
@@ -1400,11 +1401,11 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
         (setq-local
          header-line-format
          (substitute-command-keys
-          (concat "\\<gkroam-mentions-mode-map>" spaces "All references mentioned this page, press `\\[gkroam-mentions-finalize]' to quit window."))))
+          (concat "\\<gkroam-mentions-mode-map>" spaces "All mentions: `\\[gkroam-mentions-finalize]' to quit, `\\[gkroam-mentions-update]' to update."))))
     (setq-local
      header-line-format
      (substitute-command-keys
-      "\\<gkroam-mentions-mode-map>All references mentioned this page, press `\\[gkroam-mentions-finalize]' to quit window.")))
+      "\\<gkroam-mentions-mode-map>" "All mentions: `\\[gkroam-mentions-finalize]' to quit, `\\[gkroam-mentions-update]' to update.")))
   (setq truncate-lines nil))
 
 (defvar gkroam-mentions-flag nil
@@ -1414,29 +1415,51 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
   "Quit gkroam mentions window and restore window configuration."
   (interactive)
   (set-window-configuration gkroam-return-wconf)
-  (kill-buffer (or (get-buffer gkroam-mentions-buf)
+  (kill-buffer (or (get-buffer gkroam-linked-buf)
                    (get-buffer gkroam-unlinked-buf)))
   (setq gkroam-return-wconf nil)
   (setq gkroam-mentions-flag nil))
 
-(defun gkroam-show-mentions (btn)
-  "Show gkroam page mentions in a side window after push button BTN."
-  (let ((buf (get-buffer-create gkroam-mentions-buf))
-        (mentions-num (button-label btn))
+(defun gkroam--get-title-in-mentions (type)
+  "Get page's title in gkroam mentions buffer.
+If TYPE equals to 'linked', get title of `gkroam-linked-buf'.
+If TYPE equals to 'unlinked', get title of `gkroam-unlinked-buf'."
+  (save-excursion
+    (let ((delimiter-re
+           (pcase type
+             ('linked gkroam-linked-reference-delimiter-re)
+             ('unlinked gkroam-unlinked-reference-delimiter-re))))
+      (goto-char (point-min))
+      (re-search-forward delimiter-re nil t)
+      (match-string-no-properties 2))))
+
+(defun gkroam-mentions-update ()
+  "Update gkroam mentions buffer, including
+`gkroam-linked-buf' and `gkroam-unlinked-buf'."
+  (interactive)
+  (pcase nil
+    ((guard (gkroam-at-linked-buf))
+     (let ((title (gkroam--get-title-in-mentions 'linked)))
+       (gkroam-set-linked-references-in-mentions title)))
+    ((guard (gkroam-at-unlinked-buf))
+     (let ((title (gkroam--get-title-in-mentions 'unlinked)))
+       (gkroam-set-unlinked-references title)))))
+
+(defun gkroam-set-linked-references-in-mentions (title)
+  "Insert linked references of TITLE page in a mentions buffer."
+  (let ((buf (get-buffer-create gkroam-linked-buf))
         (inhibit-read-only t)
-        title references)
-    (when (null gkroam-mentions-flag)
-      (setq gkroam-return-wconf (current-window-configuration)))
-    (setq gkroam-mentions-flag t)
-    (select-window (get-buffer-window gkroam-index-buf))
-    (setq title (button-get (button-at (line-beginning-position)) 'title))
-    (setq references
-          (with-temp-buffer
-            (insert-file-contents (gkroam--get-file (gkroam-retrive-page title)))
-            (goto-char (point-max))
-            (re-search-backward gkroam-linked-reference-delimiter-re nil t)
-            (buffer-substring (point) (point-max))))
-    (delete-other-windows)
+        (references
+         (progn
+           ;; first update references in page.
+           ;; then get the updated references.
+           (gkroam-update-linked-references title)
+           (with-temp-buffer
+             (insert-file-contents
+              (gkroam--get-file (gkroam-retrive-page title)))
+             (goto-char (point-max))
+             (re-search-backward gkroam-linked-reference-delimiter-re nil t)
+             (buffer-substring (point) (point-max))))))
     (with-current-buffer buf
       (erase-buffer)
       (insert "#+TITLE: MENTIONS OF PAGE\n\n")
@@ -1448,11 +1471,24 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
       (gkroam-reference-region-overlay (point-min))
       (when gkroam-prettify-page-p
         (gkroam-org-list-fontify (point-min) (point-max)))
-      (goto-char (point-min)))
+      (goto-char (point-min))
+      (gkroam-mentions-mode))))
+
+(defun gkroam-show-mentions (btn)
+  "Show gkroam page mentions in a side window after push button BTN."
+  (let ((buf (get-buffer-create gkroam-linked-buf))
+        (mentions-num (button-label btn))
+        title references)
+    (when (null gkroam-mentions-flag)
+      (setq gkroam-return-wconf (current-window-configuration)))
+    (setq gkroam-mentions-flag t)
+    (select-window (get-buffer-window gkroam-index-buf))
+    (setq title (button-get (button-at (line-beginning-position)) 'title))
+    (gkroam-set-linked-references-in-mentions title)
+    (delete-other-windows)
     (split-window-right (gkroam-index-max-columns))
     (other-window 1)
     (switch-to-buffer buf)
-    (gkroam-mentions-mode)
     (read-only-mode 1)
     mentions-num))
 
@@ -1472,7 +1508,7 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
   "Return a rg process to search all pages with linked references.
 Output matched pages."
   ;; a more reliable way is search all gkroam links and get the pages.
-  (gkroam-start-process "*gkroam-rg-page-with-references*"
+  (gkroam-start-process " *gkroam-rg-page-with-references*"
                         '("\\{\\[.+?\\](\\[.+?\\])?\\}"
                           "--only-matching"
                           "--sortr" "path"
@@ -1714,7 +1750,7 @@ in LINE-NUMBER line, display a description ALIAS."
            (title (gkroam-retrive-title page))
            (line-number (string-to-number (button-get button 'line-number))))
       (pcase nil
-        ((guard (gkroam-at-mentions-buf))
+        ((guard (gkroam-at-linked-buf))
          (if page
              (progn
                (other-window 1)
