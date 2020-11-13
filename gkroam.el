@@ -1328,9 +1328,9 @@ different keys of index buffer.")
           (gkroam-overlay-region (- (point) key-len) (point)
                                  'face '(bold italic))
           (unless (= i (1- (length gkroam-index-keys)))
-            (self-insert-command (+ gkroam-index-key-space-num
+            (insert (make-string (+ gkroam-index-key-space-num
                                     (- max-column-len key-len))
-                                 ?\s)
+                                 ?\s))
             (when (= i 0)
               (setq right-pixel
                     (gkroam--pixel-width-from-to
@@ -1369,9 +1369,9 @@ different keys of index buffer.")
                    (gkroam-overlay-region (- (point) val-len) (point)
                                           'face 'shadow)))
               (unless (= i (1- (length gkroam-index-keys)))
-                (self-insert-command (+ gkroam-index-key-space-num
+                (insert (make-string (+ gkroam-index-key-space-num
                                         (- max-column-len val-len))
-                                     ?\s))))
+                                     ?\s)))))
           (gkroam--put-overlay
            overlay-beg overlay-end
            'display (gkroam--valign-space right-pixel)))
@@ -1392,9 +1392,7 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
             map)
   :require 'gkroam
   (if gkroam-prettify-page-p
-      (let (spaces)
-        (dotimes (_ gkroam-window-margin)
-          (setq spaces (concat spaces " ")))
+      (let ((spaces (make-string gkroam-window-margin ?\s)))
         (setq-local
          header-line-format
          (substitute-command-keys
