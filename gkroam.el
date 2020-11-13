@@ -841,7 +841,7 @@ Output the context including the TITLE."
             (catch 'break
               (while (re-search-forward title (line-end-position) t)
                 (when (gkroam--unlinked-title-valid-p)
-                  (gkroam-new-from-region (match-beginning 0) (match-end 0))
+                  (gkroam-new-from-region (match-beginning 0) (match-end 0) t)
                   (gkroam-set-unlinked-references title)
                   (throw 'break
                          (message "Have linked this to references."))))))
@@ -850,7 +850,7 @@ Output the context including the TITLE."
           (catch 'break
             (while (re-search-forward title (line-end-position) t)
               (when (gkroam--unlinked-title-valid-p)
-                (gkroam-new-from-region (match-beginning 0) (match-end 0))
+                (gkroam-new-from-region (match-beginning 0) (match-end 0) t)
                 (gkroam-set-unlinked-references title)
                 (throw 'break
                        (message "Have linked this to references."))))))))))
@@ -1144,9 +1144,10 @@ Output matched files' path."
     (gkroam-find title)))
 
 ;;;###autoload
-(defun gkroam-insert (&optional title alias)
+(defun gkroam-insert (&optional title alias without-headline)
   "Insert a gkroam page link at point.
-With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
+With optional arguments, use TITLE and ALIAS to format link.
+If WITHOUT-HEADLINE is non-nil, don't format headline in link."
   (interactive)
   (if (gkroam-work-p)
       (let* ((title (or title
@@ -1154,8 +1155,9 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
                          "Choose a page or create a new: "
                          (gkroam-retrive-all-titles) nil nil)))
              (title-exist-p (gkroam-retrive-page title))
-             (headlines-exist-p (when title-exist-p
-                                  (gkroam--get-headlines title)))
+             (headlines-exist-p (unless without-headline
+                                  (when title-exist-p
+                                    (gkroam--get-headlines title))))
              (headline (when headlines-exist-p
                          (completing-read
                           "Choose a headline or press \"C-p RET\" (\"RET\") to skip: "
@@ -1176,8 +1178,9 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
     (message "Not in the gkroam directory!")))
 
 ;;;###autoload
-(defun gkroam-new-at-point ()
-  "Insert a file link and create a new file according to text at point."
+(defun gkroam-new-at-point (&optional without-headline)
+  "Insert a file link and create a new file according to text at point.
+If WITHOUT-HEADLINE is non-nil, don't format headline in link."
   (interactive)
   (let* ((title (thing-at-point 'word t))
          (bounds (bounds-of-thing-at-point 'word))
@@ -1189,10 +1192,10 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
             (progn
               (delete-region beg end)
               (if (stringp case-title)
-                  (gkroam-insert case-title title)
-                (gkroam-insert title "")))
+                  (gkroam-insert case-title title without-headline)
+                (gkroam-insert title "" without-headline)))
           (delete-region beg end)
-          (gkroam-insert title "")
+          (gkroam-insert title "" without-headline)
           (unless (gkroam-at-capture-buf)
             (gkroam-find title)))
       (if case-title
@@ -1200,9 +1203,10 @@ With optional arguments, use TITLE or HEADLINE or ALIAS to format link."
         (gkroam-find title)))))
 
 ;;;###autoload
-(defun gkroam-new-from-region (&optional beg end)
+(defun gkroam-new-from-region (&optional beg end without-headline)
   "Insert a file link and create a new file according to a selected region.
-If BEG and END are non-nil, the region is between beg and end."
+If BEG and END are non-nil, the region is between beg and end.
+If WITHOUT-HEADLINE is non-nil, don't format headline in link."
   (interactive)
   (let* ((beg (or beg (region-beginning)))
          (end (or end (region-end)))
@@ -1213,10 +1217,10 @@ If BEG and END are non-nil, the region is between beg and end."
             (progn
               (delete-region beg end)
               (if (stringp case-title)
-                  (gkroam-insert case-title title)
-                (gkroam-insert title "")))
+                  (gkroam-insert case-title title without-headline)
+                (gkroam-insert title "" without-headline)))
           (delete-region beg end)
-          (gkroam-insert title "")
+          (gkroam-insert title "" without-headline)
           (unless (gkroam-at-capture-buf)
             (gkroam-find title)))
       (if case-title
