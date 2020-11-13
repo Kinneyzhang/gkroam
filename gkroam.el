@@ -1467,9 +1467,13 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
 (defun gkroam-search-pages-with-references ()
   "Return a rg process to search all pages with linked references.
 Output matched pages."
-  (gkroam-start-process " *gkroam-rg-page-with-references*"
-                        '("^* [0-9]+ Linked References.*"
-                          "--files-with-matches")))
+  ;; a more reliable way is search all gkroam links and get the pages.
+  (gkroam-start-process "*gkroam-rg-page-with-references*"
+                        '("\\{\\[.+?\\](\\[.+?\\])?\\}"
+                          "--only-matching"
+                          "--sortr" "path"
+                          "--no-line-number"
+                          "--no-filename")))
 
 ;;;###autoload
 (defun gkroam-update-all ()
@@ -1478,8 +1482,11 @@ Output matched pages."
   (gkroam-search-process
    (gkroam-search-pages-with-references)
    (lambda (string)
-     (let* ((pages (mapcar #'file-name-nondirectory (split-string string)))
-            (titles (mapcar #'gkroam-retrive-title pages)))
+     (let (titles)
+       (goto-char (point-min))
+       (while (re-search-forward gkroam-link-regexp nil t)
+         (push (match-string-no-properties 2) titles))
+       (setq titles (delete-dups titles))
        (dolist (title titles)
          (gkroam-update-linked-references title))))))
 
