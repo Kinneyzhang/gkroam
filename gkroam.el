@@ -403,9 +403,9 @@ ARGS are the arguments of rg process."
                     event)))))
     (set-process-sentinel process sentinel)))
 
-(defun gkroam--process-linked-backlink (string page line-number)
+(defun gkroam--process-linked-backlink (string line-number)
   "Convert gkroam link to backlink in STRING.
-The backlink refers to a link in LINE-NUMBER line of PAGE."
+The backlink refers to a link in LINE-NUMBER line of page."
   (with-temp-buffer
     (insert string)
     ;; (goto-char (point-min))
@@ -550,7 +550,7 @@ If type is 'unlinked', it means to process unlinked references."
                          (content
                           (pcase type
                             ('linked (gkroam--process-linked-backlink
-                                      raw-content page line-number))
+                                      raw-content line-number))
                             ('unlinked
                              (when raw-content
                                (gkroam--process-unlinked-title
@@ -858,7 +858,7 @@ Output the context including the TITLE."
       (delete-other-windows)
       (if (car (window-margins))
           (setq win-width (+ (window-width) (* 2 (car (window-margins)))))
-        (setq win-wdth (window-width)))
+        (setq win-width (window-width)))
       (if (< win-width 100)
           (split-window-below)
         (split-window-right))
@@ -1459,11 +1459,11 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
       (progn
         (jit-lock-register #'gkroam-unlinked-title-fontify)
         (if gkroam-prettify-page-p
-            (let ((spaces (make-string gkroam-window-margin ?\s)))
-              (setq-local
-               header-line-format
-               (substitute-command-keys
-                (concat "\\<gkroam-mentions-mode-map>" spaces "All mentions: `\\[gkroam-mentions-finalize]' to quit, `\\[gkroam-mentions-update]' to update."))))
+            (let* ((spaces (make-string gkroam-window-margin ?\s))
+                   (header-format
+                    (concat "\\<gkroam-mentions-mode-map>"
+                            spaces "All mentions: `\\[gkroam-mentions-finalize]' to quit, `\\[gkroam-mentions-update]' to update.")))
+              (setq-local header-line-format (substitute-command-keys header-format)))
           (setq-local
            header-line-format
            (substitute-command-keys
@@ -1543,7 +1543,7 @@ If TYPE equals to 'unlinked', get title of `gkroam-unlinked-buf'."
   "Show gkroam page linked references in a side window after push button BTN."
   (let ((buf (get-buffer-create gkroam-linked-buf))
         (mentions-num (button-label btn))
-        title references
+        title
         gkroam-full-window-width
         gkroam-index-max-width
         gkroam-index-min-width)
@@ -1602,7 +1602,7 @@ Output matched pages."
   (interactive)
   (gkroam-search-process
    (gkroam-search-pages-with-references)
-   (lambda (string)
+   (lambda (_)
      (let (titles)
        (goto-char (point-min))
        (while (re-search-forward gkroam-link-regexp nil t)
@@ -2246,7 +2246,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
             (delete-other-windows)
             (if (car (window-margins))
                 (setq win-width (+ (window-width) (* 2 (car (window-margins)))))
-              (setq win-wdth (window-width)))
+              (setq win-width (window-width)))
             (if (< win-width 100)
                 (split-window-below)
               (split-window-right))
