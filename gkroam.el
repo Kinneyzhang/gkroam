@@ -843,7 +843,8 @@ Output the context including the TITLE."
          (put-text-property (point-min) (point-max)
                             'read-only "References region is uneditable.")
          (gkroam-mentions-mode 1)))))
-  (let ((buf gkroam-unlinked-buf))
+  (let ((buf gkroam-unlinked-buf)
+        win-width)
     (when (null gkroam-mentions-flag)
       (setq gkroam-return-wconf (current-window-configuration)))
     (setq gkroam-mentions-flag t)
@@ -855,7 +856,12 @@ Output the context including the TITLE."
             (erase-buffer)
             (insert "Calculating unlinked references...")))
       (delete-other-windows)
-      (split-window-right)
+      (if (car (window-margins))
+          (setq win-width (+ (window-width) (* 2 (car (window-margins)))))
+        (setq win-wdth (window-width)))
+      (if (< win-width 100)
+          (split-window-below)
+        (split-window-right))
       (other-window 1)
       (switch-to-buffer buf)
       (insert "Calculating unlinked references..."))))
@@ -1351,8 +1357,8 @@ PROPS contains properties and values."
   "The number of spaces inserted between 
 different keys of index buffer.")
 
-(defun gkroam-index-max-columns ()
-  "Get the max columns of index buffer string."
+(defun gkroam-index-content-columns ()
+  "Get full content columns of index buffer string."
   (let ((columns 0)
         (max-len-lst
          (mapcar (lambda (key)
@@ -1418,7 +1424,7 @@ different keys of index buffer.")
                          (gkroam-overlay-region (- (point) val-len) (point)
                                                 'face 'shadow))
                      (insert-button val
-                                    'action 'gkroam-show-mentions
+                                    'action 'gkroam-show-linked
                                     'follow-link t
                                     'face 'font-lock-string-face
                                     'help-echo "Click to show all mentions.")))
@@ -1533,11 +1539,14 @@ If TYPE equals to 'unlinked', get title of `gkroam-unlinked-buf'."
       (goto-char (point-min))
       (gkroam-mentions-mode))))
 
-(defun gkroam-show-mentions (btn)
-  "Show gkroam page mentions in a side window after push button BTN."
+(defun gkroam-show-linked (btn)
+  "Show gkroam page linked references in a side window after push button BTN."
   (let ((buf (get-buffer-create gkroam-linked-buf))
         (mentions-num (button-label btn))
-        title references)
+        title references
+        gkroam-full-window-width
+        gkroam-index-max-width
+        gkroam-index-min-width)
     (when (null gkroam-mentions-flag)
       (setq gkroam-return-wconf (current-window-configuration)))
     (setq gkroam-mentions-flag t)
@@ -1545,7 +1554,20 @@ If TYPE equals to 'unlinked', get title of `gkroam-unlinked-buf'."
     (setq title (button-get (button-at (line-beginning-position)) 'title))
     (gkroam-set-linked-references-in-mentions title)
     (delete-other-windows)
-    (split-window-right (gkroam-index-max-columns))
+    (if (car (window-margins))
+        (setq gkroam-full-window-width
+              (+ (window-width) (* 2 (car (window-margins)))))
+      (setq gkroam-full-window-width (window-width)))
+    (setq gkroam-index-min-width (/ gkroam-full-window-width 2))
+    (setq gkroam-index-max-width (- gkroam-full-window-width 50))
+    (pcase (gkroam-index-content-columns)
+      ((pred (> gkroam-index-min-width))
+       (split-window-right gkroam-index-min-width))
+      ((guard (< gkroam-index-max-width 60))
+       (split-window-below))
+      ((pred (< gkroam-index-max-width))
+       (split-window-right gkroam-index-max-width))
+      (content-width (split-window-right content-width)))
     (other-window 1)
     (switch-to-buffer buf)
     (read-only-mode 1)
@@ -2202,7 +2224,7 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
   "Temporary capture pages in side window."
   (interactive)
   (let* ((cons (gkroam-capture-append--cons))
-         title page content)
+         title page content win-width)
     (if (null cons)
         (progn
           (setq title (completing-read "Choose a page to edit or capture a new one: "
@@ -2222,7 +2244,12 @@ Turning on this mode runs the normal hook `gkroam-capture-mode-hook'."
             (setq gkroam-return-wconf
                   (current-window-configuration))
             (delete-other-windows)
-            (split-window-right)
+            (if (car (window-margins))
+                (setq win-width (+ (window-width) (* 2 (car (window-margins)))))
+              (setq win-wdth (window-width)))
+            (if (< win-width 100)
+                (split-window-below)
+              (split-window-right))
             (other-window 1)
             (switch-to-buffer gkroam-capture-buf)
             (org-mode)
