@@ -232,6 +232,14 @@ The default format is '%Y%m%d%H%M%S' time string."
   "^* \\([0-9]+\\) Unlinked References to \"\\(.+?\\)\".*"
   "Delimiter string regexp to separate page contents from references region.")
 
+(defvar gkroam-backlink-regexp
+  "{{\\(.+?::\\)?\\([0-9]+\\)}{\\(.+?\\)}}"
+  "Regular expression that matches a gkroam backlink.")
+
+(defvar gkroam-backlink-full-regexp
+  "{{\\(.+?\\)::\\([0-9]+\\)}{\\(.+?\\)}}"
+  "Regular expression that matches a gkroam backlink.")
+
 (defvar gkroam-prettify-page-p nil
   "Non-nil means to prettify gkroam page.")
 
@@ -240,6 +248,9 @@ The default format is '%Y%m%d%H%M%S' time string."
 
 (defvar gkroam-capture-flag nil
   "Non-nil means it's in process of gkroam capture.")
+
+(defvar gkroam-mentions-flag nil
+  "Non-nil means it's in process of gkroam mentions.")
 
 (defvar gkroam-index-buf "*Gkroam Index*"
   "Gkroam index buffer name.")
@@ -1117,7 +1128,7 @@ to a \"%Y-%m-%d %H-%M-%S\" time string."
 
 (defun gkroam-update-page-cache ()
   "Update current gkroam page's cache."
-  (when (and gkroam-mode (gkroam-work-p))
+  (when (gkroam-work-p)
     (let* ((page (file-name-nondirectory (buffer-file-name)))
            (title (gkroam-retrive-title page)))
       (unless (null title)
@@ -1473,9 +1484,6 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
   (setq truncate-lines nil)
   (jit-lock-refontify))
 
-(defvar gkroam-mentions-flag nil
-  "Non-nil means it's in process of gkroam mentions.")
-
 (defun gkroam-mentions-finalize ()
   "Quit gkroam mentions window and restore window configuration."
   (interactive)
@@ -1789,14 +1797,6 @@ With optional argument ALIAS, format also with alias."
 
 ;;;;; gkroam backlink
 
-(defvar gkroam-backlink-regexp
-  "{{\\(.+?::\\)?\\([0-9]+\\)}{\\(.+?\\)}}"
-  "Regular expression that matches a gkroam backlink.")
-
-(defvar gkroam-backlink-full-regexp
-  "{{\\(.+?\\)::\\([0-9]+\\)}{\\(.+?\\)}}"
-  "Regular expression that matches a gkroam backlink.")
-
 (defun gkroam--format-backlink (page line-number alias)
   "Format gkroam backlink for PAGE, refer to a link
 in LINE-NUMBER line, display a description ALIAS."
@@ -1951,7 +1951,7 @@ The overlays has a PROP and VALUE."
   (save-excursion
     (goto-char beg)
     (when (re-search-forward "\\(^ *#\\+TITLE: *\\)\\(.+\\)$" bound t)
-      (if (and gkroam-mode gkroam-prettify-page-p)
+      (if gkroam-prettify-page-p
           (progn
             (gkroam-overlay-region (match-beginning 1) (match-end 1) 'display "")
             (gkroam-overlay-region (match-beginning 2) (match-end 2)
@@ -1982,7 +1982,7 @@ The overlays has a PROP and VALUE."
 
 (defun gkroam-set-window-margin ()
   "Set gkroam pages' window margin."
-  (if (and gkroam-mode gkroam-prettify-page-p)
+  (if gkroam-prettify-page-p
       (set-window-margins (selected-window)
                           gkroam-window-margin
                           gkroam-window-margin)
@@ -1998,7 +1998,7 @@ The overlays has a PROP and VALUE."
 
 (defun gkroam-prettify-page ()
   "Prettify gkroam page."
-  (when (and gkroam-mode (gkroam-work-p))
+  (when (gkroam-work-p)
     (if gkroam-prettify-page-p
         (gkroam-prettify-mode 1)
       (gkroam-prettify-mode -1))
@@ -2006,7 +2006,7 @@ The overlays has a PROP and VALUE."
 
 (defun gkroam-fontify-link ()
   "Highlight gkroam links, hashtags and backlinks."
-  (when (and gkroam-mode (gkroam-work-p))
+  (when (gkroam-work-p)
     (save-excursion
       (save-restriction
         (gkroam--narrow-to-content)
