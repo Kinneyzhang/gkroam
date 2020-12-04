@@ -47,7 +47,6 @@
             ("C-c r f" . gkroam-find)
             ("C-c r i" . gkroam-insert)
             ("C-c r n" . gkroam-dwim)
-            ("C-c r c" . gkroam-capture)
             ("C-c r e" . gkroam-link-edit)
             ("C-c r u" . gkroam-show-unlinked)
             ("C-c r p" . gkroam-toggle-prettify)
@@ -98,9 +97,6 @@
 
     =gkroam-index=\\
     Show gkroam index buffer. Index buffer includes all gkroam pages' title, word counts, mentions, updated time and created time. You can click mentions number to see all references in a side window.
-
-    =gkroam-capture=\\
-    Capture many pages in a side window and save changes by pressing =C-c C-c=, abort changes by pressing =C-c C-k=.
 
     =gkroam-link-edit=\\
     Edit link in minibuffer. This function is very useful when brackets are hidden.
@@ -162,6 +158,8 @@
    - =v2.4.2=: Implement 'unlinked references'.
      - Use command `gkroam-show-unlinked' to show pages' unlinked references in a side window.
      - Click link in unlinked references to link it to reference.
+
+   - =v2.4.3=: Change backlink format to org-link format and delete 'gkroam-capture'.
 
 ** TodoList
    
