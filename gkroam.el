@@ -1890,11 +1890,11 @@ With optional argument ALIAS, format also with alias."
 
 (defun gkroam-set-window-margin ()
   "Set gkroam pages' window margin."
-  (if gkroam-prettify-page-p
+  (if (and gkroam-prettify-page-p
+           gkroam-window-margin)
       (set-window-margins (selected-window)
                           gkroam-window-margin
-                          gkroam-window-margin)
-    (set-window-margins (selected-window) 0 0)))
+                          gkroam-window-margin)))
 
 (defun gkroam-preserve-window-margin ()
   "Preserve gkroam pages' window margin."
@@ -2080,7 +2080,7 @@ With optional argument ALIAS, format also with alias."
     (when (or (gkroam-at-linked-buf)
               (gkroam-at-unlinked-buf))
       (gkroam-mentions-mode -1))
-    (set-window-margins (selected-window) 0 0)
+    (gkroam-preserve-window-margin)
     (with-silent-modifications
       (set-text-properties (point-min) (point-max) nil))))
 
