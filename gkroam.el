@@ -150,8 +150,9 @@
   :group 'gkroam)
 
 (defcustom gkroam-window-margin 2
-  "Gkroam window's left and right margin."
-  :type 'integer
+  "Gkroam window's left and right margin, or nil to ignore margin settings."
+  :type '(choice (integer :tag "Number of spaces")
+                 (const :tag "Ignore margin settings" nil))
   :group 'gkroam)
 
 (defcustom gkroam-use-default-filename nil
