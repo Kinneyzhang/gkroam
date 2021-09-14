@@ -1210,9 +1210,8 @@ If WITHOUT-HEADLINE is non-nil, don't format headline in link."
                           "Choose a headline or press \"C-p RET\" (\"RET\") to skip: "
                           headlines-exist-p nil nil)))
              (alias (or alias
-                        (completing-read
-                         "Give an alias or press \"RET\" to skip: "
-                         nil nil nil))))
+                        (read-string
+                         "Give an alias or press \"RET\" to skip: "))))
         (when (string= headline "") (setq headline nil))
         (when (string= alias "") (setq alias nil))
         (when headline
