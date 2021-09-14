@@ -161,7 +161,7 @@ The default format is '%Y%m%d%H%M%S' time string."
   :type 'boolean
   :group 'gkroam)
 
-(defcustom gkroam-show-brackets-p nil
+(defcustom gkroam-show-brackets-flag nil
   "Non-nil means to show brackets in page link."
   :type 'boolean
   :group 'gkroam)
@@ -239,7 +239,7 @@ The default format is '%Y%m%d%H%M%S' time string."
   "\\[\\[file:\\(.+?\\)::[0-9]+\\]\\[.+?\\]\\]"
   "Regular expression that matches a gkroam backlink.")
 
-(defvar gkroam-prettify-page-p nil
+(defvar gkroam-prettify-page-flag nil
   "Non-nil means to prettify gkroam page.")
 
 (defvar gkroam-return-wconf nil
@@ -666,7 +666,7 @@ Output matched files' path and context."
                (message "%s reference updated" page)))
            (gkroam-list-parent-item-overlay reference-start)
            (gkroam-reference-region-overlay reference-start)
-           (when gkroam-prettify-page-p
+           (when gkroam-prettify-page-flag
              (gkroam-org-list-fontify reference-start (point-max)))
            (unless (get-text-property reference-start 'read-only)
              (put-text-property reference-start (point-max)
@@ -1351,7 +1351,7 @@ PROPS contains properties and values."
     (mapc (lambda (num)
             (setq columns (+ columns (+ num gkroam-index-key-space-num))))
           max-len-lst)
-    (if gkroam-prettify-page-p
+    (if gkroam-prettify-page-flag
         (+ columns gkroam-window-margin)
       columns)))
 
@@ -1423,7 +1423,7 @@ PROPS contains properties and values."
            overlay-beg overlay-end
            'display (gkroam--valign-space right-pixel)))
         (newline)))
-    (let ((gkroam-show-brackets-p nil))
+    (let ((gkroam-show-brackets-flag nil))
       (gkroam-fontify-link))
     (gkroam-prettify-page)
     (setq truncate-lines t)
@@ -1442,7 +1442,7 @@ Turning on this mode runs the normal hook `gkroam-mentions-mode-hook'."
   (if gkroam-mentions-mode
       (progn
         (jit-lock-register #'gkroam-unlinked-title-fontify)
-        (if gkroam-prettify-page-p
+        (if gkroam-prettify-page-flag
             (let* ((spaces (make-string gkroam-window-margin ?\s))
                    (header-format
                     (concat "\\<gkroam-mentions-mode-map>"
@@ -1514,7 +1514,7 @@ If TYPE equals to 'unlinked', get title of `gkroam-unlinked-buf'."
       (gkroam-prettify-page)
       (gkroam-list-parent-item-overlay (point-min))
       (gkroam-reference-region-overlay (point-min))
-      (when gkroam-prettify-page-p
+      (when gkroam-prettify-page-flag
         (gkroam-org-list-fontify (point-min) (point-max)))
       (goto-char (point-min))
       (gkroam-mentions-mode))))
@@ -1739,7 +1739,7 @@ With optional argument ALIAS, format also with alias."
                        (concat title " » " headline)
                      title)))
         (unless (equal (char-to-string (char-before (match-beginning 0))) "#")
-          (if gkroam-show-brackets-p
+          (if gkroam-show-brackets-flag
               (gkroam--fontify-show-brackets)
             (gkroam--fontify-hide-brackets)))
         (with-silent-modifications
@@ -1859,7 +1859,7 @@ With optional argument ALIAS, format also with alias."
   (save-excursion
     (goto-char beg)
     (when (re-search-forward "\\(^ *#\\+TITLE: *\\)\\(.+\\)$" bound t)
-      (if gkroam-prettify-page-p
+      (if gkroam-prettify-page-flag
           (progn
             (gkroam-overlay-region (match-beginning 1) (match-end 1) 'display "")
             (gkroam-overlay-region (match-beginning 2) (match-end 2)
@@ -1890,7 +1890,7 @@ With optional argument ALIAS, format also with alias."
 
 (defun gkroam-set-window-margin ()
   "Set gkroam pages' window margin."
-  (if (and gkroam-prettify-page-p
+  (if (and gkroam-prettify-page-flag
            gkroam-window-margin)
       (set-window-margins (selected-window)
                           gkroam-window-margin
@@ -1907,7 +1907,7 @@ With optional argument ALIAS, format also with alias."
 (defun gkroam-prettify-page ()
   "Prettify gkroam page."
   (when (gkroam-work-p)
-    (if gkroam-prettify-page-p
+    (if gkroam-prettify-page-flag
         (gkroam-prettify-mode 1)
       (gkroam-prettify-mode -1))
     (gkroam-set-window-margin)))
@@ -1927,11 +1927,11 @@ With optional argument ALIAS, format also with alias."
 (defun gkroam-toggle-brackets ()
   "Determine whether to show brackets in page link."
   (interactive)
-  (if gkroam-show-brackets-p
+  (if gkroam-show-brackets-flag
       (progn
-        (setq gkroam-show-brackets-p nil)
+        (setq gkroam-show-brackets-flag nil)
         (message "Hide gkroam link brackets"))
-    (setq gkroam-show-brackets-p t)
+    (setq gkroam-show-brackets-flag t)
     (message "Show gkroam link brackets"))
   (let ((windows (window-list)))
     (save-selected-window
@@ -1944,11 +1944,11 @@ With optional argument ALIAS, format also with alias."
 (defun gkroam-toggle-prettify ()
   "Toggle gkroam page prettification."
   (interactive)
-  (if gkroam-prettify-page-p
+  (if gkroam-prettify-page-flag
       (progn
-        (setq gkroam-prettify-page-p nil)
+        (setq gkroam-prettify-page-flag nil)
         (message "Page prettification is turned off"))
-    (setq gkroam-prettify-page-p t)
+    (setq gkroam-prettify-page-flag t)
     (message "Page prettification is turned on"))
   (let ((windows (window-list)))
     (save-selected-window
