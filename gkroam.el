@@ -119,6 +119,7 @@
 (require 'org-element)
 (require 'db)
 (require 'company)
+(require 'calendar)
 (eval-when-compile
   (require 'subr-x)
   (require 'hl-line)
@@ -1187,7 +1188,9 @@ Output matched files' path."
 (defun gkroam-daily ()
   "Create or open gkroam daily notes."
   (interactive)
-  (let* ((title (format-time-string "%b %d, %Y")))
+  (let* ((month (calendar-month-name
+                 (string-to-number (format-time-string "%m")) t))
+         (title (concat month (format-time-string " %d, %Y"))))
     (gkroam-find title)))
 
 ;;;###autoload
