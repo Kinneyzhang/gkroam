@@ -206,6 +206,12 @@ The default format is '%Y%m%d%H%M%S' time string."
   "^ *\\([0-9]+[).]\\|[*+-]\\) \\(\\[[ X-]\\] \\)?"
   "Org list bullet and checkbox regexp.")
 
+(defvar gkroam-checkbox-todo-icon "□"
+  "The todo checkbox icon.")
+
+(defvar gkroam-checkbox-done-icon "■"
+  "The done checkbox icon.")
+
 (defvar gkroam-has-link-p nil
   "Judge if has link or hashtag in gkroam buffer.")
 
@@ -1193,6 +1199,11 @@ Output matched files' path."
          (title (concat month (format-time-string " %d, %Y"))))
     (gkroam-find title)))
 
+;; (defun gkroam-current-daily-date ()
+;;   (let ((title (gkroam--get-meta :title))
+;;         )
+;;     ))
+
 ;;;###autoload
 (defun gkroam-insert (&optional title alias without-headline)
   "Insert a gkroam page link at point.
@@ -1797,9 +1808,9 @@ With optional argument ALIAS, format also with alias."
      '(display "•"))
     (when (match-beginning 2)
       (pcase (match-string-no-properties 2)
-        ("[-] " (gkroam--fontify-org-checkbox "☐"))
-        ("[ ] " (gkroam--fontify-org-checkbox "☐"))
-        ("[X] " (gkroam--fontify-org-checkbox "☑"))))))
+        ("[-] " (gkroam--fontify-org-checkbox gkroam-checkbox-todo-icon))
+        ("[ ] " (gkroam--fontify-org-checkbox gkroam-checkbox-todo-icon))
+        ("[X] " (gkroam--fontify-org-checkbox gkroam-checkbox-done-icon))))))
 
 (defun gkroam-org-list-fontify (beg end)
   "Highlight org list bullet between BEG and END."
