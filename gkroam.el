@@ -2095,8 +2095,9 @@ With optional argument ALIAS, format also with alias."
               (gkroam-at-unlinked-buf))
       (gkroam-mentions-mode -1))
     (gkroam-preserve-window-margin)
-    (with-silent-modifications
-      (set-text-properties (point-min) (point-max) nil))))
+    (when (gkroam-work-p)
+      (with-silent-modifications
+        (set-text-properties (point-min) (point-max) nil)))))
 
 (provide 'gkroam)
 ;;; gkroam.el ends here
