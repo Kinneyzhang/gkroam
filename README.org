@@ -35,8 +35,8 @@
      :hook (after-init . gkroam-mode)
      :init
      (setq gkroam-root-dir "~/gkroam/org/")
-     (setq gkroam-prettify-page-p t
-           gkroam-show-brackets-p nil
+     (setq gkroam-prettify-page-flag t
+           gkroam-show-brackets-flag nil
            gkroam-use-default-filename t
            gkroam-window-margin 4)
      :bind
