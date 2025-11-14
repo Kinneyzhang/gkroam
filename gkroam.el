@@ -1007,7 +1007,9 @@ to linked references for TITLE page."
         (with-temp-buffer
           (insert-file-contents file nil 0 2000 t)
           (goto-char (point-min))
-          (when (re-search-forward (format "^ *#\\+TITLE: *%s *$" (regexp-quote title)) nil t)
+          (when (re-search-forward
+
+                 (format "^ *#\\+TITLE: *%s *$" (regexp-quote title)) nil t)
             (throw 'break page)))))))
 
 (defun gkroam--all-pages ()
@@ -1079,12 +1081,12 @@ to a \"%Y-%m-%d %H-%M-%S\" time string."
 
 (defun gkroam-cache-curr-page (title)
   "Cache gkroam page's filename, which titled with TITLE."
-  (let* ((db-page (gkroam-db-get gkroam-page-db title "page"))
-         (page (gkroam--get-page title))
-         (word-count (gkroam--get-meta :count page))
-         (mentions (gkroam--get-meta :mention page))
-         (created-time (gkroam--get-meta :create page))
-         (updated-time (gkroam--get-meta :update page)))
+  (when-let* ((db-page (gkroam-db-get gkroam-page-db title "page"))
+              (page (gkroam--get-page title)))
+    (let* ((word-count (gkroam--get-meta :count page))
+           (mentions (gkroam--get-meta :mention page))
+           (created-time (gkroam--get-meta :create page))
+           (updated-time (gkroam--get-meta :update page))))
     (unless (equal db-page page)
       (db-put title `(("page" . ,page)
                       ("count" . ,word-count)
@@ -1092,6 +1094,9 @@ to a \"%Y-%m-%d %H-%M-%S\" time string."
                       ("create" . ,created-time)
                       ("update" . ,updated-time))
               gkroam-page-db))))
+
+(exec-path)
+(executable-find "rg")
 
 (defun gkroam-db-get (db title key)
   "Get KEY attribute's value of TITLE page from DB database."
@@ -1113,8 +1118,8 @@ to a \"%Y-%m-%d %H-%M-%S\" time string."
 (defun gkroam-update-page-cache ()
   "Update current gkroam page's cache."
   (when (gkroam-work-p)
-    (let* ((page (file-name-nondirectory (buffer-file-name)))
-           (title (gkroam-retrive-title page)))
+    (when-let* ((page (file-name-nondirectory (buffer-file-name)))
+                (title (gkroam-retrive-title page)))
       (unless (null title)
         (gkroam-db-update gkroam-page-db title "page" page)
         (gkroam-db-update gkroam-page-db title "count" (gkroam-word-count))
@@ -1198,11 +1203,6 @@ Output matched files' path."
                  (string-to-number (format-time-string "%m")) t))
          (title (concat month (format-time-string " %d, %Y"))))
     (gkroam-find title)))
-
-;; (defun gkroam-current-daily-date ()
-;;   (let ((title (gkroam--get-meta :title))
-;;         )
-;;     ))
 
 ;;;###autoload
 (defun gkroam-insert (&optional title alias without-headline)
@@ -1783,7 +1783,7 @@ With optional argument ALIAS, format also with alias."
 
 (define-minor-mode gkroam-link-mode
   "Recognize gkroam link."
-  t nil nil
+  :lighter ""
   (when (gkroam-work-p)
     (if gkroam-link-mode
         (progn
